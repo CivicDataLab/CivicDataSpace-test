@@ -1,0 +1,151 @@
+name: Test & Report
+
+on:
+  push: {}
+  pull_request: {}
+  workflow_dispatch: {}
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────────
+  # 1) Run each combination of flow × test_type in parallel
+  # ──────────────────────────────────────────────────────────────────────────────
+  test:
+    name: Run ${{ matrix.flow }} / ${{ matrix.test_type }} tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        flow:
+          - consumer
+          - provider
+        test_type:
+          - smoke
+          - functional
+          - mobile
+
+    steps:
+      # 1.1) Check out the code
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      # 1.2) Set up Python 3.9
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      # 1.3) Install dependencies (including pytest, pytest-json-report, selenium, coverage, reportlab, etc.)
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 1.4) Run pytest on the specific sub‐folder, generating a JSON report named `report-<flow>-<test_type>.json`
+      - name: Run pytest for ${{ matrix.flow }} / ${{ matrix.test_type }}
+        run: |
+          pytest \
+            tests/${{ matrix.flow }}/${{ matrix.test_type }} \
+            --json-report \
+            --json-report-file=report-${{ matrix.flow }}-${{ matrix.test_type }}.json \
+            -q
+
+      # 1.5) Upload that JSON report as an artifact (optional but helpful for debugging)
+      - name: Upload JSON report artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: report-${{ matrix.flow }}-${{ matrix.test_type }}
+          path: report-${{ matrix.flow }}-${{ matrix.test_type }}.json
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # 2) Once all matrix jobs finish, merge JSONs → run coverage → generate PDF/MD
+  # ──────────────────────────────────────────────────────────────────────────────
+  merge-and-report:
+    name: Merge JSONs, run coverage, & build final report
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      # 2.1) Check out the code again
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      # 2.2) Set up Python 3.9
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      # 2.3) Re‐install dependencies (needed for coverage, report_generator, etc.)
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 2.4) Merge all “report-*.json” files into a single report.json
+      #      This Python snippet concatenates each “tests” array and recomputes summary.
+      - name: Merge JSON reports into report.json
+        run: |
+          python << 'EOF'
+import json, glob, os
+
+# Create a minimal merged structure
+merged = {
+    "created": None,
+    "duration": None,
+    "exitcode": None,
+    "root": os.getcwd(),
+    "environment": {},
+    "tests": []
+}
+
+# Walk through all report-*.json files
+for fname in sorted(glob.glob("report-*.json")):
+    try:
+        data = json.load(open(fname, "r", encoding="utf-8"))
+    except Exception as e:
+        print(f"⚠️ Skipping invalid JSON report {fname}: {e}")
+        continue
+
+    # Append all test entries
+    merged["tests"].extend(data.get("tests", []))
+
+# Recompute basic summary fields
+total = len(merged["tests"])
+passed = sum(1 for t in merged["tests"] if t.get("outcome") == "passed")
+failed = sum(1 for t in merged["tests"] if t.get("outcome") == "failed")
+
+merged["summary"] = {
+    "total": total,
+    "passed": passed,
+    "failed": failed
+}
+
+# Write out the merged JSON
+with open("report.json", "w", encoding="utf-8") as f:
+    json.dump(merged, f, indent=2)
+
+print(f"✅ Merged {len(sorted(glob.glob('report-*.json')))} reports → report.json")
+EOF
+
+      # 2.5) Run a full coverage‐instrumented pytest pass
+      - name: Run pytest under coverage
+        run: |
+          coverage run -m pytest
+          coverage report --fail-under=80
+          coverage html
+
+      # 2.6) Generate TEST_REPORT.md + TEST_REPORT.pdf from report.json
+      - name: Generate human‐readable reports (MD + PDF)
+        run: |
+          python report_generator.py
+
+      # 2.7) Upload merged `report.json`, TEST_REPORT.md, TEST_REPORT.pdf, and HTML coverage folder as artifacts
+      - name: Upload coverage & test-report artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-and-report
+          path: |
+            report.json
+            TEST_REPORT.md
+            TEST_REPORT.pdf
+            htmlcov/
+
