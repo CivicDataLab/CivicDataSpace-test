@@ -14,8 +14,8 @@ jobs:
     strategy:
       matrix:
         flow: [consumer, provider]
-        test_type: [smoke]
-#        test_type: [smoke, functional, mobile]
+#        test_type: [smoke]
+        test_type: [smoke, functional, mobile]
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -38,11 +38,11 @@ jobs:
             --json-report-file=report-${{ matrix.flow }}-${{ matrix.test_type }}.json \
             -q
 
-#      - name: Upload JSON report artifact
-#        uses: actions/upload-artifact@v3
-#        with:
-#          name: report-${{ matrix.flow }}-${{ matrix.test_type }}
-#          path: report-${{ matrix.flow }}-${{ matrix.test_type }}.json
+      - name: Upload JSON report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ matrix.flow }}-${{ matrix.test_type }}
+          path: report-${{ matrix.flow }}-${{ matrix.test_type }}.json
 
   coverage:
     name: Coverage & Summary Report
@@ -79,12 +79,12 @@ jobs:
         run: |
           python report_generator.py
 
-#      - name: Upload coverage & test-report artifacts
-#        uses: actions/upload-artifact@v3
-#        with:
-#          name: coverage-and-report
-#          path: |
-#            report.json
-#            TEST_REPORT.md
-#            TEST_REPORT.pdf
-#            htmlcov/
+      - name: Upload coverage & test-report artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-and-report
+          path: |
+            report.json
+            TEST_REPORT.md
+            TEST_REPORT.pdf
+            htmlcov/
