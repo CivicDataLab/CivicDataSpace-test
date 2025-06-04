@@ -34,9 +34,9 @@ jobs:
       #inject environment variables from GitHub Secrets:
       - name: Export env vars
         run: |
-          echo "URL=${{ secrets.URL }}" >> $GITHUB_ENV
-          echo "TEST_EMAIL=${{ secrets.TEST_EMAIL }}" >> $GITHUB_ENV
-          echo "TEST_PASSWORD=${{ secrets.TEST_PASSWORD }}" >> $GITHUB_ENV
+          echo "BASE_URL=${{ secrets.BASE_URL }}" >> $GITHUB_ENV
+          echo "EMAIL=${{ secrets.EMAIL }}" >> $GITHUB_ENV
+          echo "PASSWORD=${{ secrets.PASSWORD }}" >> $GITHUB_ENV
 
       - name: Run pytest for ${{ matrix.flow }} / ${{ matrix.test_type }}
         run: |
