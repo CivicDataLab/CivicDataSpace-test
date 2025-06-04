@@ -39,7 +39,7 @@ jobs:
             -q
 
       - name: Upload JSON report artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: report-${{ matrix.flow }}-${{ matrix.test_type }}
           path: report-${{ matrix.flow }}-${{ matrix.test_type }}.json
@@ -80,7 +80,7 @@ jobs:
           python report_generator.py
 
       - name: Upload coverage & test-report artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: coverage-and-report
           path: |
