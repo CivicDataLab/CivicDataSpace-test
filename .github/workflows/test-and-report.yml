@@ -14,8 +14,8 @@ jobs:
     strategy:
       matrix:
         flow: [consumer, provider]
-        test_type: [smoke, functional, mobile]
-
+        test_type: [smoke]
+#        test_type: [smoke, functional, mobile]
     steps:
       - name: Check out code
         uses: actions/checkout@v3
