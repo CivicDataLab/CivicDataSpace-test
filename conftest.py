@@ -20,6 +20,11 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import WebDriverException
 
+# Imports to get firefox driver working
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from webdriver_manager.firefox import GeckoDriverManager
+
+
 # This global dict will map each failed test nodeid → its screenshot relative path.
 #
 FAILED_SCREENSHOTS = {}
@@ -46,6 +51,12 @@ def pytest_addoption(parser):
         default=False,
         help="run browser with GUI instead of headless"
     )
+    parser.addoption(
+        "--browser",
+        action="store",
+        default="chrome",
+        help="Send 'chrome' or 'firefox' as parameter for execution"
+    )
 
 # ─── SELENIUM DRIVER FIXTURE ────────────────────────────────────────────────────
 @pytest.fixture(scope="session")
@@ -55,31 +66,30 @@ def driver(request):
     a brand-new, empty user-data directory (in /tmp) on each session so that
     “user data directory already in use” errors never occur.
     """
-    headed = request.config.getoption("--headed")
+    browser = request.config.getoption("--browser")
+    drv = ""
     # 1) Build ChromeOptions
     opts = Options()
-    
-    if not headed:
-        # headless mode
-        # Use the new headless mode; on GH runners this avoids some legacy issues.
-        opts.add_argument("--headless=new")
-        opts.add_argument("--no-sandbox")
-        opts.add_argument("--disable-gpu")
-        opts.add_argument("--disable-dev-shm-usage")
-        opts.add_argument("--disable-extensions")
-    else:
-        # optional: anything you want only in headed mode
-        print("▶️ Running with GUI (headed) browser")
+
+    # Use the new headless mode; on GH runners this avoids some legacy issues.
+    opts.add_argument("--headless=new")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-gpu")
+    opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--disable-extensions")
 
     # 2) Create a fresh, empty directory for Chrome's user-data
     tmp_dir = tempfile.mkdtemp(prefix="chrome-user-data-")
     opts.add_argument(f"--user-data-dir={tmp_dir}")
 
     # 3) Install the matching chromedriver, then start Chrome
-    driver_path = ChromeDriverManager().install()
-    service = Service(driver_path)
-    drv = webdriver.Chrome(service=service, options=opts)
+    if browser == "chrome":
+        drv = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=opts)
+    elif browser == "firefox":
+        drv = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()))
 
+    # Implicit wait setup for our framework
+    drv.implicitly_wait(10)
     yield drv
 
     # 4) Teardown: quit Chrome and remove the temp folder
@@ -87,7 +97,6 @@ def driver(request):
         drv.quit()
     except Exception:
         pass
-
     # Clean up the temp profile directory
     try:
         # shutil.rmtree would remove it recursively
