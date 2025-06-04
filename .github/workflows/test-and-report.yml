@@ -38,11 +38,11 @@ jobs:
             --json-report-file=report-${{ matrix.flow }}-${{ matrix.test_type }}.json \
             -q
 
-      - name: Upload JSON report artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: report-${{ matrix.flow }}-${{ matrix.test_type }}
-          path: report-${{ matrix.flow }}-${{ matrix.test_type }}.json
+#      - name: Upload JSON report artifact
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: report-${{ matrix.flow }}-${{ matrix.test_type }}
+#          path: report-${{ matrix.flow }}-${{ matrix.test_type }}.json
 
   coverage:
     name: Coverage & Summary Report
