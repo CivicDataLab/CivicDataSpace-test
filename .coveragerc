@@ -1,0 +1,9 @@
+[run]
+# Don’t measure coverage for anything under .github/ or for report_generator.py
+omit =
+    .github/*
+    report_generator.py
+
+[report]
+# When printing out coverage results, show which lines are missing
+show_missing = True
