@@ -120,6 +120,7 @@ def sample_logo_path():
     """
     here = os.path.dirname(__file__)
     return os.path.abspath(os.path.join(here, "tests", "data", "sample_logo.png"))
+
 # 1) pytest_runtest_makereport
 #    After each test “call” phase, if it failed and a WebDriver fixture is present,
 #    take a screenshot and stash (nodeid → relative PNG path) in FAILED_SCREENSHOTS.
