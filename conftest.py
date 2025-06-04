@@ -10,6 +10,7 @@ load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 from _pytest.runner import runtestprotocol
 from pathlib import Path
 import logging
+import tempfile
 import pytest
 import requests
 from selenium import webdriver
@@ -49,36 +50,51 @@ def pytest_addoption(parser):
 # ─── SELENIUM DRIVER FIXTURE ────────────────────────────────────────────────────
 @pytest.fixture(scope="session")
 def driver(request):
+    """
+    Launch a headless Chrome on GitHub Actions (Ubuntu). We force Chrome to use
+    a brand-new, empty user-data directory (in /tmp) on each session so that
+    “user data directory already in use” errors never occur.
+    """
     headed = request.config.getoption("--headed")
+    # 1) Build ChromeOptions
     opts = Options()
-
+    
     if not headed:
         # headless mode
-        opts.add_argument("--headless")
+        # Use the new headless mode; on GH runners this avoids some legacy issues.
         opts.add_argument("--headless=new")
-        opts.add_argument("--disable-gpu")
         opts.add_argument("--no-sandbox")
+        opts.add_argument("--disable-gpu")
         opts.add_argument("--disable-dev-shm-usage")
+        opts.add_argument("--disable-extensions")
     else:
         # optional: anything you want only in headed mode
         print("▶️ Running with GUI (headed) browser")
 
-    # always set a window size
-    opts.add_argument("--window-size=1920,1080")
+    # 2) Create a fresh, empty directory for Chrome's user-data
+    tmp_dir = tempfile.mkdtemp(prefix="chrome-user-data-")
+    opts.add_argument(f"--user-data-dir={tmp_dir}")
 
-    # install or fallback
-    try:
-        chromedriver_path = ChromeDriverManager().install()
-    except (requests.exceptions.ConnectionError, WebDriverException):
-        chromedriver_path = os.getenv("CHROMEDRIVER_PATH", "./drivers/chromedriver")
-        if not os.path.isfile(chromedriver_path):
-            raise RuntimeError(f"No chromedriver at {chromedriver_path}")
-
-    service = Service(chromedriver_path)
+    # 3) Install the matching chromedriver, then start Chrome
+    driver_path = ChromeDriverManager().install()
+    service = Service(driver_path)
     drv = webdriver.Chrome(service=service, options=opts)
-    drv.implicitly_wait(5)
+
     yield drv
-    drv.quit()
+
+    # 4) Teardown: quit Chrome and remove the temp folder
+    try:
+        drv.quit()
+    except Exception:
+        pass
+
+    # Clean up the temp profile directory
+    try:
+        # shutil.rmtree would remove it recursively
+        import shutil
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+    except Exception:
+        pass
 
 #  ─────────────────────── Sample csv file fixture ─────────────────────────────
 @pytest.fixture(scope="session")
