@@ -79,12 +79,12 @@ jobs:
         run: |
           python report_generator.py
 
-      - name: Upload coverage & test-report artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage-and-report
-          path: |
-            report.json
-            TEST_REPORT.md
-            TEST_REPORT.pdf
-            htmlcov/
+#      - name: Upload coverage & test-report artifacts
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: coverage-and-report
+#          path: |
+#            report.json
+#            TEST_REPORT.md
+#            TEST_REPORT.pdf
+#            htmlcov/
