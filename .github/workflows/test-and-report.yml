@@ -31,14 +31,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      #inject environment variables from GitHub Secrets:
-      - name: Export env vars
-        run: |
-          echo "BASE_URL=${{ secrets.BASE_URL }}" >> $GITHUB_ENV
-          echo "EMAIL=${{ secrets.EMAIL }}" >> $GITHUB_ENV
-          echo "PASSWORD=${{ secrets.PASSWORD }}" >> $GITHUB_ENV
 
       - name: Run pytest for ${{ matrix.flow }} / ${{ matrix.test_type }}
+        env: 
+          BASE_URL:    ${{ secrets.BASE_URL }}
+          EMAIL:  ${{ secrets.EMAIL }}
+          PASSWORD: ${{ secrets.PASSWORD }}
         run: |
           pytest \
             tests/${{ matrix.flow }}/${{ matrix.test_type }} \
