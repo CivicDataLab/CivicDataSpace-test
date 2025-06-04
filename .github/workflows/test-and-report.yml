@@ -15,6 +15,7 @@ jobs:
       matrix:
         flow: [consumer, provider]
         test_type: [smoke, functional, mobile]
+
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -38,7 +39,7 @@ jobs:
             -q
 
       - name: Upload JSON report artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.2
         with:
           name: report-${{ matrix.flow }}-${{ matrix.test_type }}
           path: report-${{ matrix.flow }}-${{ matrix.test_type }}.json
@@ -47,6 +48,7 @@ jobs:
     name: Coverage & Summary Report
     runs-on: ubuntu-latest
     needs: test
+
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -78,7 +80,7 @@ jobs:
           python report_generator.py
 
       - name: Upload coverage & test-report artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.2
         with:
           name: coverage-and-report
           path: |
