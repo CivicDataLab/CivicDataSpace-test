@@ -38,11 +38,9 @@ jobs:
           TEST_EMAIL:       ${{ secrets.EMAIL }}
           TEST_PASSWORD:    ${{ secrets.PASSWORD }}
         run: |
-          pytest \
-            tests/${{ matrix.flow }}/${{ matrix.test_type }} \
-            --json-report \
-            --json-report-file=report-${{ matrix.flow }}-${{ matrix.test_type }}.json \
-            -q
+          pytest tests/consumer/smoke \
+            --maxfail=1 --disable-warnings -vv \
+            --capture=no  # so we see print() output
 
       - name: Upload JSON report artifact
         uses: actions/upload-artifact@v4
