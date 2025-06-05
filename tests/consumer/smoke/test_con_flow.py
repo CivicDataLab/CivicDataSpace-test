@@ -10,38 +10,39 @@ from pages.home_page import HomePage
 
 logger = logging.getLogger(__name__)
 
-def test_con_001_access_platform(driver):
-    home = HomePage(driver)
+def test_con_001_access_platform(driver, base_url):
+    home = HomePage(driver, base_url)
     home.load()
     assert home.is_icon_visible(), "Con_001: Homepage icon not visible"
 
-def test_con_002_access_all_data_page(driver):
-    home = HomePage(driver)
+def test_con_002_access_all_data_page(driver, base_url):
+    home = HomePage(driver, base_url)
     home.load()
+    print("DEBUG: after load(), driver.current_url =", driver.current_url)
     ds_page = home.go_to_all_data_page()
     ds_cards = ds_page.list_cards()
     assert ds_page.is_loaded(), "Con_002: Datasets page failed to load"
     assert len(ds_cards) > 0 , "Con_002: Datasets cards failed to load"
 
 
-def test_con_003_verify_dataset_download(driver):
-    home = HomePage(driver)
+def test_con_003_verify_dataset_download(driver, base_url):
+    home = HomePage(driver, base_url)
     home.load()
     ds = home.go_to_all_data_page()
     assert ds.is_loaded()
     status, href = ds.download_dataset()
     assert status == 200
 
-def test_con_004_access_sectors_page(driver):
-    home = HomePage(driver)
+def test_con_004_access_sectors_page(driver, base_url):
+    home = HomePage(driver, base_url)
     home.load()
     sec_page   = home.go_to_sectors()
     sec_cards = sec_page.has_cards()
     assert sec_page.is_loaded(), "Con_004: Sectors page header missing"
     assert len(sec_cards) > 0, "Con_004: Sectors page Cards are missing"
 
-def test_con_005_sector_cards_and_associated_datasets(driver):
-    home = HomePage(driver)
+def test_con_005_sector_cards_and_associated_datasets(driver, base_url):
+    home = HomePage(driver, base_url)
     home.load()
 
     # navigate to Sectors page
@@ -58,16 +59,16 @@ def test_con_005_sector_cards_and_associated_datasets(driver):
     assert status == 200, f"Expected 200, got {status}"
 
 
-def test_con_006_access_use_case_page(driver):
-    home = HomePage(driver)
+def test_con_006_access_use_case_page(driver, base_url):
+    home = HomePage(driver, base_url)
     home.load()
     uc_page = home.go_to_usecases()
     uc_cards = uc_page.has_cards()
     assert uc_page.is_loaded(), "Con_006: Use Cases header missing"
     assert len(uc_cards) > 0, "Con_004: Sectors page Cards are missing"
 
-def test_con_007_use_case_cards_and_associated_datasets(driver):
-    home = HomePage(driver)
+def test_con_007_use_case_cards_and_associated_datasets(driver, base_url):
+    home = HomePage(driver, base_url)
     home.load()
     uc_page  = home.go_to_usecases()
     # download the first dataset of the first sector
@@ -80,8 +81,8 @@ def test_con_007_use_case_cards_and_associated_datasets(driver):
     assert href.startswith("https://"), f"Invalid download URL: {href}"
     assert status == 200, f"Expected 200, got {status}"
 
-def test_con_008_access_publishers_page(driver):
-    home = HomePage(driver)
+def test_con_008_access_publishers_page(driver, base_url):
+    home = HomePage(driver, base_url)
     home.load()
     pb_page = home.go_to_publishers()
     assert pb_page.is_loaded(), "Con_008: Publishers header missing"
@@ -91,10 +92,10 @@ def test_con_008_access_publishers_page(driver):
     ("test_con_010", "org"),
     ("test_con_011", "ind"),
 ])
-def test_publishers(tc_id, view, driver):
+def test_publishers(tc_id, view, driver, base_url):
 
     # 1) navigate from home → publishers
-    home = HomePage(driver)
+    home = HomePage(driver, base_url)
     home.load()
     pub  = home.go_to_publishers()  # assumes HomepagePage has this
 
@@ -115,8 +116,8 @@ def test_publishers(tc_id, view, driver):
         f"{tc_id} failed: did not navigate to use-case page, URL is {driver.current_url}"
     )
 
-def test_con_012_access_about_us_page(driver):
-    home = HomePage(driver)
+def test_con_012_access_about_us_page(driver, base_url):
+    home = HomePage(driver, base_url)
     home.load()
     about_page = home.go_to_about()
     assert about_page.is_heading_visible(), "Con_010: About Us heading missing"

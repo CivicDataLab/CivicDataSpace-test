@@ -105,6 +105,17 @@ def driver(request):
     except Exception:
         pass
 
+@pytest.fixture(scope="session")
+def base_url():
+    """
+    This fixture should return the URL that your HomePage.load() does:
+       driver.get(base_url)
+    """
+    url = os.getenv("BASE_URL")  # ← local .env probably sets this
+    if not url:
+        pytest.skip("BASE_URL is not set")
+    return url
+
 #  ─────────────────────── Sample csv file fixture ─────────────────────────────
 @pytest.fixture(scope="session")
 def sample_csv_path():
@@ -112,6 +123,7 @@ def sample_csv_path():
     if not data_file.exists():
         raise FileNotFoundError(f"Expected sample_create.csv at {data_file}")
     return str(data_file)
+
 @pytest.fixture()
 def sample_logo_path():
     """
