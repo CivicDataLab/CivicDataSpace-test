@@ -47,6 +47,10 @@ class HomePage(BasePage):
       2) A unified go_to_login(...) for consumer vs provider login
     """
 
+    def __init__(self, driver, base_url):
+        self.driver = driver
+        self.url = base_url.rstrip("/") + "/"
+        
     def load(self) -> None:
         """Navigate to the site root once."""
         self.driver.get(os.getenv("BASE_URL"))
