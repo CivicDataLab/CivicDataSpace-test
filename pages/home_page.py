@@ -32,9 +32,9 @@ from locators.provider.provider_homepage_locators  import ProviderHomepageLocato
 
 # ─── Load environment variables once ───────────────────────────────────────────────
 load_dotenv()
-BASE_URL      = os.getenv("BASE_URL")
-TEST_EMAIL    = os.getenv("TEST_EMAIL")
-TEST_PASSWORD = os.getenv("TEST_PASSWORD")
+# BASE_URL      = os.getenv("BASE_URL")
+# TEST_EMAIL    = os.getenv("TEST_EMAIL")
+# TEST_PASSWORD = os.getenv("TEST_PASSWORD")
 # ────────────────────────────────────────────────────────────────────────────────
 
 
@@ -49,7 +49,7 @@ class HomePage(BasePage):
 
     def load(self) -> None:
         """Navigate to the site root once."""
-        self.driver.get(BASE_URL)
+        self.driver.get(os.getenv("BASE_URL"))
 
     def is_loaded(self, timeout: int = 5) -> bool:
         """
@@ -158,7 +158,7 @@ class HomePage(BasePage):
 
         if flow.lower() == "provider":
             # 4a) Auto‐login as provider
-            login_page.login(TEST_EMAIL, TEST_PASSWORD)
+            login_page.login(os.getenv("TEST_EMAIL"), os.getenv("TEST_PASSWORD"))
 
             # 5a) Now wait for the ProviderHomePage header to appear (up to 10 s).
             WebDriverWait(self.driver, 10).until(
