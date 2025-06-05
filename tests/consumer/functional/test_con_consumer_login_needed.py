@@ -8,8 +8,8 @@ from pages.home_page      import HomePage
 from pages.provider.login_page import LoginPage
 
 @pytest.mark.functional
-def test_con_001_consumer_login(driver):
-    home = HomePage(driver)
+def test_con_001_consumer_login(driver, base_url):
+    home = HomePage(driver, base_url)
     home.load()
 
     # 1) Click LOGIN / SIGN UP and get back a LoginPage (no auto‐redirect).
