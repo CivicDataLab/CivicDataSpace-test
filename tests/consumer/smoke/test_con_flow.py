@@ -19,6 +19,7 @@ def test_con_002_access_all_data_page(driver, base_url):
     home = HomePage(driver, base_url)
     home.load()
     print("DEBUG: after load(), driver.current_url =", driver.current_url)
+    home.go_to_login()
     ds_page = home.go_to_all_data_page()
     ds_cards = ds_page.list_cards()
     assert ds_page.is_loaded(), "Con_002: Datasets page failed to load"

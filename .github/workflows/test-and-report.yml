@@ -15,7 +15,7 @@ jobs:
       matrix:
         flow: [consumer]
 #        flow: [consumer, provider]
-        test_type: [smoke]
+        test_type: [functional]
 #        test_type: [smoke, functional, mobile]
     steps:
       - name: Check out code
@@ -38,7 +38,7 @@ jobs:
           TEST_EMAIL:       ${{ secrets.EMAIL }}
           TEST_PASSWORD:    ${{ secrets.PASSWORD }}
         run: |
-          pytest tests/consumer/smoke \
+          pytest tests/consumer/functional \
             --maxfail=1 --disable-warnings -vv \
             --capture=no  # so we see print() output
 
