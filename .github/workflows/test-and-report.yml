@@ -35,9 +35,8 @@ jobs:
       - name: Run pytest for ${{ matrix.flow }} / ${{ matrix.test_type }}
         env:
           BASE_URL:    ${{ secrets.BASE_URL }}
-          EMAIL:       ${{ secrets.EMAIL }}
-          PASSWORD:    ${{ secrets.PASSWORD }}
-          URL:         ${{ secrets.URL }}
+          TEST_EMAIL:       ${{ secrets.EMAIL }}
+          TEST_PASSWORD:    ${{ secrets.PASSWORD }}
         run: |
           pytest \
             tests/${{ matrix.flow }}/${{ matrix.test_type }} \
