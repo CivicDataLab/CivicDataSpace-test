@@ -38,7 +38,7 @@ jobs:
           TEST_EMAIL:       ${{ secrets.EMAIL }}
           TEST_PASSWORD:    ${{ secrets.PASSWORD }}
         run: |
-          pytest tests/consumer/smoke \
+          pytest tests/provider/smoke \
             --maxfail=1 --disable-warnings -vv \
             --capture=no  # so we see print() output
 
