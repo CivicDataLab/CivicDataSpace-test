@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        flow: [provider]
+        flow: [consumer]
 #        flow: [consumer, provider]
         test_type: [smoke]
 #        test_type: [smoke, functional, mobile]

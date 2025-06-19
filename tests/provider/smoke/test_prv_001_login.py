@@ -11,9 +11,9 @@ from locators.provider.login_locators import LoginLocators
 
 
 @pytest.mark.smoke
-def test_prv_001_login_smoke(driver):
+def test_prv_001_login_smoke(driver, base_url):
     # Step 0: ensure a clean session
-    home = HomePage(driver)
+    home = HomePage(driver, base_url)
     home.load()
 
     # Step 1: click LOGIN / SIGN UP and expect a LoginPage
