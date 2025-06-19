@@ -6,15 +6,19 @@ class CreateDatasetLocators:
 
     # ---- Metadata fields ----
     DESCRIPTION         = "//textarea[@name='description']"
-    SECTORS_CONTAINER   = "//label[normalize-space()='Sectors']/following::input[1]"
-    SECTOR_OPTION       = "//div[@role='option' and normalize-space(.)='{value}']"
-    TAGS_CONTAINER      = "//label[normalize-space()='Tags']/following::input[1]"
-    TAG_OPTION          = "//div[@role='option' and normalize-space(.)='{value}']"
+
+    SECTOR_INPUT        = "//label[normalize-space()='Sectors *']/following::input[@role='combobox'][1]"
+    SECTOR_DROPDOWN_ITEM = "//div[@role='option'][normalize-space(.)='{value}']"
+
+    TAGS_INPUT           = "//label[normalize-space()='Tags *']/following::input[@role='combobox'][1]"
+    TAG_DROPDOWN_ITEM    = "//div[@role='option' and normalize-space(.)='{value}']"
+
     GEOGRAPHY_CONTAINER = "//label[normalize-space()='Geography']/following::input[1]"
     GEO_OPTION          = "//div[@role='option' and normalize-space(.)='{value}']"
-    # the <input type="date"> immediately after its label
+
     DATE_CREATED_INPUT = "//label[normalize-space(.)='Date of Creation of Dataset']"\
                          "/following::input[@type='date'][1]"
+
     SOURCE_INPUT        = "//label[normalize-space()='Source Website']/following::input[1]"
     
     # the <select> for license
@@ -24,9 +28,11 @@ class CreateDatasetLocators:
     # grab the file‐picker input anywhere
     DATAFILES_INPUT = "//input[@type='file']"
 
+    BACK_BUTTON = "//*[contains(@class,'tabler-icon-arrow-left')]/ancestor::button[1]"
+
     # ---- Publish tab ----
-    PUBLISH_REVIEW_TEXT = "//h3[contains(normalize-space(.),'REVIEW DATASET DETAILS')]"
-    PUBLISH_BUTTON      = "//button[normalize-space()='Publish']"
+    PUBLISH_REVIEW_TEXT = "//span[normalize-space()='REVIEW DATASET DETAILS']"
+    PUBLISH_BUTTON      = "//span[@class='Button-module_removeUnderline__dq0ct'][normalize-space()='Publish']"
 
     #Getter locators :
     # 5b) After selecting sectors, each chosen sector usually appears as a "pill"
@@ -64,14 +70,18 @@ class CreateDatasetLocators:
     # ─── Data Files Tab ────────────────────────────────────────────────────────
 
     # 6b) After uploading, you want a list of filenames.
-    # Suppose each uploaded row has <td class="uploaded-file-name">sample.csv</td>
-    UPLOADED_FILES_NAME_CELLS = "//td[contains(@class,'uploaded-file-name')]"
+
+    # the table itself (you can narrow this down if you have a more specific container)
+    DATAFILES_TABLE = "//div[contains(@class,'opub-DataTable')]//table"
+
+    # all of the “Name of Resource” cells in its first column
+    RESOURCE_NAME_CELLS = DATAFILES_TABLE + "/tbody/tr/td[1]//div"
 
     # ─── Publish Tab ───────────────────────────────────────────────────────────
 
     # 7) The main Publish‐tab container (so you know the tab switched)
     # e.g. <div id="publish-tab-content" …>
-    PUBLISH_TAB_CONTAINER = "//div[@id='publish-tab-content']"
+    PUBLISH_TAB_CONTAINER = "//div[@class=' w-full py-6']"
 
     # 7b) Once you click “Publish,” the page shows a “Published” badge or text:
     # e.g. <span class="status-badge published">Published</span>
