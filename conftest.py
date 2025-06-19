@@ -19,6 +19,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import WebDriverException
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 # Imports to get firefox driver working
 from selenium.webdriver.firefox.service import Service as FirefoxService
@@ -69,7 +70,10 @@ def driver(request):
     browser = request.config.getoption("--browser")
     drv = ""
     # 1) Build ChromeOptions
-    opts = Options()
+    opts = webdriver.ChromeOptions()
+
+    caps = DesiredCapabilities.CHROME.copy()
+    caps["goog:loggingPrefs"] = {"performance": "ALL"}
 
     # Use the new headless mode; on GH runners this avoids some legacy issues.
     opts.add_argument("--headless=new")
@@ -82,6 +86,8 @@ def driver(request):
     tmp_dir = tempfile.mkdtemp(prefix="chrome-user-data-")
     opts.add_argument(f"--user-data-dir={tmp_dir}")
 
+    opts.set_capability("goog:loggingPrefs", caps["goog:loggingPrefs"])
+
     # 3) Install the matching chromedriver, then start Chrome
     if browser == "chrome":
         drv = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=opts)
@@ -89,11 +95,14 @@ def driver(request):
         drv = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()))
 
     # Implicit wait setup for our framework
-    drv.implicitly_wait(10)
+    drv.implicitly_wait(7)
+    # also turn on the CDP Network domain so we can grab bodies
+    drv.execute_cdp_cmd("Network.enable", {})
     yield drv
 
     # 4) Teardown: quit Chrome and remove the temp folder
     try:
+        print("quitting driver")
         drv.quit()
     except Exception:
         pass
