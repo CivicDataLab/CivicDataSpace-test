@@ -30,7 +30,25 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install pytest pytest-json-report python-dotenv
 
+      - name: Create .env file
+        env:
+          BASE_URL:       ${{ secrets.BASE_URL }}
+          TEST_EMAIL:     ${{ secrets.EMAIL }}
+          TEST_PASSWORD:  ${{ secrets.PASSWORD }}
+        run: |
+          cat <<EOF > .env
+          BASE_URL=${BASE_URL}
+          TEST_EMAIL=${TEST_EMAIL}
+          TEST_PASSWORD=${TEST_PASSWORD}
+          EOF
+
+      - name:
+        Debug: show workspace
+        run: |
+          pwd
+          ls -R .
 
       - name: Run pytest for ${{ matrix.flow }} / ${{ matrix.test_type }}
         env:
@@ -38,9 +56,10 @@ jobs:
           TEST_EMAIL:       ${{ secrets.EMAIL }}
           TEST_PASSWORD:    ${{ secrets.PASSWORD }}
         run: |
-          pytest tests/provider/smoke \
-            --maxfail=1 --disable-warnings -vv \
-            --capture=no  # so we see print() output
+          pytest tests/${{ matrix.flow }}/${{ matrix.test_type }} \
+            --maxfail=1 --disable-warnings -vv --capture=no \
+            --json-report \
+            --json-report-file=report-${{ matrix.flow }}-${{ matrix.test_type }}.json
 
       - name: Upload JSON report artifact
         uses: actions/upload-artifact@v4
@@ -66,6 +85,19 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install pytest pytest-json-report python-dotenv coverage
+
+      - name: Create .env file
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          TEST_EMAIL: ${{ secrets.EMAIL }}
+          TEST_PASSWORD: ${{ secrets.PASSWORD }}
+        run: |
+          cat <<EOF > .env
+          BASE_URL=${BASE_URL}
+          TEST_EMAIL=${TEST_EMAIL}
+          TEST_PASSWORD=${TEST_PASSWORD}
+          EOF
 
       - name: Run full test suite under coverage
         run: |
