@@ -76,11 +76,11 @@ def driver(request):
     caps["goog:loggingPrefs"] = {"performance": "ALL"}
 
     # Use the new headless mode; on GH runners this avoids some legacy issues.
-    # opts.add_argument("--headless=new")
-    # opts.add_argument("--no-sandbox")
-    # opts.add_argument("--disable-gpu")
-    # opts.add_argument("--disable-dev-shm-usage")
-    # opts.add_argument("--disable-extensions")
+    opts.add_argument("--headless=new")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-gpu")
+    opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--disable-extensions")
 
     # 2) Create a fresh, empty directory for Chrome's user-data
     tmp_dir = tempfile.mkdtemp(prefix="chrome-user-data-")
