@@ -67,6 +67,15 @@ jobs:
           name: report-${{ matrix.flow }}-${{ matrix.test_type }}
           path: report-${{ matrix.flow }}-${{ matrix.test_type }}.json
 
+      - name: Upload debug artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-artifacts
+          path: |
+            debug_blocker.png
+            debug_blocker.html
+
   coverage:
     name: Coverage & Summary Report
     needs: test
