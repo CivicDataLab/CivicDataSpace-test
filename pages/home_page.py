@@ -98,44 +98,24 @@ class HomePage(BasePage):
         return DatasetPage(self.driver)
 
     def go_to_publishers(self) -> PublishersPage:
-        try:
-            btn = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_PUBLISHERS))
-            )
-            btn.click()
-        except TimeoutException:
-            # If the publishers tab is not clickable (e.g. due to dynamic layout),
-            # navigate directly to the publishers URL instead.
-            target = os.getenv("URL_ALL_DATA") or f"{self.url.rstrip('/')}/publishers"
-            self.driver.get(target)
-
+        btn = WebDriverWait(self.driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_PUBLISHERS))
+        )
+        btn.click()
         return PublishersPage(self.driver)
 
     def go_to_sectors(self) -> SectorsPage:
-        try:
-            btn = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_SECTORS))
-            )
-            btn.click()
-        except TimeoutException:
-            # If the sectors tab is not clickable (e.g. due to dynamic layout),
-            # navigate directly to the sectors URL instead.
-            target = os.getenv("URL_ALL_DATA") or f"{self.url.rstrip('/')}/sectors"
-            self.driver.get(target)
-            
+        btn = WebDriverWait(self.driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_SECTORS))
+        )
+        btn.click()
         return SectorsPage(self.driver)
 
     def go_to_usecases(self) -> UseCasePage:
-        try:
-            btn = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_USECASES))
-            )
-            btn.click()
-        except TimeoutException:
-            # If the usecases tab is not clickable (e.g. due to dynamic layout),
-            # navigate directly to the usecases URL instead.
-            target = os.getenv("URL_ALL_DATA") or f"{self.url.rstrip('/')}/usecases"
-            self.driver.get(target)
+        btn = WebDriverWait(self.driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_USECASES))
+        )
+        btn.click()
         return UseCasePage(self.driver)
 
     def is_icon_visible(self, timeout: int = 10) -> bool:
