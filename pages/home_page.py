@@ -123,7 +123,8 @@ class HomePage(BasePage):
         except TimeoutException:
             # If the datasets tab is not clickable (e.g. due to dynamic layout),
             # navigate directly to the datasets URL instead.
-            target = os.getenv("URL_ALL_DATA")+ "/sectors"
+            base = os.getenv("URL_ALL_DATA", "").rstrip("/")
+            target = f"{base}/sectors"
             self.driver.get(target)
             
         return SectorsPage(self.driver)
