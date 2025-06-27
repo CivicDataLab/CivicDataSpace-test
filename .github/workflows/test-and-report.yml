@@ -47,8 +47,8 @@ jobs:
       - name:
          Debug: show workspace
          run: |
-          pwd
-          ls -R .
+           pwd
+           ls -R .
 
       - name: Run pytest for ${{ matrix.flow }} / ${{ matrix.test_type }}
         env:
