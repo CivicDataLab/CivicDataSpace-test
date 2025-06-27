@@ -95,9 +95,10 @@ def driver(request):
         drv = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()))
 
     # Implicit wait setup for our framework
-    # drv.implicitly_wait(3)
+    drv.implicitly_wait(3)
     # also turn on the CDP Network domain so we can grab bodies
     drv.execute_cdp_cmd("Network.enable", {})
+    drv.maximize_window()
     yield drv
 
     # 4) Teardown: quit Chrome and remove the temp folder

@@ -1,17 +1,16 @@
 # pages/home_page.py
-import json
+
 import os
 from dotenv import load_dotenv
 from typing import Union
-import time
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
     TimeoutException,
     ElementClickInterceptedException,
-    WebDriverException,
-    ElementNotInteractableException
+    WebDriverException
 )
 from selenium.webdriver import ActionChains
 from pages.base_page import BasePage
@@ -82,39 +81,20 @@ class HomePage(BasePage):
         btn.click()
         return AboutPage(self.driver)
 
-    def go_to_all_data_page(self):
-        # … your waits/scrolling/maximize as before …
+    def go_to_all_data_page(self) -> DatasetPage:
 
-        elem = self.driver.find_element(By.XPATH, HomepageLocators.TAB_DATASETS)
         try:
-            elem.click()
-        except (ElementClickInterceptedException, ElementNotInteractableException) as e:
-            # 1) Log exception type & message
-            print(f"⚠️ Click failed with {type(e).__name__}: {e.msg if hasattr(e, 'msg') else str(e)}")
-
-            # 2) Take a screenshot
-            screenshot = "debug_blocker.png"
-            self.driver.save_screenshot(screenshot)
-            print(f"📸 Screenshot saved: {screenshot}")
-
-            # 3) Dump the full page source
-            source_file = "debug_blocker.html"
-            with open(source_file, "w", encoding="utf-8") as f:
-                f.write(self.driver.page_source)
-            print(f"📄 Page source saved: {source_file}")
-
-            # 4) Find which element is actually at the click point
-            x = elem.location["x"] + elem.size["width"] / 2
-            y = elem.location["y"] + elem.size["height"] / 2
-            blocker = self.driver.execute_script(
-                "return document.elementFromPoint(arguments[0], arguments[1]).outerHTML;",
-                x, y
+            bann = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "cookieConsentAccept"))
             )
-            print("🚧 Blocking element is:\n", blocker)
+            bann.click()
+        except TimeoutException:
+            pass
 
-            # (Optionally) re-raise so your test still fails
-            raise
-
+        btn = WebDriverWait(self.driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_DATASETS))
+        )
+        btn.click()          
         return DatasetPage(self.driver)
 
     def go_to_publishers(self) -> PublishersPage:
