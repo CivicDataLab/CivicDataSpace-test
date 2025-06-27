@@ -10,7 +10,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
     TimeoutException,
     ElementClickInterceptedException,
-    WebDriverException
+    WebDriverException,
+    ElementNotInteractableException
 )
 from selenium.webdriver import ActionChains
 from pages.base_page import BasePage
@@ -82,39 +83,36 @@ class HomePage(BasePage):
         return AboutPage(self.driver)
 
     def go_to_all_data_page(self):
-        # … all your waits/scrolling/maximize as before …
+        # … your waits/scrolling/maximize as before …
 
         elem = self.driver.find_element(By.XPATH, HomepageLocators.TAB_DATASETS)
         try:
             elem.click()
-        except ElementClickInterceptedException as e:
-            # 1) Log the exception message
-            print("⚠️ Click intercepted:", e.msg)
+        except (ElementClickInterceptedException, ElementNotInteractableException) as e:
+            # 1) Log exception type & message
+            print(f"⚠️ Click failed with {type(e).__name__}: {e.msg if hasattr(e, 'msg') else str(e)}")
 
-            # 2) Dump a screenshot so you can visually inspect
-            path = "debug_blocker.png"
-            self.driver.save_screenshot(path)
-            print(f"📸 Saved screenshot to {path}")
+            # 2) Take a screenshot
+            screenshot = "debug_blocker.png"
+            self.driver.save_screenshot(screenshot)
+            print(f"📸 Screenshot saved: {screenshot}")
 
-            # 3) Dump page source to a file
-            html = self.driver.page_source
-            with open("debug_blocker.html", "w", encoding="utf-8") as f:
-                f.write(html)
-            print("📄 Written page source snapshot to debug_blocker.html")
+            # 3) Dump the full page source
+            source_file = "debug_blocker.html"
+            with open(source_file, "w", encoding="utf-8") as f:
+                f.write(self.driver.page_source)
+            print(f"📄 Page source saved: {source_file}")
 
-            # 4) Find exactly which element is on top at the click point
-            box = elem.location
-            size = elem.size
-            center_x = box["x"] + size["width"] / 2
-            center_y = box["y"] + size["height"] / 2
+            # 4) Find which element is actually at the click point
+            x = elem.location["x"] + elem.size["width"] / 2
+            y = elem.location["y"] + elem.size["height"] / 2
             blocker = self.driver.execute_script(
                 "return document.elementFromPoint(arguments[0], arguments[1]).outerHTML;",
-                center_x,
-                center_y
+                x, y
             )
-            print("🚧 Blocking element HTML:", blocker)
+            print("🚧 Blocking element is:\n", blocker)
 
-            # re-raise so your test still fails if you want—but now with diagnostics
+            # (Optionally) re-raise so your test still fails
             raise
 
         return DatasetPage(self.driver)
