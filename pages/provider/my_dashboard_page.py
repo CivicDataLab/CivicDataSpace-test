@@ -8,7 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from pages.base_page import BasePage
 from locators.provider.my_dashboard_locators import MyDashboardLocators
 from pages.provider.create_dataset_page import CreateDatasetPage
-
+from pages.provider.usecases_list_page import UseCasesListPage
 
 class MyDashboardPage(BasePage):
     """
@@ -16,6 +16,13 @@ class MyDashboardPage(BasePage):
     There is a “My Dashboard” card → click it, then a sidebar appears; you click “Datasets”,
     and that reveals the “Drafts” tab (and the “Add New Dataset” button inside it).
     """
+
+    def click_usecases_card(self):
+        WebDriverWait(self.driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.USECASES_NAV_LINK)),
+            message="Timed out waiting for the 'Usecases' card to be clickable"
+        ).click()
+        return UseCasesListPage(self.driver)
 
     def load(self):
         """

@@ -117,7 +117,7 @@ class CreateDatasetPage(BasePage):
         ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
         return self
 
-    def enter_date_created(self, iso_date: str, timeout: int = 10):
+    def enter_date_created(self, iso_date: str):
 
         # 1) locate the date <input>
         fld = self.wait.until(EC.presence_of_element_located(
