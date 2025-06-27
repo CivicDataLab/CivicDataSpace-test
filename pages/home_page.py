@@ -7,8 +7,12 @@ from typing import Union
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
-
+from selenium.common.exceptions import (
+    TimeoutException,
+    ElementClickInterceptedException,
+    WebDriverException
+)
+from selenium.webdriver import ActionChains
 from pages.base_page import BasePage
 
 # ─── Consumer‐flow imports (PLACE YOUR ORIGINAL IMPORTS HERE) ─────────────────────
@@ -77,27 +81,62 @@ class HomePage(BasePage):
         btn.click()
         return AboutPage(self.driver)
 
-    def go_to_all_data_page(self) -> DatasetPage:
+    def go_to_all_data_page(self):
+        wait = WebDriverWait(self.driver, 20)
 
+        # 1) Dismiss cookie banner if present
         try:
-            bann = WebDriverWait(self.driver, 10).until(
+            bann = wait.until(
                 EC.element_to_be_clickable((By.ID, "cookieConsentAccept"))
             )
             bann.click()
         except TimeoutException:
             pass
 
+        # 2) Maximize window so element is in bounds
         try:
-            btn = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_DATASETS))
-            )
-            btn.click()
-        except TimeoutException:
-            # If the datasets tab is not clickable (e.g. due to dynamic layout),
-            # navigate directly to the datasets URL instead.
-            target = os.getenv("URL_ALL_DATA") or f"{self.url.rstrip('/')}/datasets"
-            self.driver.get(target)
-            
+            self.driver.maximize_window()
+        except WebDriverException:
+            # some headless runners ignore maximize; ignore errors
+            pass
+
+        # 3) Wait for overlays/spinners to vanish
+        for selector in [".loading-spinner", ".overlay-backdrop", "#page-loader"]:
+            try:
+                wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, selector)))
+            except TimeoutException:
+                # if it never appears, no biggie
+                pass
+
+        # 4) Wait for the tab element to be present in the DOM
+        wait.until(EC.presence_of_element_located((By.XPATH, HomepageLocators.TAB_DATASETS)))
+        elem = self.driver.find_element(By.XPATH, HomepageLocators.TAB_DATASETS)
+
+        # 5) Scroll it into the center of the viewport
+        self.driver.execute_script(
+            "arguments[0].scrollIntoView({block: 'center', inline: 'center'});", elem
+        )
+        time.sleep(0.5)  # give the browser a tick
+
+        # 6) Try clicking—normal, JS, or via Actions
+        clicked = False
+        try:
+            wait.until(EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_DATASETS)))
+            elem.click()
+            clicked = True
+        except (ElementClickInterceptedException, WebDriverException):
+            # fallback #1: JS click
+            try:
+                self.driver.execute_script("arguments[0].click();", elem)
+                clicked = True
+            except Exception:
+                pass
+
+        if not clicked:
+            # fallback #2: ActionChains
+            ActionChains(self.driver).move_to_element(elem).click().perform()
+
+        # 7) Done—return the page object
         return DatasetPage(self.driver)
 
     def go_to_publishers(self) -> PublishersPage:
@@ -107,8 +146,8 @@ class HomePage(BasePage):
             )
             btn.click()
         except TimeoutException:
-            # If the datasets tab is not clickable (e.g. due to dynamic layout),
-            # navigate directly to the datasets URL instead.
+            # If the publishers tab is not clickable (e.g. due to dynamic layout),
+            # navigate directly to the publishers URL instead.
             target = os.getenv("URL_ALL_DATA") or f"{self.url.rstrip('/')}/publishers"
             self.driver.get(target)
 
@@ -121,8 +160,8 @@ class HomePage(BasePage):
             )
             btn.click()
         except TimeoutException:
-            # If the datasets tab is not clickable (e.g. due to dynamic layout),
-            # navigate directly to the datasets URL instead.
+            # If the sectors tab is not clickable (e.g. due to dynamic layout),
+            # navigate directly to the sectors URL instead.
             target = os.getenv("URL_ALL_DATA") or f"{self.url.rstrip('/')}/sectors"
             self.driver.get(target)
             
@@ -135,8 +174,8 @@ class HomePage(BasePage):
             )
             btn.click()
         except TimeoutException:
-            # If the datasets tab is not clickable (e.g. due to dynamic layout),
-            # navigate directly to the datasets URL instead.
+            # If the usecases tab is not clickable (e.g. due to dynamic layout),
+            # navigate directly to the usecases URL instead.
             target = os.getenv("URL_ALL_DATA") or f"{self.url.rstrip('/')}/usecases"
             self.driver.get(target)
         return UseCasePage(self.driver)
