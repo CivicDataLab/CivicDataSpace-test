@@ -44,7 +44,7 @@ jobs:
           EOF
 
       - name: 
-          Debug: show workspace
+        Debug: show workspace
         run: |
           pwd
           ls -R .
