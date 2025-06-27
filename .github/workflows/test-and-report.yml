@@ -9,13 +9,13 @@ on:
 
 jobs:
   test:
-    name: Run ${{
-      matrix.flow}} / ${{matrix.test_type}} tests
+    name: Run ${{ matrix.flow }} / ${{ matrix.test_type }} tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        flow: [consumer]        # add 'provider' here when you’re ready
-        test_type: [smoke]      # add other types as needed
+        flow: [consumer]        # add 'provider' when ready
+        test_type: [smoke]      # add other types when needed
+
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -49,10 +49,12 @@ jobs:
           ls -R .
 
       - name: Run pytest for ${{ matrix.flow }} / ${{ matrix.test_type }}
+        # ensure your pages/ package is on PYTHONPATH
         env:
           BASE_URL:       ${{ secrets.BASE_URL }}
           TEST_EMAIL:     ${{ secrets.EMAIL }}
           TEST_PASSWORD:  ${{ secrets.PASSWORD }}
+          PYTHONPATH:     ${{ github.workspace }}
         run: |
           pytest tests/${{ matrix.flow }}/${{ matrix.test_type }} \
             --maxfail=1 --disable-warnings -vv --capture=no \
@@ -69,6 +71,7 @@ jobs:
     name: Coverage & Summary Report
     needs: test
     runs-on: ubuntu-latest
+
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -97,6 +100,8 @@ jobs:
           EOF
 
       - name: Run full test suite under coverage
+        env:
+          PYTHONPATH:     ${{ github.workspace }}
         run: |
           coverage run -m pytest \
             --json-report \
