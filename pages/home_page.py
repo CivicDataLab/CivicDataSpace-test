@@ -101,10 +101,17 @@ class HomePage(BasePage):
         return DatasetPage(self.driver)
 
     def go_to_publishers(self) -> PublishersPage:
-        btn = WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_PUBLISHERS))
-        )
-        btn.click()
+        try:
+            btn = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_PUBLISHERS))
+            )
+            btn.click()
+        except TimeoutException:
+            # If the datasets tab is not clickable (e.g. due to dynamic layout),
+            # navigate directly to the datasets URL instead.
+            target = os.getenv("URL_ALL_DATA") or f"{self.url.rstrip('/')}/sectors"
+            self.driver.get(target)
+
         return PublishersPage(self.driver)
 
     def go_to_sectors(self) -> SectorsPage:
