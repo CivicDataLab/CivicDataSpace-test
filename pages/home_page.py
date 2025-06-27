@@ -1,5 +1,5 @@
 # pages/home_page.py
-
+import json
 import os
 from dotenv import load_dotenv
 from typing import Union
@@ -82,61 +82,41 @@ class HomePage(BasePage):
         return AboutPage(self.driver)
 
     def go_to_all_data_page(self):
-        wait = WebDriverWait(self.driver, 20)
+        # … all your waits/scrolling/maximize as before …
 
-        # 1) Dismiss cookie banner if present
-        try:
-            bann = wait.until(
-                EC.element_to_be_clickable((By.ID, "cookieConsentAccept"))
-            )
-            bann.click()
-        except TimeoutException:
-            pass
-
-        # 2) Maximize window so element is in bounds
-        try:
-            self.driver.maximize_window()
-        except WebDriverException:
-            # some headless runners ignore maximize; ignore errors
-            pass
-
-        # 3) Wait for overlays/spinners to vanish
-        for selector in [".loading-spinner", ".overlay-backdrop", "#page-loader"]:
-            try:
-                wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, selector)))
-            except TimeoutException:
-                # if it never appears, no biggie
-                pass
-
-        # 4) Wait for the tab element to be present in the DOM
-        wait.until(EC.presence_of_element_located((By.XPATH, HomepageLocators.TAB_DATASETS)))
         elem = self.driver.find_element(By.XPATH, HomepageLocators.TAB_DATASETS)
-
-        # 5) Scroll it into the center of the viewport
-        self.driver.execute_script(
-            "arguments[0].scrollIntoView({block: 'center', inline: 'center'});", elem
-        )
-        time.sleep(0.5)  # give the browser a tick
-
-        # 6) Try clicking—normal, JS, or via Actions
-        clicked = False
         try:
-            wait.until(EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_DATASETS)))
             elem.click()
-            clicked = True
-        except (ElementClickInterceptedException, WebDriverException):
-            # fallback #1: JS click
-            try:
-                self.driver.execute_script("arguments[0].click();", elem)
-                clicked = True
-            except Exception:
-                pass
+        except ElementClickInterceptedException as e:
+            # 1) Log the exception message
+            print("⚠️ Click intercepted:", e.msg)
 
-        if not clicked:
-            # fallback #2: ActionChains
-            ActionChains(self.driver).move_to_element(elem).click().perform()
+            # 2) Dump a screenshot so you can visually inspect
+            path = "debug_blocker.png"
+            self.driver.save_screenshot(path)
+            print(f"📸 Saved screenshot to {path}")
 
-        # 7) Done—return the page object
+            # 3) Dump page source to a file
+            html = self.driver.page_source
+            with open("debug_blocker.html", "w", encoding="utf-8") as f:
+                f.write(html)
+            print("📄 Written page source snapshot to debug_blocker.html")
+
+            # 4) Find exactly which element is on top at the click point
+            box = elem.location
+            size = elem.size
+            center_x = box["x"] + size["width"] / 2
+            center_y = box["y"] + size["height"] / 2
+            blocker = self.driver.execute_script(
+                "return document.elementFromPoint(arguments[0], arguments[1]).outerHTML;",
+                center_x,
+                center_y
+            )
+            print("🚧 Blocking element HTML:", blocker)
+
+            # re-raise so your test still fails if you want—but now with diagnostics
+            raise
+
         return DatasetPage(self.driver)
 
     def go_to_publishers(self) -> PublishersPage:
