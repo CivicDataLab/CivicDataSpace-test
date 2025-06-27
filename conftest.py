@@ -81,6 +81,9 @@ def driver(request):
     opts.add_argument("--disable-gpu")
     opts.add_argument("--disable-dev-shm-usage")
     opts.add_argument("--disable-extensions")
+    opts.add_argument("--window-size=1920,1080")
+    # optionally start maximized
+    opts.add_argument("--start-maximized")
 
     # 2) Create a fresh, empty directory for Chrome's user-data
     tmp_dir = tempfile.mkdtemp(prefix="chrome-user-data-")
@@ -98,7 +101,6 @@ def driver(request):
     drv.implicitly_wait(3)
     # also turn on the CDP Network domain so we can grab bodies
     drv.execute_cdp_cmd("Network.enable", {})
-    drv.maximize_window()
     yield drv
 
     # 4) Teardown: quit Chrome and remove the temp folder
