@@ -43,8 +43,7 @@ jobs:
           TEST_PASSWORD=${TEST_PASSWORD}
           EOF
 
-      - name: 
-        Debug: show workspace
+      - name: 'Debug: show workspace'
         run: |
           pwd
           ls -R .
