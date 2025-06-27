@@ -88,13 +88,13 @@ class HomePage(BasePage):
                 EC.element_to_be_clickable((By.ID, "cookieConsentAccept"))
             )
             bann.click()
-        except TimeoutException:
+        except:
             pass
 
         btn = WebDriverWait(self.driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_DATASETS))
         )
-        btn.click()          
+        btn.click()
         return DatasetPage(self.driver)
 
     def go_to_publishers(self) -> PublishersPage:
