@@ -75,6 +75,11 @@ class CreateUsecasePage(BasePage):
 
     def select_sectors(self, items: list[str]):
         # 1) click into the combobox input
+
+        self.wait.until(
+            EC.invisibility_of_element_located((By.CLASS_NAME, "toast"))
+        )
+
         combo = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.SECTOR_INPUT))
         combo.click()
 
@@ -133,14 +138,19 @@ class CreateUsecasePage(BasePage):
         """
         For a <select> dropdown, pick an <option> whose visible text == status_text.
         """
+
+        self.wait.until(
+            EC.invisibility_of_element_located((By.CLASS_NAME, "toast"))
+        )
+
         combo = self.wait.until(
-            EC.element_to_be_clickable(CreateUsecaseLocators.RUNNING_STATUS_COMBO),
+            EC.element_to_be_clickable(CreateUsecaseLocators.RUNNING_STATUS_INPUT),
             message="Could not click Running Status dropdown"
         )
         combo.click()
 
         opt = self.wait.until(
-            EC.element_to_be_clickable((By.XPATH, f"//select[@name='runningStatus']/option[normalize-space()='{status_text}']")),
+            EC.element_to_be_clickable((By.XPATH, RUNNING_STATUS_DROP_ITEM)),
             message=f"Running Status option '{status_text}' not found"
         )
         opt.click()
