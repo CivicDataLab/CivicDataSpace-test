@@ -18,7 +18,7 @@ class CreateUsecaseLocators:
     TAG_DROPDOWN_ITEM = "//div[@role='option' and normalize-space(.)='{value}']"
 
     SECTOR_INPUT = (By.XPATH,"//label[normalize-space()='Sectors *']/following::input[@role='combobox'][1]")
-    SECTOR_DROPDOWN_ITEM = "//div[@role='option'][normalize-space(.)='{value}']"
+    SECTOR_DROPDOWN_ITEM = "//div[@role='option' and normalize-space(.)='{value}']"
 
     GEOGRAPHY_CONTAINER = (By.XPATH,"//label[normalize-space()='Geography *']/following::input[1]")
     GEO_OPTION = "//div[@role='option' and normalize-space(.)='{value}']"
@@ -28,7 +28,8 @@ class CreateUsecaseLocators:
 
     STARTED_ON_INPUT = (By.XPATH, "//input[@type='date' and @name='startedOn']")
 
-    RUNNING_STATUS_COMBO = (By.XPATH, "//select[@name='runningStatus']")
+    RUNNING_STATUS_INPUT = (By.XPATH, "//select[@name='runningStatus']")
+    RUNNING_STATUS_DROP_ITEM = "//select[@name='runningStatus']/option[normalize-space()='{status_text}']"
 
     COMPLETED_ON_INPUT = (By.XPATH, "//input[@type='date' and @name='completedOn']")
 
