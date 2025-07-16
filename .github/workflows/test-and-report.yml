@@ -44,10 +44,10 @@ jobs:
           TEST_PASSWORD=${TEST_PASSWORD}
           EOF
 
-      - name: 'Debug: show workspace'
-        run: |
-          pwd
-          ls -R .
+#      - name: 'Debug: show workspace'
+#        run: |
+#          pwd
+#          ls -R .
 
       - name: Run pytest for ${{ matrix.flow }} / ${{ matrix.test_type }}
         # ensure your pages/ package is on PYTHONPATH
