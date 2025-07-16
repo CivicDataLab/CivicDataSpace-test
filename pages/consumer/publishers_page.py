@@ -3,6 +3,7 @@
 import logging
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 import requests
 from pages.base_page import BasePage
 from locators.consumer.publishers_locators import PublishersLocators
@@ -15,10 +16,39 @@ class PublishersPage(BasePage):
         """Wait for ‘Our Publishers’ header to be visible."""
         return self.find((By.XPATH, PublishersLocators.HEADER)).is_displayed()
 
-    def _select_tab(self, xpath: str):
-        """Helper: click a tab button by its XPath."""
-        logger.info("Selecting tab via %s", xpath)
-        self.wait.until(EC.element_to_be_clickable((By.XPATH, xpath))).click()
+    def _select_tab(self, xpath: str, timeout: int = 10) -> None:
+        """
+        Clicks the tab (if not already active) with overlap-safe logic.
+        """
+        tab = WebDriverWait(self.driver, timeout).until(
+            EC.presence_of_element_located((By.XPATH, xpath))
+        )
+
+        # Already selected?
+        if "active" in tab.get_attribute("class"):
+            return
+
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", tab)
+
+        # ----- safe-click with up to 3 attempts -----
+        for attempt in range(3):
+            try:
+                WebDriverWait(self.driver, timeout).until(
+                    EC.element_to_be_clickable((By.XPATH, xpath))
+                )
+                tab.click()
+                return
+            except ElementClickInterceptedException:
+                # Wait a short moment for overlay/animation to clear, then retry
+                WebDriverWait(self.driver, 2).until(
+                    lambda drv: drv.execute_script(
+                        "return arguments[0].getBoundingClientRect().top >= 0 && "
+                        "arguments[0].getBoundingClientRect().bottom <= (window.innerHeight || document.documentElement.clientHeight);",
+                        tab,
+                    )
+                )
+        # If we’re still here → fail fast so the test shows a clear error
+        raise TimeoutException(f"Could not click tab located by {xpath} after retries")
 
     def list_all_publishers(self):
         """
@@ -35,7 +65,7 @@ class PublishersPage(BasePage):
         # wait for cards to appear
         return self.finds((By.XPATH, PublishersLocators.ALL_CARD))
 
-    def list_publishers(self, view: str = "all"):
+    def list_publishers(self, view: str = ""):
         """
         Click the correct tab ('all','org','ind'), then return all <a> cards.
         """
@@ -58,7 +88,7 @@ class PublishersPage(BasePage):
         return self.finds((By.XPATH, PublishersLocators.PUBLISHER_CARD))
 
 
-    def open_publisher_by_index(self, index: int = 0, view: str = "all") -> "PublisherDetailPage":
+    def open_publisher_by_index(self, index: int = 0, view: str = "") -> "PublisherDetailPage":
         """
         From the given view, click the Nth publisher card.
         Returns a PublisherDetailPage, which you can use to drill into its use cases.
