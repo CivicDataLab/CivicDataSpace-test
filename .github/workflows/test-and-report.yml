@@ -13,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        flow: [provider]
-#        flow: [consumer]        # add 'provider' when ready
+#        flow: [provider]
+        flow: [consumer]        # add 'provider' when ready
         test_type: [smoke]      # add other types when needed
 
     steps:
