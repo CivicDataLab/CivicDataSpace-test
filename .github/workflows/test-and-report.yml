@@ -62,7 +62,7 @@ jobs:
 #            --maxfail=1 --disable-warnings -vv --capture=no \
             --json-report \
             --json-report-file=report-${{ matrix.flow }}-${{ matrix.test_type }}.json \
-               -m smoke -q     # adjust markers/flags as you like
+            -m smoke -q     # adjust markers/flags as you like
           echo "exit_code=$?" >> $GITHUB_OUTPUT
           set -e
 
