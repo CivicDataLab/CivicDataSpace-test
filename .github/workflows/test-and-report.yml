@@ -48,6 +48,7 @@ jobs:
         run: |
           pwd
           ls -R .
+
       - name: Run pytest for ${{ matrix.flow }} / ${{ matrix.test_type }}
         # ensure your pages/ package is on PYTHONPATH
         env:
@@ -58,9 +59,7 @@ jobs:
         run: |
           set +e
           pytest tests/${{ matrix.flow }}/${{ matrix.test_type }} \
-#            --maxfail=1 --disable-warnings -vv --capture=no \
-            --json-report \
-            --json-report-file=report-${{ matrix.flow }}-${{ matrix.test_type }}.json \
+            --json-report --json-report-file=report-${{ matrix.flow }}-${{ matrix.test_type }}.json \
             -m smoke -q     # adjust markers/flags as you like
           echo "exit_code=$?" >> $GITHUB_OUTPUT
           set -e
