@@ -3,22 +3,31 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.base_page import BasePage
 from locators.consumer.publisher_detail_locators import PublisherDetailLocators
 
 class PublisherDetailPage(BasePage):
-    def __init__(self, driver, publisher_type: str = "all", timeout: int = 10):
+    def __init__(self, driver, publisher_type: str = "all", timeout: int = 5):
         super().__init__(driver, timeout)
         self.publisher_type = publisher_type
 
-    def list_usecases(self):
+    def list_usecases(self, timeout: int = 10):
         """
         Wait for at least one use-case card, then return all of them.
         """
-        # wait for the grid
-        self.wait.until(EC.presence_of_element_located((By.XPATH, PublisherDetailLocators.USECASE_GRID)))
-        # return all the links
+        try:
+            # wait for the grid
+            WebDriverWait(self.driver, timeout).until(
+                EC.presence_of_element_located((By.XPATH, PublisherDetailLocators.USECASE_GRID))
+            )
+            # wait for the grid
+            WebDriverWait(self.driver, timeout).until(
+                EC.presence_of_element_located((By.XPATH, PublisherDetailLocators.USECASE_CARD))
+            )
+        except TimeoutException:
+            return []
         return self.finds((By.XPATH, PublisherDetailLocators.USECASE_CARD))
 
     def open_usecase_by_index(self, index: int = 0):

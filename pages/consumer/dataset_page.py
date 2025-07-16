@@ -42,4 +42,4 @@ class DatasetPage(BasePage):
 
         # verify URL
         status = requests.head(href, allow_redirects=True, timeout=10).status_code
-        return status, href
+        return href, status

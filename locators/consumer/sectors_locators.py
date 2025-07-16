@@ -19,4 +19,4 @@ class SectorsLocators:
     SEC_DATASET_FIRST_CARD = "/html/body/main/div/div/div[2]/div[2]/div/div[2]/div[3]/div[1]/a[1]"
 
     #download link of the first dataset
-    DOWNLOAD_LINK = "/html/body/main/div/main/div[2]/div[1]/div[2]/div[1]/div/div[2]/div/div/div/div[2]/div/div[1]/div/a"
+    DOWNLOAD_LINK = "//a[@class='flex justify-center']"
