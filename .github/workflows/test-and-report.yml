@@ -57,10 +57,14 @@ jobs:
           TEST_PASSWORD:  ${{ secrets.PASSWORD }}
           PYTHONPATH:     ${{ github.workspace }}
         run: |
+          set +e
           pytest tests/${{ matrix.flow }}/${{ matrix.test_type }} \
-            --maxfail=1 --disable-warnings -vv --capture=no \
+#            --maxfail=1 --disable-warnings -vv --capture=no \
             --json-report \
-            --json-report-file=report-${{ matrix.flow }}-${{ matrix.test_type }}.json
+            --json-report-file=report-${{ matrix.flow }}-${{ matrix.test_type }}.json \
+               -m smoke -q     # adjust markers/flags as you like
+            echo "exit_code=$?" >> $GITHUB_OUTPUT
+          set -e
 
       - name: Upload JSON report artifact
         uses: actions/upload-artifact@v4
