@@ -104,11 +104,14 @@ jobs:
 
       - name: Run full test suite under coverage
         env:
-          PYTHONPATH:     ${{ github.workspace }}
+          PYTHONPATH: ${{ github.workspace }}
         run: |
+          set +e
           coverage run -m pytest \
             --json-report \
             --json-report-file=report.json
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+          set -e
 
       - name: Produce coverage report
         run: coverage report --fail-under=80
@@ -120,6 +123,7 @@ jobs:
         run: python report_generator.py
 
       - name: Upload coverage & test-report artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-and-report
@@ -128,3 +132,8 @@ jobs:
             TEST_REPORT.md
             TEST_REPORT.pdf
             htmlcov/
+
+      # Optional: Fail job if coverage tests failed
+      - name: Fail job if tests failed
+        if: steps.run_full_test_suite_under_coverage.outputs.exit_code != '0'
+        run: exit 1
