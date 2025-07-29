@@ -37,6 +37,7 @@ jobs:
           BASE_URL:       ${{ secrets.BASE_URL }}
           TEST_EMAIL:     ${{ secrets.EMAIL }}
           TEST_PASSWORD:  ${{ secrets.PASSWORD }}
+          HOME_URL_DEV:   ${{ secrets.HOME_URL_DEV }}
         run: |
           cat <<EOF > .env
           BASE_URL=${BASE_URL}
