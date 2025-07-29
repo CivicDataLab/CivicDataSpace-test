@@ -131,6 +131,7 @@ class CreateUsecasePage(BasePage):
         return self
 
     def select_sdg_goals(self, value: str):
+        time.sleep(3)
         toggle = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.SDG_GOALS_CONTAINER))
         toggle.click()
         opt = self.wait.until(EC.element_to_be_clickable(
