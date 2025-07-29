@@ -81,7 +81,7 @@ def test_con_008_access_publishers_page(home):
     [("test_con_009", "all"), ("test_con_010", "org"), ("test_con_011", "ind")],
 )
 
-@pytest.mark.timeout(60)
+@pytest.mark.timeout(30)
 def test_publishers_flow(tc_id, view, home, driver):
     pub   = home.go_to_publishers()
     cards = pub.list_publishers(view)
