@@ -42,6 +42,7 @@ jobs:
           BASE_URL=${BASE_URL}
           TEST_EMAIL=${TEST_EMAIL}
           TEST_PASSWORD=${TEST_PASSWORD}
+          HOME_URL_DEV=${HOME_URL_DEV}
           EOF
 
       - name: 'Debug: show workspace'
