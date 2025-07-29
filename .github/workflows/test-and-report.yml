@@ -57,6 +57,7 @@ jobs:
           TEST_EMAIL:     ${{ secrets.EMAIL }}
           TEST_PASSWORD:  ${{ secrets.PASSWORD }}
           PYTHONPATH:     ${{ github.workspace }}
+          HOME_URL_DEV:   ${{ secrets.HOME_URL_DEV }}
         run: |
           set +e
           pytest tests/${{ matrix.flow }}/${{ matrix.test_type }} \
