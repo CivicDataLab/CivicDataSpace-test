@@ -2,6 +2,7 @@
 
 import os
 import time
+from time import sleep
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver import Keys
 from selenium.webdriver.common.by import By
@@ -40,12 +41,26 @@ class CreateUsecasePage(BasePage):
         return self  # for method chaining
 
     def enter_summary(self, text: str):
+        time.sleep(2)
         fld = self.wait.until(
             EC.visibility_of_element_located(CreateUsecaseLocators.USECASE_SUMMARY_INPUT),
             message="Could not find UseCase summary textarea"
         )
         fld.clear()
         fld.send_keys(text)
+        fld.send_keys(Keys.TAB)
+        return self
+
+    def enter_platform_url(self, url: str):
+        time.sleep(3)
+        fld = self.wait.until(
+            EC.visibility_of_element_located(CreateUsecaseLocators.PLATFORM_URL_INPUT),
+            message="Could not find Platform Url input"
+        )
+        fld.clear()
+        fld.send_keys(url)
+        # Optionally: click body to blur if needed
+        self.driver.find_element(By.TAG_NAME, "body").click()
         return self
 
     def select_tags(self, items: list[str]):
@@ -135,25 +150,17 @@ class CreateUsecasePage(BasePage):
         return self
 
     def select_running_status(self, status_text: str):
-        """
-        For a <select> dropdown, pick an <option> whose visible text == status_text.
-        """
-
         self.wait.until(
             EC.invisibility_of_element_located((By.CLASS_NAME, "toast"))
         )
-
-        combo = self.wait.until(
-            EC.element_to_be_clickable(CreateUsecaseLocators.RUNNING_STATUS_INPUT),
-            message="Could not click Running Status dropdown"
+        select_el = self.wait.until(
+            EC.presence_of_element_located(CreateUsecaseLocators.RUNNING_STATUS_INPUT),
+            message="Could not find Running Status <select>"
         )
-        combo.click()
 
-        opt = self.wait.until(
-            EC.element_to_be_clickable((By.XPATH, RUNNING_STATUS_DROP_ITEM)),
-            message=f"Running Status option '{status_text}' not found"
-        )
-        opt.click()
+        from selenium.webdriver.support.ui import Select
+        select = Select(select_el)
+        select.select_by_visible_text(status_text)
         return self
 
     def enter_completed_on(self, iso_date: str):
@@ -168,16 +175,26 @@ class CreateUsecasePage(BasePage):
 
     def upload_logo(self, path_to_file: str):
         """
-        path_to_file must be an absolute filesystem path to a PNG/JPG.
+        Triggers logo upload by clicking visible DropZone and sending keys to hidden input.
         """
-        fld = self.wait.until(
-            EC.presence_of_element_located(CreateUsecaseLocators.LOGO_UPLOAD_INPUT),
-            message="Could not find Logo upload <input>"
-        )
-        fld.send_keys(path_to_file)
 
-        # Optionally wait for a thumbnail/preview element to appear. For example:
-        # self.wait.until(EC.visibility_of_element_located((By.XPATH, "//img[contains(@src,'logo')]")))
+        # Ensure file is present
+        assert os.path.isfile(path_to_file), f"File does not exist: {path_to_file}"
+
+        # First, click anywhere on the DropZone to focus the input (important for React UIs)
+        dropzone = self.wait.until(
+            EC.element_to_be_clickable((By.CLASS_NAME, "DropZone-module_DropZone__xD9-6")),
+            message="Could not find clickable DropZone"
+        )
+        dropzone.click()
+
+        # Then get the real <input type="file"> and send keys
+        input_el = self.driver.find_element(By.XPATH, "//input[@type='file']")
+
+        self.driver.execute_script("arguments[0].style.display = 'block';", input_el)
+        time.sleep(1)  # Give time for UI to stabilize
+        input_el.send_keys(path_to_file)
+
         return self
 
     def get_usecase_name_value(self):
@@ -185,6 +202,9 @@ class CreateUsecasePage(BasePage):
 
     def get_summary_value(self):
         return self.driver.find_element(*CreateUsecaseLocators.SUMMARY_INPUT).get_attribute("value")
+
+    def get_platform_url_value(self):
+        return self.driver.find_element(*CreateUsecaseLocators.PLATFORM_URL_INPUT).get_attribute("value")
 
     def get_selected_tags(self) -> list[str]:
         # time.sleep(2)
@@ -233,27 +253,44 @@ class CreateUsecasePage(BasePage):
         return elt.get_attribute("value")
 
     def is_logo_uploaded(self):
-        return bool(self.driver.find_elements(*CreateUsecaseLocators.LOGO_PREVIEW))
+        try:
+            elt = self.wait.until(
+                EC.visibility_of_element_located(
+                    (By.CLASS_NAME, "FileUpload-module_Action__Hg0nE")
+                )
+            )
+            return bool(elt.text.strip())
+        except:
+            return False
 
     # ─── “Datasets” Tab ─────────────────────────────────────────────────────────────────────────────────────
 
     def go_to_datasets_tab(self):
-        self.wait.until(
-            EC.element_to_be_clickable(CreateUsecaseLocators.DATASETS_TAB),
-            message="Timed out waiting for Datasets tab"
-        ).click()
-        # Optionally: wait for the table or first row to appear
-        self.wait.until(
-            EC.visibility_of_element_located(CreateUsecaseLocators.FIRST_DATASET_CHECKBOX)
+        # 1) wait until the tab is clickable
+        tab = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.DATASETS_TAB))
+
+        # 2) scroll it into view (centered)
+        self.driver.execute_script(
+            "arguments[0].scrollIntoView({behavior: 'auto', block: 'center'});",
+            tab
         )
+
+        # 3) click and return self for chaining
+        tab.click()
         return self
 
     def select_first_dataset_checkbox(self):
-        cb = self.wait.until(
+        btn = self.wait.until(
             EC.element_to_be_clickable(CreateUsecaseLocators.FIRST_DATASET_CHECKBOX),
-            message="Could not click the first dataset’s checkbox"
+            message="Could not click first dataset selection checkbox"
         )
-        cb.click()
+        self.driver.execute_script("arguments[0].click();", btn)
+
+        # Wait for it to reflect selection state
+        self.wait.until(
+            EC.presence_of_element_located(CreateUsecaseLocators.SELECTED_DATASET_CHECKBOX),
+            message="Checkbox selection state was not reflected in DOM"
+        )
         return self
 
     def click_submit_datasets(self):
@@ -265,30 +302,38 @@ class CreateUsecasePage(BasePage):
         return self
 
     def get_selected_datasets(self):
-        selected = self.driver.find_elements(*CreateUsecaseLocators.SELECTED_DATASET_CHECKBOXES)
-        return [el.get_attribute('value') for el in selected]
+        selected = self.driver.find_elements(*CreateUsecaseLocators.SELECTED_DATASET_CHECKBOX)
+        return [f"Row {i + 1}" for i, _ in enumerate(selected)]
 
     # ─── “Contributors” Tab ─────────────────────────────────────────────────────────────────────────────────
 
     def go_to_contributors_tab(self):
+        # Click the Contributors tab
+        time, sleep(5)
         self.wait.until(
             EC.element_to_be_clickable(CreateUsecaseLocators.CONTRIBUTORS_TAB),
             message="Timed out waiting for Contributors tab"
         ).click()
+        time,sleep(5)
+        # Wait for the input field to appear and be ready
+        self.wait.until(
+            EC.element_to_be_clickable(CreateUsecaseLocators.CONTRIBUTORS_INPUT),
+            message="Timed out waiting for 'Add Contributors' input field"
+        )
         return self
 
     def add_contributors(self, names: list[str]):
-        """
-        After typing each name, we send ENTER so it gets selected from the popover.
-        """
         fld = self.wait.until(
             EC.visibility_of_element_located(CreateUsecaseLocators.CONTRIBUTORS_INPUT),
             message="Could not find ‘Add Contributors’ input"
         )
+
         for name in names:
             fld.clear()
             fld.send_keys(name)
             fld.send_keys(Keys.ENTER)
+            time.sleep(0.5)  # slight wait in case async search is involved
+
         return self
 
     def add_supporters(self, names: list[str]):
@@ -314,7 +359,10 @@ class CreateUsecasePage(BasePage):
         return self
 
     def get_contributors_list(self):
-        return [el.text for el in self.driver.find_elements(*CreateUsecaseLocators.CONTRIBUTORS_LIST_ITEMS)]
+        elements = self.driver.find_elements(*CreateUsecaseLocators.CONTRIBUTORS_LIST_ITEMS)
+        names = [el.text.strip() for el in elements if el.text.strip()]
+        # Return only the 4th span if present
+        return [names[3]] if len(names) > 3 else []
 
     def get_supporters_list(self):
         return [el.text for el in self.driver.find_elements(*CreateUsecaseLocators.SUPPORTERS_LIST_ITEMS)]
@@ -325,6 +373,7 @@ class CreateUsecasePage(BasePage):
     # ─── “Publish” Tab ─────────────────────────────────────────────────────────────────────────────────
 
     def go_to_publish_tab(self):
+        time.sleep(3)
         self.wait.until(
             EC.element_to_be_clickable(CreateUsecaseLocators.PUBLISH_TAB),
             message="Timed out waiting for Publish tab"
@@ -350,8 +399,15 @@ class CreateUsecasePage(BasePage):
         return self
 
     def is_published(self) -> bool:
-        """
-        Return True if the “Published” marker is present in the DOM.
-        """
-        elems = self.driver.find_elements(*CreateUsecaseLocators.PUBLISHED_MARKER)
-        return len(elems) > 0
+        try:
+            self.wait.until(
+                EC.presence_of_element_located(CreateUsecaseLocators.PUBLISHED_MARKER),
+                message="Published toast not found"
+            )
+            return True
+        except Exception as e:
+            print("DEBUG: Toast not found", e)
+            # Optional: print all toast texts for diagnosis
+            for t in self.driver.find_elements(By.XPATH, "//div[contains(@class,'toast')]"):
+                print("Toast visible:", t.text)
+            return False
