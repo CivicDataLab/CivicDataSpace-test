@@ -12,7 +12,10 @@ class CreateUsecaseLocators:
     DETAILS_TAB = (By.XPATH, "//button[normalize-space()='Use Case Details']")
 
     USECASE_NAME_INPUT = (By.XPATH, "//div[@class=' pl-2']//button[@type='button']")
+    USECASE_SUMMARY_LABEL = (By.XPATH, "//label[normalize-space()='Summary *']")
     USECASE_SUMMARY_INPUT = (By.XPATH, "//textarea[@name='summary']")
+
+    PLATFORM_URL_INPUT = (By.XPATH, "//input[@name='platformUrl']")
 
     TAGS_INPUT = (By.XPATH,"//label[normalize-space()='Tags']/following::input[@role='combobox'][1]")
     TAG_DROPDOWN_ITEM = "//div[@role='option' and normalize-space(.)='{value}']"
@@ -52,8 +55,8 @@ class CreateUsecaseLocators:
 
     # ─── “Datasets” Tab ────────────────────────────────────────────────────────
     DATASETS_TAB = (By.XPATH, "//button[normalize-space()='Datasets']")
-    FIRST_DATASET_CHECKBOX = (By.XPATH, "(//table//input[@type='checkbox'])[1]")
-    SELECTED_DATASET_CHECKBOXES = (By.XPATH, '//input[@type="checkbox" and @checked]')
+    FIRST_DATASET_CHECKBOX = (By.XPATH, "//tbody/tr[1]//button[@role='checkbox']")
+    SELECTED_DATASET_CHECKBOX = (By.XPATH, "//tbody/tr[1]//button[@data-state='checked' and @aria-checked='true']")
     SUBMIT_DATASETS_BUTTON = (By.XPATH, "//button[normalize-space()='Submit']")
 
     # ─── “Contributors” Tab ────────────────────────────────────────────────────
@@ -63,14 +66,21 @@ class CreateUsecaseLocators:
     PARTNERS_INPUT = (By.XPATH, "//input[@placeholder='Add Partners']")
 
     # ─── Contributors/Sponsors List Items ──────────────────────────────────────
-    CONTRIBUTORS_LIST_ITEMS = (By.CSS_SELECTOR, ".contributors-list-item")
+    CONTRIBUTORS_LIST_ITEMS = (
+        By.XPATH,
+        "//div[contains(@class,'flex') and contains(@class,'gap-2')]/span[contains(@class, 'Text-module_bodyMd')]"
+    )
     SUPPORTERS_LIST_ITEMS = (By.CSS_SELECTOR, ".supporters-list-item")
     PARTNERS_LIST_ITEMS = (By.CSS_SELECTOR, ".partners-list-item")
 
     # ─── “Publish” Tab ─────────────────────────────────────────────────────────
     PUBLISH_TAB = (By.XPATH, "//button[normalize-space()='Publish']")
-    PUBLISH_BUTTON = (By.XPATH, "//button[normalize-space()='Publish' and not(@disabled)]")
-    PUBLISHED_MARKER = (By.XPATH, "//div[contains(text(),'Published')]")
+    PUBLISH_BUTTON = (
+        By.XPATH,
+        "//button[normalize-space()='Publish' and contains(@class,'Button-module_Button') and ancestor::div[contains(.,'Step 5 of 5')]]"
+    )
+
+    PUBLISHED_MARKER = (By.XPATH, "//div[contains(text(),'UseCase Published Successfully')]")
 
     # ─── Generic Dropdown Option Pattern ───────────────────────────────────────
     OPTION_BY_VISIBLE_TEXT = "//div[@role='option' and normalize-space(text())='{text}']"
