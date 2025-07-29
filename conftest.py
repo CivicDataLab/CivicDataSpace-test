@@ -121,11 +121,11 @@ def driver(request):
 def base_url():
     """
     This fixture should return the URL that your HomePage.load() does:
-       driver.get(base_url)
+       driver.get(HOME_URL_DEV)
     """
-    url = os.getenv("BASE_URL")  # ← local .env probably sets this
+    url = os.getenv("HOME_URL_DEV")  # ← local .env probably sets this
     if not url:
-        pytest.skip("BASE_URL is not set")
+        pytest.skip("HOME_URL_DEV is not set")
     return url
 
 #  ─────────────────────── Sample csv file fixture ─────────────────────────────
@@ -142,8 +142,12 @@ def sample_logo_path():
     Returns an absolute path to a small image under tests/data/
     so that CreateUsecasePage.upload_logo(...) can send_keys() it.
     """
-    here = os.path.dirname(__file__)
-    return os.path.abspath(os.path.join(here, "tests", "data", "sample_logo.png"))
+    here = os.path.dirname(__file__)    # this is a string
+    logo_path = os.path.abspath(os.path.join(here, "tests", "data", "sample_logo.png"))
+    if not os.path.isfile(logo_path):
+        raise FileNotFoundError(f"Expected sample_logo.png at {logo_path}")
+    return logo_path
+
 
 # 1) pytest_runtest_makereport
 #    After each test “call” phase, if it failed and a WebDriver fixture is present,
