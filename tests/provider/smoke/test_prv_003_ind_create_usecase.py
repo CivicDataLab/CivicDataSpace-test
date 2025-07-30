@@ -183,7 +183,7 @@ def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url):
 
     # ─── Step 9: Publish tab – Publish UseCase ───────────────────────────────────────
     create_uc.go_to_publish_tab()
-    # time.sleep(5)
+    time.sleep(5)
     detail = create_uc.click_publish()
     assert detail.is_published(), "Step 9 failure: UseCase was not marked as 'Published'."
 
