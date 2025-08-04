@@ -9,57 +9,37 @@ jobs:
   collect-test-files:
     runs-on: ubuntu-latest
     outputs:
-      consumer_files: ${{ steps.set-consumer.outputs.files }}
-      provider_files: ${{ steps.set-provider.outputs.files }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Find consumer smoke test files
-        id: set-consumer
+      - name: Find all smoke test files (consumer and provider)
+        id: set-matrix
         run: |
-          files=$(find tests/consumer/smoke -type f -name "test_*.py" | jq -R -s -c 'split("\n")[:-1]')
-          echo "files=$files" >> $GITHUB_OUTPUT
-
-      - name: Find provider smoke test files
-        id: set-provider
-        run: |
-          files=$(find tests/provider/smoke -type f -name "test_*.py" | jq -R -s -c 'split("\n")[:-1]')
-          echo "files=$files" >> $GITHUB_OUTPUT
+          files=$(find tests -type f -path "*/smoke/test_*.py" | jq -R -s -c 'split("\n")[:-1]')
+          echo "matrix={\"include\":[" > matrix.json
+          first=1
+          for file in $(echo $files | jq -r '.[]'); do
+            flow=$(echo $file | awk -F'/' '{print $2}')
+            [ $first -eq 1 ] && first=0 || echo "," >> matrix.json
+            echo "{\"flow\":\"$flow\",\"test_file\":\"$file\"}" >> matrix.json
+          done
+          echo "]}" >> matrix.json
+          cat matrix.json
+          echo "matrix=$(cat matrix.json)" >> $GITHUB_OUTPUT
 
   test:
     needs: collect-test-files
     runs-on: ubuntu-latest
-
     strategy:
-      matrix:
-        flow: [consumer, provider]
-        test_file: []
+      matrix: ${{fromJson(needs.collect-test-files.outputs.matrix)}}
 
     steps:
-      - name: Set up test matrix
-        id: set-matrix
-        run: |
-          if [ "${{ matrix.flow }}" = "consumer" ]; then
-            files='${{ needs.collect-test-files.outputs.consumer_files }}'
-          else
-            files='${{ needs.collect-test-files.outputs.provider_files }}'
-          fi
-          echo "FILES=$files" >> $GITHUB_ENV
-
-      - name: Expand matrix for test files
-        id: expand-matrix
-        run: |
-          echo "${FILES}" | jq -r '.[]' > files.txt
-          echo "Found files for ${{ matrix.flow }}:"
-          cat files.txt
-
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -79,9 +59,78 @@ jobs:
           echo "TEST_PASSWORD=${{ secrets.TEST_PASSWORD }}" >> .env
           echo "HOME_URL_DEV=${{ secrets.HOME_URL_DEV }}" >> .env
 
-      - name: Run each test file in isolation
+      - name: Run ${{ matrix.test_file }}
         run: |
-          while read file; do
-            echo "==================== Running: $file ===================="
-            pytest "$file" -v --json-report
-          done < files.txt
+          echo "==================== Running: ${{ matrix.test_file }} ===================="
+          pytest "${{ matrix.test_file }}" -v --json-report
+
+#
+#  coverage:
+#    name: Coverage & Summary Report
+#    needs: test
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Check out code
+#        uses: actions/checkout@v3
+#
+#      - name: Set up Python
+#        uses: actions/setup-python@v4
+#        with:
+#          python-version: '3.9'
+#
+#      - name: Install dependencies
+#        run: |
+#          python -m pip install --upgrade pip
+#          pip install -r requirements.txt
+#          pip install pytest pytest-json-report python-dotenv coverage
+#
+#      - name: Create .env file
+#        env:
+#          BASE_URL:       ${{ secrets.BASE_URL }}
+#          TEST_EMAIL:     ${{ secrets.EMAIL }}
+#          TEST_PASSWORD:  ${{ secrets.PASSWORD }}
+#          HOME_URL_DEV:   ${{ secrets.HOME_URL_DEV }}
+#        run: |
+#          cat <<EOF > .env
+#          BASE_URL=${BASE_URL}
+#          TEST_EMAIL=${TEST_EMAIL}
+#          TEST_PASSWORD=${TEST_PASSWORD}
+#          HOME_URL_DEV=${{ secrets.HOME_URL_DEV }}
+#          EOF
+#
+#      - name: Run full test suite under coverage
+#        env:
+#          PYTHONPATH: ${{ github.workspace }}
+#        run: |
+#          set +e
+#          coverage run -m pytest \
+#            --json-report \
+#            --json-report-file=report.json
+#          echo "exit_code=$?" >> $GITHUB_OUTPUT
+#          set -e
+#
+#      - name: Produce coverage report
+#        run: coverage report --fail-under=80
+#
+#      - name: Generate HTML coverage report
+#        run: coverage html
+#
+#      - name: Generate JSON & human-readable test report
+#        run: python report_generator.py
+#
+#      - name: Upload coverage & test-report artifacts
+#        if: always()
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: coverage-and-report
+#          path: |
+#            report.json
+#            TEST_REPORT.md
+#            TEST_REPORT.pdf
+#            htmlcov/
+#
+#      # Optional: Fail job if coverage tests failed
+#      - name: Fail job if tests failed
+#        if: steps.run_full_test_suite_under_coverage.outputs.exit_code != '0'
+#        run: exit 1
