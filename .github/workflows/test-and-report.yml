@@ -34,6 +34,7 @@ jobs:
           echo "BASE_URL=${{ secrets.BASE_URL }}" >> .env
           echo "TEST_EMAIL=${{ secrets.TEST_EMAIL }}" >> .env
           echo "TEST_PASSWORD=${{ secrets.TEST_PASSWORD }}" >> .env
+          echo "HOME_URL_DEV=${{ secrets.HOME_URL_DEV }}" >> .env
 
       - name: Show .env contents
         run: cat .env
