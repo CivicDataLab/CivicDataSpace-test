@@ -6,67 +6,17 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  discover:
+  test:
+    name: Run smoke tests for consumer and provider
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         flow: [consumer, provider]
-        test_type: [smoke, functional]  # Add more types here
-
-    outputs:
-      matrix-${{ matrix.flow }}-${{ matrix.test_type }}: ${{ steps.set-matrix.outputs.matrix }}
 
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Find test files for ${{ matrix.flow }} / ${{ matrix.test_type }}
-        id: set-matrix
-        run: |
-          FILES=$(find tests/${{ matrix.flow }}/${{ matrix.test_type }} -type f -name "test_*.py" | jq -R -s -c 'split("\n")[:-1]')
-          echo "matrix=${FILES}" >> $GITHUB_OUTPUT
-
-  run:
-    needs: discover
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        flow: [consumer, provider]
-        test_type: [smoke, functional]
-        include:
-          - flow: consumer
-            test_type: smoke
-            matrix_output: ${{ needs.discover.outputs.matrix-consumer-smoke }}
-          - flow: consumer
-            test_type: functional
-            matrix_output: ${{ needs.discover.outputs.matrix-consumer-functional }}
-          - flow: provider
-            test_type: smoke
-            matrix_output: ${{ needs.discover.outputs.matrix-provider-smoke }}
-          - flow: provider
-            test_type: functional
-            matrix_output: ${{ needs.discover.outputs.matrix-provider-functional }}
-
-    steps:
-      - name: Expand matrix from JSON string
-        id: expand
-        run: |
-          echo '${{ matrix.matrix_output }}' > matrix.json
-          jq -c '.[]' matrix.json | while read test_file; do
-            echo "::append-env name=TEST_FILES::$test_file"
-          done
-
-  test-file:
-    needs: run
-    runs-on: ubuntu-latest
-    if: ${{ env.TEST_FILES != '' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        test_file: ${{ fromJson(env.TEST_FILES) }}
-
-    steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -80,36 +30,24 @@ jobs:
           pip install pytest pytest-json-report python-dotenv
 
       - name: Create .env file
-        env:
-          BASE_URL:       ${{ secrets.BASE_URL }}
-          TEST_EMAIL:     ${{ secrets.EMAIL }}
-          TEST_PASSWORD:  ${{ secrets.PASSWORD }}
-          HOME_URL_DEV:   ${{ secrets.HOME_URL_DEV }}
         run: |
-          cat <<EOF > .env
-          BASE_URL=${BASE_URL}
-          TEST_EMAIL=${TEST_EMAIL}
-          TEST_PASSWORD=${TEST_PASSWORD}
-          HOME_URL_DEV=${HOME_URL_DEV}
-          EOF
+          echo "BASE_URL=${{ secrets.BASE_URL }}" >> .env
+          echo "TEST_EMAIL=${{ secrets.TEST_EMAIL }}" >> .env
+          echo "TEST_PASSWORD=${{ secrets.TEST_PASSWORD }}" >> .env
 
-      - name: Run pytest for ${{ matrix.test_file }}
-        env:
-          PYTHONPATH:     ${{ github.workspace }}
-          BASE_URL:       ${{ secrets.BASE_URL }}
-          TEST_EMAIL:     ${{ secrets.EMAIL }}
-          TEST_PASSWORD:  ${{ secrets.PASSWORD }}
-          HOME_URL_DEV:   ${{ secrets.HOME_URL_DEV }}
+      - name: Collect smoke test files for ${{ matrix.flow }}
+        id: collect
         run: |
-          pytest ${{ matrix.test_file }} \
-            --json-report \
-            --json-report-file=report-${{ matrix.test_file }}.json -q
+          FILES=$(find tests/${{ matrix.flow }}/smoke -type f -name "test_*.py" | jq -R -s -c 'split("\n")[:-1]')
+          echo "TEST_FILES=$FILES" >> $GITHUB_ENV
 
-      - name: Upload JSON report
-        uses: actions/upload-artifact@v4
-        with:
-          name: report-${{ matrix.test_file }}
-          path: report-${{ matrix.test_file }}.json
+      - name: Run smoke tests for ${{ matrix.flow }}
+        run: |
+          echo "Running test files for ${{ matrix.flow }}"
+          for file in $(echo $TEST_FILES | jq -r '.[]'); do
+            echo "Running: $file"
+            pytest "$file" --json-report
+          done
 
 #
 #  coverage:
