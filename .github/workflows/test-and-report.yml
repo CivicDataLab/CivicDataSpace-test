@@ -27,7 +27,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-json-report python-dotenv
+          pip install pytest pytest-json-report python-dotenv jq
 
       - name: Create .env file
         run: |
@@ -35,19 +35,33 @@ jobs:
           echo "TEST_EMAIL=${{ secrets.TEST_EMAIL }}" >> .env
           echo "TEST_PASSWORD=${{ secrets.TEST_PASSWORD }}" >> .env
 
+      - name: Show .env contents
+        run: cat .env
+
       - name: Collect smoke test files for ${{ matrix.flow }}
         id: collect
         run: |
           FILES=$(find tests/${{ matrix.flow }}/smoke -type f -name "test_*.py" | jq -R -s -c 'split("\n")[:-1]')
           echo "TEST_FILES=$FILES" >> $GITHUB_ENV
+          echo "Collected test files:"
+          echo "$FILES" | jq .
 
       - name: Run smoke tests for ${{ matrix.flow }}
         run: |
-          echo "Running test files for ${{ matrix.flow }}"
+          echo "Running smoke tests for ${{ matrix.flow }}"
           for file in $(echo $TEST_FILES | jq -r '.[]'); do
             echo "Running: $file"
-            pytest "$file" --json-report
+            pytest "$file" -v --json-report
           done
+
+      - name: Show pytest JSON report
+        if: always()
+        run: |
+          if [ -f .report.json ]; then
+            cat .report.json
+          else
+            echo "No .report.json generated"
+          fi
 
 #
 #  coverage:
