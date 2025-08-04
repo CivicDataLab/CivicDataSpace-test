@@ -131,7 +131,7 @@ def base_url():
 #  ─────────────────────── Sample csv file fixture ─────────────────────────────
 @pytest.fixture(scope="session")
 def sample_csv_path():
-    data_file = Path(__file__).parent / "tests" / "data" / "sample_create.csv"
+    data_file = Path(__file__).parent / "tests" / "data" / "sam_create.csv"
     if not data_file.exists():
         raise FileNotFoundError(f"Expected sample_create.csv at {data_file}")
     return str(data_file)
