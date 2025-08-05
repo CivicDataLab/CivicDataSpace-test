@@ -28,7 +28,7 @@ class LoginPage(BasePage):
         (once its header appears).
         """
         # 1) wait for email input to appear
-        WebDriverWait(self.driver, 10).until(
+        WebDriverWait(self.driver, 20).until(
             EC.visibility_of_element_located((By.XPATH, LoginLocators.EMAIL_INPUT))
         )
 
