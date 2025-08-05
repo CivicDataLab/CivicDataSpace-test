@@ -31,7 +31,7 @@ def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url):
       9. Assert the dataset is marked “Published”
      10. Download the dataset and verify HTTP 200
     """
-
+    driver.delete_all_cookies()
     # Step 1: load homepage
     home = HomePage(driver, base_url)
     

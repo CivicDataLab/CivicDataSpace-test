@@ -9,6 +9,7 @@ from pages.provider.login_page import LoginPage
 
 @pytest.mark.functional
 def test_con_001_consumer_login(driver, base_url):
+    driver.delete_all_cookies()
     home = HomePage(driver, base_url)
     home.load()
 

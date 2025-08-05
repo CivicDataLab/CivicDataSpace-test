@@ -34,6 +34,7 @@ def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url):
       9. Assert that the UseCase is marked “Published”.
     """
     # ─── Step 1: Load Homepage ──────────────────────────────────────────────────────
+    driver.delete_all_cookies()
     home = HomePage(driver, base_url)
     try:
         if not home.is_loaded():

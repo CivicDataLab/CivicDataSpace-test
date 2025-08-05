@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 @pytest.fixture
 def home(driver, base_url):
     """Loaded HomePage for each test."""
+    driver.delete_all_cookies()
     page = HomePage(driver, base_url)
     page.load()
     return page
