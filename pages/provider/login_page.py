@@ -41,6 +41,7 @@ class LoginPage(BasePage):
             self.find((By.XPATH, LoginLocators.EMAIL_INPUT)).send_keys(email)
             self.find((By.XPATH, LoginLocators.PASSWORD_INPUT)).clear()
             self.find((By.XPATH, LoginLocators.PASSWORD_INPUT)).send_keys(password)
+            self.driver.save_screenshot('username_password.png')
             print("[OK] Filled email and password")
         except Exception as e:
             print("[FAIL] Could not fill credentials:", e)
