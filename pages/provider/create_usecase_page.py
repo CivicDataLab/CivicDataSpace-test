@@ -90,7 +90,7 @@ class CreateUsecasePage(BasePage):
 
     def select_sectors(self, items: list[str]):
         # 1) click into the combobox input
-
+        time,sleep(3)
         self.wait.until(
             EC.invisibility_of_element_located((By.CLASS_NAME, "toast"))
         )
