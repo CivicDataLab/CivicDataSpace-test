@@ -118,6 +118,7 @@ class CreateUsecasePage(BasePage):
         return self
 
     def select_geography(self, value: str):
+        time.sleep(2)
         toggle = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.GEOGRAPHY_CONTAINER))
         toggle.click()
         opt = self.wait.until(EC.element_to_be_clickable(

@@ -145,6 +145,11 @@ class HomePage(BasePage):
 
         Raises AssertionError if the login form never appears.
         """
+
+        # --- Always logout first to ensure a clean session ---
+        self.logout()
+        # ------------------------------------------------------
+
         if flow.lower() == "provider":
             # 0) If the dashboard header is already visible, assume “already logged in”
             try:
@@ -187,3 +192,30 @@ class HomePage(BasePage):
         return login_page
 
     # ────────────────────────────────────────────────────────────────────────────────
+
+    def logout(self):
+        try:
+            # 1. Click the avatar/profile button
+            avatar_btn = WebDriverWait(self.driver, 5).until(
+                EC.element_to_be_clickable((By.XPATH, HomepageLocators.LOGOUT_PROFILE_LOGO))
+            )
+            avatar_btn.click()
+
+            # 2. Click "Log Out" in the dropdown
+            logout_btn = WebDriverWait(self.driver, 5).until(
+                EC.element_to_be_clickable((By.XPATH, HomepageLocators.LOGOUT))
+            )
+            logout_btn.click()
+
+            # 3. Optionally wait for login button to reappear (optional, adjust as needed)
+            WebDriverWait(self.driver, 10).until(
+                EC.visibility_of_element_located((By.XPATH, "//button[contains(.,'LOGIN') or contains(.,'Sign Up')]"))
+            )
+        except Exception as e:
+            print("Logout not needed or failed:", e)
+
+        # 4. Always clear cookies/storage for total isolation
+        self.driver.delete_all_cookies()
+        self.driver.execute_script("window.localStorage.clear(); window.sessionStorage.clear();")
+        self.driver.refresh()
+
