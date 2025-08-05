@@ -60,7 +60,7 @@ def pytest_addoption(parser):
     )
 
 # ─── SELENIUM DRIVER FIXTURE ────────────────────────────────────────────────────
-@pytest.fixture(scope="session")
+@pytest.fixture
 def driver(request):
     """
     Launch a headless Chrome on GitHub Actions (Ubuntu). We force Chrome to use
