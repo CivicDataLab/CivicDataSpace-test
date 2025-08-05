@@ -32,8 +32,6 @@ def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url):
      10. Download the dataset and verify HTTP 200
     """
     driver.delete_all_cookies()
-    print(f"Chrome session id: {drv.session_id}")
-    print(f"Window handle: {drv.current_window_handle}")
     # Step 1: load homepage
     home = HomePage(driver, base_url)
     
