@@ -1,8 +1,6 @@
 # tests/conftest.py
 
 import os
-import time
-
 from dotenv import load_dotenv
 import sys
 import subprocess
@@ -100,7 +98,6 @@ def driver(request):
         drv = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()))
 
     print(f"Chrome session id: {drv.session_id}")
-    time.sleep(1)
     print(f"Window handle: {drv.current_window_handle}")
 
     # Implicit wait setup for our framework
