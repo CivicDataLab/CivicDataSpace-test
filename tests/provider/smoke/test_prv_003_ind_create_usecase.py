@@ -35,6 +35,8 @@ def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url):
     """
     # ─── Step 1: Load Homepage ──────────────────────────────────────────────────────
     driver.delete_all_cookies()
+    print(f"Chrome session id: {drv.session_id}")
+    print(f"Window handle: {drv.current_window_handle}")
     home = HomePage(driver, base_url)
     try:
         if not home.is_loaded():
