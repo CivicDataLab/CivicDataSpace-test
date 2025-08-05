@@ -63,10 +63,10 @@ jobs:
           echo "TEST_PASSWORD=${{ secrets.TEST_PASSWORD }}" >> .env
           echo "HOME_URL_DEV=${{ secrets.HOME_URL_DEV }}" >> .env
 
-      - name: Run ${{ matrix.test_file }}
+      - name: Run ${{ matrix.test_file }} (parallel)
         run: |
           echo "==================== Running: ${{ matrix.test_file }} ===================="
-          pytest "${{ matrix.test_file }}" -v --json-report
+          pytest -n auto "${{ matrix.test_file }}" -v --json-report
 
 #
 #  coverage:
