@@ -1,5 +1,4 @@
 # pages/provider/login_page.py
-import time
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -29,7 +28,6 @@ class LoginPage(BasePage):
         (once its header appears).
         """
         # 1) wait for email input to appear
-        time.sleep(2)
         WebDriverWait(self.driver, 10).until(
             EC.visibility_of_element_located((By.XPATH, LoginLocators.EMAIL_INPUT))
         )
@@ -45,7 +43,7 @@ class LoginPage(BasePage):
         self.find((By.XPATH, LoginLocators.SIGNIN_BUTTON)).click()
 
         # 4) wait for the ProviderHomePage header to confirm successful login
-        WebDriverWait(self.driver, 30).until(
+        WebDriverWait(self.driver, 10).until(
             EC.visibility_of_element_located(
                 (By.XPATH, ProviderHomepageLocators.HEADER)
             )
