@@ -97,6 +97,9 @@ def driver(request):
     elif browser == "firefox":
         drv = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()))
 
+    print(f"Chrome session id: {drv.session_id}")
+    print(f"Window handle: {drv.current_window_handle}")
+
     # Implicit wait setup for our framework
     drv.implicitly_wait(3)
     # also turn on the CDP Network domain so we can grab bodies
