@@ -1,6 +1,8 @@
 # pages/home_page.py
 
 import os
+import time
+
 from dotenv import load_dotenv
 from typing import Union
 
@@ -145,11 +147,11 @@ class HomePage(BasePage):
 
         Raises AssertionError if the login form never appears.
         """
-
+        time.sleep(5)
         # --- Always logout first to ensure a clean session ---
         self.logout()
         # ------------------------------------------------------
-
+        time.sleep(5)
         if flow.lower() == "provider":
             # 0) If the dashboard header is already visible, assume “already logged in”
             try:
