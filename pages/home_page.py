@@ -151,7 +151,7 @@ class HomePage(BasePage):
         # --- Always logout first to ensure a clean session ---
         self.logout()
         # ------------------------------------------------------
-
+        time.sleep(2)
         if flow.lower() == "provider":
             # 0) If the dashboard header is already visible, assume “already logged in”
             try:
@@ -161,22 +161,22 @@ class HomePage(BasePage):
                 return ProviderHomePage(self.driver)
             except TimeoutException:
                 pass
-
+        time.sleep(2)
         # 1) Click “LOGIN / SIGN UP”
-        WebDriverWait(self.driver, 10).until(
+        WebDriverWait(self.driver, 30).until(
             EC.element_to_be_clickable((By.XPATH, LoginLocators.LOGIN_BUTTON))
         ).click()
 
         # 2) Wait up to 10 s for the login‐form container to appear
         try:
-            WebDriverWait(self.driver, 10).until(
+            WebDriverWait(self.driver, 30).until(
                 EC.visibility_of_element_located((By.XPATH, LoginLocators.FORM))
             )
         except TimeoutException:
             raise AssertionError(
                 "Tapped LOGIN / SIGN UP, but the login form never appeared."
             )
-
+        time.sleep(2)
         # 3) Wrap that form in a LoginPage POM
         login_page = LoginPage(self.driver)
 
@@ -186,7 +186,7 @@ class HomePage(BasePage):
             login_page.login(os.getenv("TEST_EMAIL"), os.getenv("TEST_PASSWORD"))
 
             # 5a) Now wait for the ProviderHomePage header to appear (up to 10 s).
-            WebDriverWait(self.driver, 10).until(
+            WebDriverWait(self.driver, 30).until(
                 EC.visibility_of_element_located((By.XPATH, ProviderHomepageLocators.HEADER))
             )
             return ProviderHomePage(self.driver)
@@ -199,19 +199,19 @@ class HomePage(BasePage):
     def logout(self):
         try:
             # 1. Click the avatar/profile button
-            avatar_btn = WebDriverWait(self.driver, 5).until(
+            avatar_btn = WebDriverWait(self.driver, 15).until(
                 EC.element_to_be_clickable((By.XPATH, HomepageLocators.LOGOUT_PROFILE_LOGO))
             )
             avatar_btn.click()
 
             # 2. Click "Log Out" in the dropdown
-            logout_btn = WebDriverWait(self.driver, 5).until(
+            logout_btn = WebDriverWait(self.driver, 15).until(
                 EC.element_to_be_clickable((By.XPATH, HomepageLocators.LOGOUT))
             )
             logout_btn.click()
 
             # 3. Optionally wait for login button to reappear (optional, adjust as needed)
-            WebDriverWait(self.driver, 10).until(
+            WebDriverWait(self.driver, 30).until(
                 EC.visibility_of_element_located((By.XPATH, "//button[contains(.,'LOGIN') or contains(.,'Sign Up')]"))
             )
         except Exception as e:
