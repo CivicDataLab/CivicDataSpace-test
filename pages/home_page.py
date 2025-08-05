@@ -147,11 +147,11 @@ class HomePage(BasePage):
 
         Raises AssertionError if the login form never appears.
         """
-        time.sleep(5)
+
         # --- Always logout first to ensure a clean session ---
         self.logout()
         # ------------------------------------------------------
-        time.sleep(5)
+
         if flow.lower() == "provider":
             # 0) If the dashboard header is already visible, assume “already logged in”
             try:
@@ -182,6 +182,7 @@ class HomePage(BasePage):
 
         if flow.lower() == "provider":
             # 4a) Auto‐login as provider
+            time.sleep(5)
             login_page.login(os.getenv("TEST_EMAIL"), os.getenv("TEST_PASSWORD"))
 
             # 5a) Now wait for the ProviderHomePage header to appear (up to 10 s).
