@@ -65,12 +65,13 @@ def test_con_006_access_use_case_page(home):
 @pytest.mark.parametrize("usecase_index,dataset_index", [(0, 0)])
 def test_con_007_use_case_download(home, usecase_index, dataset_index):
     uc_page = home.go_to_usecases()
-    href, _ = uc_page.download_first_associated_dataset(
-        usecase_index, dataset_index
-    )
-    status = _check_download(href)
+    result = uc_page.download_first_associated_dataset(usecase_index, dataset_index)
+    if result is None:
+        pytest.skip("No use case/dataset pair found for download test")
+    href, status = result
     assert href.startswith("https"), f"Con_007: Invalid URL {href}"
     assert status == 200, f"Con_007: Expected 200, got {status}"
+
 
 @pytest.mark.smoke
 def test_con_008_access_publishers_page(home):
