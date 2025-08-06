@@ -38,6 +38,7 @@ jobs:
   test:
     needs: collect-test-files
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     strategy:
       matrix: ${{ fromJson(needs.collect-test-files.outputs.matrix) }}
@@ -46,8 +47,6 @@ jobs:
     env:
       HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
       BASE_URL:     ${{ secrets.BASE_URL }}
-
-    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v3
@@ -86,13 +85,32 @@ jobs:
           echo "--- .env contents ---"
           cat .env
 
+
       - name: Run ${{ matrix.test_file }} (User #${{ matrix.user_index }})
+        env:
+          # expose both user creds to the step
+          TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
+          TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+          TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_2 }}
+          TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
+          # choose which one pytest will assert via test_credentials()
+          TEST_USER_INDEX: ${{ matrix.user_index }}
+          # your base URLs for POMs
+          BASE_URL: ${{ secrets.BASE_URL }}
+          HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
         run: |
-          echo "===================="
-          echo "USER_INDEX = $TEST_USER_INDEX"
-          echo "TEST_FILE  = ${{ matrix.test_file }}"
-          echo "===================="
+          echo "=== Running ${matrix.test_file} as user #${TEST_USER_INDEX} ==="
+          # now re‐export TEST_EMAIL / TEST_PASSWORD for any code that reads them directly
+          if [ "$TEST_USER_INDEX" = "1" ]; then
+            export TEST_EMAIL="$TEST_EMAIL_1"
+            export TEST_PASSWORD="$TEST_PASSWORD_1"
+          else
+            export TEST_EMAIL="$TEST_EMAIL_2"
+            export TEST_PASSWORD="$TEST_PASSWORD_2"
+          fi
+
           pytest -n auto "${{ matrix.test_file }}" -v --json-report
+      
 
       - name: List screenshots
         run: |
