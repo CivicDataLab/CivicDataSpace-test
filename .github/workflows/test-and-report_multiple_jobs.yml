@@ -64,13 +64,13 @@ jobs:
       - name: Create .env file
         run: |
           cat <<EOF > .env
-          BASE_URL=${BASE_URL}
-          HOME_URL_DEV=${HOME_URL_DEV}
-          TEST_USER_INDEX=${{ matrix.user_index }}
-          TEST_EMAIL_1=${{ secrets.TEST_EMAIL_1 }}
-          TEST_PASSWORD_1=${{ secrets.TEST_PASSWORD_1 }}
-          TEST_EMAIL_2=${{ secrets.TEST_EMAIL_2 }}
-          TEST_PASSWORD_2=${{ secrets.TEST_PASSWORD_2 }}
+          echo "BASE_URL=${{ secrets.BASE_URL }}" > .env
+          echo "HOME_URL_DEV=${{ secrets.HOME_URL_DEV }}" >> .env
+          echo "TEST_USER_INDEX=${{ matrix.user_index }}" >> .env
+          echo "TEST_EMAIL_1=${{ secrets.TEST_EMAIL_1 }}" >> .env
+          echo "TEST_PASSWORD_1=${{ secrets.TEST_PASSWORD_1 }}" >> .env
+          echo "TEST_EMAIL_2=${{ secrets.TEST_EMAIL_2 }}" >> .env
+          echo "TEST_PASSWORD_2=${{ secrets.TEST_PASSWORD_2 }}" >> .env
           EOF
 
       - name: Run ${{ matrix.test_file }} (User #${{ matrix.user_index }})
