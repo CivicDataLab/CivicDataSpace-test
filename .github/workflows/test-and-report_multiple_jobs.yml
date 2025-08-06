@@ -46,7 +46,12 @@ jobs:
     # bring in your HOME_URL_DEV for .env
     env:
       HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
-      BASE_URL:     ${{ secrets.BASE_URL }}
+      BASE_URL: ${{ secrets.BASE_URL }}
+      TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
+      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+      TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_2 }}
+      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
+      # TEST_USER_INDEX will still come from the step-level matrix
 
     steps:
       - uses: actions/checkout@v3
@@ -99,8 +104,7 @@ jobs:
           BASE_URL: ${{ secrets.BASE_URL }}
           HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
         run: |
-          echo "=== Running ${matrix.test_file} as user #${TEST_USER_INDEX} ==="
-          # now re‐export TEST_EMAIL / TEST_PASSWORD for any code that reads them directly
+          echo "=== Running ${{ matrix.test_file }} as user #${TEST_USER_INDEX} ==="
           if [ "$TEST_USER_INDEX" = "1" ]; then
             export TEST_EMAIL="$TEST_EMAIL_1"
             export TEST_PASSWORD="$TEST_PASSWORD_1"
@@ -108,7 +112,6 @@ jobs:
             export TEST_EMAIL="$TEST_EMAIL_2"
             export TEST_PASSWORD="$TEST_PASSWORD_2"
           fi
-
           pytest -n auto "${{ matrix.test_file }}" -v --json-report
       
 
