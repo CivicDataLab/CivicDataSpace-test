@@ -47,8 +47,18 @@ jobs:
       HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
       BASE_URL:     ${{ secrets.BASE_URL }}
 
+    timeout-minutes: 30
+
     steps:
       - uses: actions/checkout@v3
+
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -63,7 +73,6 @@ jobs:
 
       - name: Create .env file
         run: |
-          cat <<EOF > .env
           echo "BASE_URL=${{ secrets.BASE_URL }}" > .env
           echo "HOME_URL_DEV=${{ secrets.HOME_URL_DEV }}" >> .env
           echo "TEST_USER_INDEX=${{ matrix.user_index }}" >> .env
@@ -71,7 +80,7 @@ jobs:
           echo "TEST_PASSWORD_1=${{ secrets.TEST_PASSWORD_1 }}" >> .env
           echo "TEST_EMAIL_2=${{ secrets.TEST_EMAIL_2 }}" >> .env
           echo "TEST_PASSWORD_2=${{ secrets.TEST_PASSWORD_2 }}" >> .env
-          EOF
+
       - name: Dump .env for debug
         run: |
           echo "--- .env contents ---"
