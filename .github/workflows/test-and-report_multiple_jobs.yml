@@ -72,6 +72,10 @@ jobs:
           echo "TEST_EMAIL_2=${{ secrets.TEST_EMAIL_2 }}" >> .env
           echo "TEST_PASSWORD_2=${{ secrets.TEST_PASSWORD_2 }}" >> .env
           EOF
+      - name: Dump .env for debug
+        run: |
+          echo "--- .env contents ---"
+          cat .env
 
       - name: Run ${{ matrix.test_file }} (User #${{ matrix.user_index }})
         run: |
