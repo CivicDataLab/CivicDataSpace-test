@@ -131,15 +131,11 @@ class HomePage(BasePage):
 
     # ─── Provider‐flow login method ──────────────────────────────────────────────────
 
-    def go_to_login(self, flow: str = "consumer") -> Union[LoginPage, ProviderHomePage]:
-        """
-        Click “LOGIN / SIGN UP,” then login as consumer or provider.
-        Always logout first to ensure a clean session.
-        """
+    def go_to_login(self, flow: str = "consumer", email: str = None, password: str = None) -> Union[
+        LoginPage, ProviderHomePage]:
         print("\n[STEP] Starting go_to_login (flow=%s)" % flow)
         self.logout()
 
-        # Check for already logged-in (for provider)
         if flow.lower() == "provider":
             print("[WAIT] Checking if dashboard header is already visible")
             try:
@@ -151,7 +147,6 @@ class HomePage(BasePage):
             except TimeoutException:
                 print("[INFO] Not already logged in, continuing to login.")
 
-        # 1) Click LOGIN / SIGN UP
         print("[WAIT] Waiting for LOGIN / SIGN UP button to be clickable")
         try:
             login_btn = WebDriverWait(self.driver, 10).until(
@@ -168,7 +163,6 @@ class HomePage(BasePage):
                 f.write(self.driver.page_source)
             raise
 
-        # 2) Wait for login form container
         print("[WAIT] Waiting for login form to appear (10s)")
         try:
             WebDriverWait(self.driver, 10).until(
@@ -182,15 +176,14 @@ class HomePage(BasePage):
                 f.write(self.driver.page_source)
             raise AssertionError("Tapped LOGIN / SIGN UP, but the login form never appeared.")
 
-        # 3) Wrap form in LoginPage POM
         login_page = LoginPage(self.driver)
 
         if flow.lower() == "provider":
-            # 4a) Auto-login as provider
             print("[ACTION] Logging in as provider (auto-fill)")
-            login_page.login(os.getenv("TEST_EMAIL"), os.getenv("TEST_PASSWORD"))
-
-            # 5a) Wait for ProviderHomePage header
+            # Use parameters if provided, else fallback
+            email = email or os.getenv("TEST_EMAIL")
+            password = password or os.getenv("TEST_PASSWORD")
+            login_page.login(email, password)
             print("[WAIT] Waiting for ProviderHomePage header to appear (10s)")
             try:
                 WebDriverWait(self.driver, 10).until(
@@ -206,10 +199,14 @@ class HomePage(BasePage):
 
             return ProviderHomePage(self.driver)
 
-        # 4b) Consumer: return LoginPage so test can fill it
         return login_page
 
     # ────────────────────────────────────────────────────────────────────────────────
+
+    # def test_login(driver, base_url, test_credentials):
+    #     email, password = test_credentials
+    #     home = HomePage(driver, base_url)
+    #     home.go_to_login(flow="provider", email=email, password=password)
 
     def logout(self):
         try:

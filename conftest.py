@@ -9,7 +9,10 @@ load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 
 from _pytest.runner import runtestprotocol
 from pathlib import Path
+import platform
+import shutil
 import logging
+import stat
 import tempfile
 import pytest
 import requests
@@ -22,6 +25,7 @@ from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 # Imports to get firefox driver working
+from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from webdriver_manager.firefox import GeckoDriverManager
 
@@ -62,63 +66,76 @@ def pytest_addoption(parser):
 # ─── SELENIUM DRIVER FIXTURE ────────────────────────────────────────────────────
 @pytest.fixture
 def driver(request):
-    """
-    Launch a headless Chrome on GitHub Actions (Ubuntu). We force Chrome to use
-    a brand-new, empty user-data directory (in /tmp) on each session so that
-    “user data directory already in use” errors never occur.
-    """
-    browser = request.config.getoption("--browser")
-    drv = ""
-    # 1) Build ChromeOptions
+    browser = request.config.getoption("--browser", default="chrome").lower()
+
+    # Common Chrome flags
     opts = webdriver.ChromeOptions()
+    for flag in (
+        "--headless=new", "--no-sandbox", "--disable-gpu",
+        "--disable-dev-shm-usage", "--disable-extensions",
+        "--window-size=1920,1080", "--start-maximized"
+    ):
+        opts.add_argument(flag)
 
-    caps = DesiredCapabilities.CHROME.copy()
-    caps["goog:loggingPrefs"] = {"performance": "ALL"}
+    # Isolate user-data
+    tmp_profile = tempfile.mkdtemp(prefix="chrome-user-data-")
+    opts.add_argument(f"--user-data-dir={tmp_profile}")
 
-    # Use the new headless mode; on GH runners this avoids some legacy issues.
-    opts.add_argument("--headless=new")
-    opts.add_argument("--no-sandbox")
-    opts.add_argument("--disable-gpu")
-    opts.add_argument("--disable-dev-shm-usage")
-    opts.add_argument("--disable-extensions")
-    opts.add_argument("--window-size=1920,1080")
-    # optionally start maximized
-    opts.add_argument("--start-maximized")
-
-    # 2) Create a fresh, empty directory for Chrome's user-data
-    tmp_dir = tempfile.mkdtemp(prefix="chrome-user-data-")
-    opts.add_argument(f"--user-data-dir={tmp_dir}")
-
-    opts.set_capability("goog:loggingPrefs", caps["goog:loggingPrefs"])
-
-    # 3) Install the matching chromedriver, then start Chrome
     if browser == "chrome":
-        drv = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=opts)
+        # 1) Fetch via webdriver_manager
+        raw_path = ChromeDriverManager().install()
+        folder = os.path.dirname(raw_path)
+
+        # 2) If the returned path isn't the actual binary, look for it
+        if not os.access(raw_path, os.X_OK) or os.path.basename(raw_path) != "chromedriver":
+            candidates = [
+                fn for fn in os.listdir(folder)
+                if fn.lower() == "chromedriver"
+            ]
+            if not candidates:
+                raise RuntimeError(
+                    f"Couldn’t find executable ‘chromedriver’ in {folder}. "
+                    f"Files there: {os.listdir(folder)}"
+                )
+            real = os.path.join(folder, candidates[0])
+            # ensure it’s executable
+            st = os.stat(real)
+            os.chmod(real, st.st_mode | stat.S_IXUSR)
+            driver_path = real
+        else:
+            driver_path = raw_path
+
+        print(f"[INFO] Using chromedriver at: {driver_path}")
+        service = ChromeService(driver_path)
+        drv = webdriver.Chrome(service=service, options=opts)
+
     elif browser == "firefox":
-        drv = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()))
+        gd = GeckoDriverManager().install()
+        print(f"[INFO] Using geckodriver at: {gd}")
+        service = FirefoxService(gd)
+        drv = webdriver.Firefox(service=service)
 
-    print(f"Chrome session id: {drv.session_id}")
-    print(f"Window handle: {drv.current_window_handle}")
+    else:
+        raise ValueError(f"Unsupported browser: {browser!r}")
 
-    # Implicit wait setup for our framework
+    # Debug
+    print(f"[INFO] session id: {drv.session_id}")
+    print(f"[INFO] window handle: {drv.current_window_handle}")
+
     drv.implicitly_wait(3)
-    # also turn on the CDP Network domain so we can grab bodies
-    drv.execute_cdp_cmd("Network.enable", {})
+    try:
+        drv.execute_cdp_cmd("Network.enable", {})
+    except Exception:
+        pass
+
     yield drv
 
-    # 4) Teardown: quit Chrome and remove the temp folder
+    # Teardown
     try:
-        print("quitting driver")
         drv.quit()
-    except Exception:
+    except:
         pass
-    # Clean up the temp profile directory
-    try:
-        # shutil.rmtree would remove it recursively
-        import shutil
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-    except Exception:
-        pass
+    shutil.rmtree(tmp_profile, ignore_errors=True)
 
 @pytest.fixture(scope="session")
 def base_url():
@@ -150,6 +167,14 @@ def sample_logo_path():
     if not os.path.isfile(logo_path):
         raise FileNotFoundError(f"Expected sample_logo.png at {logo_path}")
     return logo_path
+
+@pytest.fixture(scope="session")
+def test_credentials():
+    user_idx = int(os.getenv("TEST_USER_INDEX", "1"))  # Default to 1 if not set
+    email = os.getenv(f"TEST_EMAIL_{user_idx}")
+    password = os.getenv(f"TEST_PASSWORD_{user_idx}")
+    assert email and password, f"Credentials for user index {user_idx} not set!"
+    return email, password
 
 
 # 1) pytest_runtest_makereport
