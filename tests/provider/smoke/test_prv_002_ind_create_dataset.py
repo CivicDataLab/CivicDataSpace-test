@@ -14,7 +14,7 @@ from pages.provider.my_dashboard_page import MyDashboardPage
 from pages.provider.create_dataset_page import CreateDatasetPage
 
 @pytest.mark.smoke
-def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url):
+def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url, test_credentials):
 
     """
     Test Case ID: test_prv_002_ind_create_dataset
@@ -34,7 +34,7 @@ def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url):
     driver.delete_all_cookies()
     # Step 1: load homepage
     home = HomePage(driver, base_url)
-    
+    email, password = test_credentials
     try:
         if not home.is_loaded():
             home.load()
@@ -43,7 +43,7 @@ def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url):
         print(f"Error loading homepage: {e}")
 
     # Step 2: Login as provider (auto-redirects to /dashboard)
-    prov_home = home.go_to_login(flow="provider")
+    prov_home = home.go_to_login(flow="provider", email=email, password=password)
     assert isinstance(prov_home, ProviderHomePage), (
         "test_prv_002: expected HomePage.go_to_login(flow='provider') to return ProviderHomePage"
     )

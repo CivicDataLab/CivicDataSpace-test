@@ -18,8 +18,8 @@ def test_con_001_consumer_login(driver, base_url):
     assert isinstance(login_page, LoginPage)
 
     # 2) Fill in the consumer test creds from .env or other fixture
-    email = os.getenv("TEST_EMAIL")
-    pw    = os.getenv("TEST_PASSWORD")
+    email = os.getenv("TEST_EMAIL_1")
+    pw    = os.getenv("TEST_PASSWORD_1")
     dashboard_page = login_page.login(email, pw)
 
     # 3) Assert dashboard page after login loaded 

@@ -20,27 +20,32 @@ jobs:
       - name: Find all smoke test files (consumer and provider)
         id: set-matrix
         run: |
-          files=$(find tests -type f -path "*/smoke/test_*.py")
+          # gather all smoke tests
+          mapfile -t files < <(find tests -type f -path "*/smoke/test_*.py")
           includes=()
-          for file in $files; do
-            flow=$(echo $file | awk -F'/' '{print $2}')
-            includes+=("{\"flow\":\"$flow\",\"test_file\":\"$file\"}")
+          i=0
+          for file in "${files[@]}"; do
+            flow=$(echo "$file" | awk -F'/' '{print $2}')
+            # round-robin user index (1 or 2)
+            idx=$(( (i % 2) + 1 ))
+            includes+=("{\"flow\":\"$flow\",\"test_file\":\"$file\",\"user_index\":$idx}")
+            i=$((i + 1))
           done
-          matrix="{\"include\":["
-          sep=""
-          for item in "${includes[@]}"; do
-            matrix+="$sep$item"
-            sep=","
-          done
-          matrix+="]}"
+          matrix="{\"include\":[${includes[*]}]}"
           echo "$matrix"
           echo "matrix=$matrix" >> $GITHUB_OUTPUT
 
   test:
     needs: collect-test-files
     runs-on: ubuntu-latest
+
     strategy:
       matrix: ${{ fromJson(needs.collect-test-files.outputs.matrix) }}
+
+    # bring in your HOME_URL_DEV for .env
+    env:
+      HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
+      BASE_URL:     ${{ secrets.BASE_URL }}
 
     steps:
       - uses: actions/checkout@v3
@@ -54,18 +59,26 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-json-report python-dotenv
+          pip install pytest pytest-json-report python-dotenv pytest-xdist
 
       - name: Create .env file
         run: |
-          echo "BASE_URL=${{ secrets.BASE_URL }}" >> .env
-          echo "TEST_EMAIL=${{ secrets.TEST_EMAIL }}" >> .env
-          echo "TEST_PASSWORD=${{ secrets.TEST_PASSWORD }}" >> .env
-          echo "HOME_URL_DEV=${{ secrets.HOME_URL_DEV }}" >> .env
+          cat <<EOF > .env
+          BASE_URL=${BASE_URL}
+          HOME_URL_DEV=${HOME_URL_DEV}
+          TEST_USER_INDEX=${{ matrix.user_index }}
+          TEST_EMAIL_1=${{ secrets.TEST_EMAIL_1 }}
+          TEST_PASSWORD_1=${{ secrets.TEST_PASSWORD_1 }}
+          TEST_EMAIL_2=${{ secrets.TEST_EMAIL_2 }}
+          TEST_PASSWORD_2=${{ secrets.TEST_PASSWORD_2 }}
+          EOF
 
-      - name: Run ${{ matrix.test_file }}
+      - name: Run ${{ matrix.test_file }} (User #${{ matrix.user_index }})
         run: |
-          echo "==================== Running: ${{ matrix.test_file }} ===================="
+          echo "===================="
+          echo "USER_INDEX = $TEST_USER_INDEX"
+          echo "TEST_FILE  = ${{ matrix.test_file }}"
+          echo "===================="
           pytest -n auto "${{ matrix.test_file }}" -v --json-report
 
       - name: List screenshots
@@ -76,8 +89,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-            name: screenshots
-            path: screenshots/
+          name: screenshots-${{ matrix.flow }}-user${{ matrix.user_index }}
+          path: screenshots/
+
 #
 #  coverage:
 #    name: Coverage & Summary Report
