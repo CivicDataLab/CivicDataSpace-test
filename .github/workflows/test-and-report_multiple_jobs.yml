@@ -48,10 +48,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: "Debug: dump all TEST_* env vars"
+      - name: Dump TEST env vars
         run: |
-          echo ">>> ALL TEST_* ENV VARS <<<"
+          echo ">>> All TEST_* variables >>>"
           env | grep '^TEST_' || echo "(none)"
+      
       
 
       - name: Cache pip
