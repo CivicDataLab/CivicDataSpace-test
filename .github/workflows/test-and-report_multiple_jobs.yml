@@ -12,16 +12,12 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
     steps:
-      - name: Check out code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Find all smoke test files and build matrix
-        id: set-matrix
+      - id: set-matrix
+        name: Find all smoke test files and build matrix
         run: |
-          # gather all smoke tests
           readarray -t files < <(find tests -type f -path "*/smoke/test_*.py")
-
-          # build JSON entries with a round-robin user_index
           includes=(); i=0
           for file in "${files[@]}"; do
             flow=$(echo "$file" | awk -F'/' '{print $2}')
@@ -29,12 +25,9 @@ jobs:
             includes+=("{\"flow\":\"$flow\",\"test_file\":\"$file\",\"user_index\":$idx}")
             i=$((i + 1))
           done
-
-          # wrap into a matrix
           joined=$(printf ",%s" "${includes[@]}")
-          array="[${joined:1}]"
-          matrix="{\"include\":${array}}"
-          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          matrix="[${joined:1}]"
+          echo "matrix={\"include\":${matrix}}" >> "$GITHUB_OUTPUT"
 
   test:
     needs: collect-test-files
@@ -44,33 +37,36 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.collect-test-files.outputs.matrix) }}
 
-    # ← this env: must be here, *not* under steps:
+    # <<< THIS env: must be here, *not* under steps!
     env:
       HOME_URL_DEV:    ${{ secrets.HOME_URL_DEV }}
       BASE_URL:        ${{ secrets.BASE_URL }}
-      # map your single TEST_EMAIL/TEST_PASSWORD into both slots:
-      TEST_EMAIL_1:    ${{ secrets.TEST_EMAIL_1 }}
-      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
-      TEST_EMAIL_2:    ${{ secrets.TEST_EMAIL_1 }}
-      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_1 }}
+      # map your single TEST_EMAIL/TEST_PASSWORD into both slots
+      TEST_EMAIL_1:    ${{ secrets.TEST_EMAIL }}
+      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD }}
+      TEST_EMAIL_2:    ${{ secrets.TEST_EMAIL }}
+      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD }}
 
     steps:
-      - name: Check out code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name:
-          Debug: dump all TEST_* env vars
+      - name: Debug: dump all TEST_* env vars
         run: |
           echo ">>> ALL TEST_* ENV VARS <<<"
           env | grep '^TEST_' || echo "(none)"
+
+      - name: (optional) Create .env file
+        run: |
+          cat > .env <<EOF
+          BASE_URL=${{ secrets.BASE_URL }}
+          HOME_URL_DEV=${{ secrets.HOME_URL_DEV }}
+          EOF
 
       - name: Cache pip
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -100,7 +96,7 @@ jobs:
       - name: List screenshots
         if: always()
         run: |
-          echo "=== Screenshots directory contents ==="
+          echo "=== Screenshots dir ==="
           ls -la screenshots || echo "(none)"
 
       - name: Upload Screenshots
