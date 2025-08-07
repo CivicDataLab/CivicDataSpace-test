@@ -46,14 +46,15 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.collect-test-files.outputs.matrix) }}
 
-    # Expose your two provider accounts and base URLs to *every* step in this job
+    # expose your one provider account to both USER_INDEXes
     env:
-      HOME_URL_DEV:    ${{ secrets.HOME_URL_DEV }}
-      BASE_URL:        ${{ secrets.BASE_URL }}
-      TEST_EMAIL_1:    ${{ secrets.TEST_EMAIL_1 }}
+      HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
+      BASE_URL: ${{ secrets.BASE_URL }}
+      TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
       TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
-      TEST_EMAIL_2:    ${{ secrets.TEST_EMAIL_2 }}
-      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
+      TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_1 }}
+      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_1 }}
+
 
     steps:
       - name: Check out code
