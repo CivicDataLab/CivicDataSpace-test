@@ -1,4 +1,5 @@
 # pages/home_page.py
+from __future__ import annotations
 
 import os
 import time
@@ -131,8 +132,7 @@ class HomePage(BasePage):
 
     # ─── Provider‐flow login method ──────────────────────────────────────────────────
 
-    def go_to_login(self, flow: str = "consumer", email: str = None, password: str = None) -> Union[
-        LoginPage, ProviderHomePage]:
+    def go_to_login(self, flow: str = "consumer", email: str|None = None, password: str|None = None):
         print("\n[STEP] Starting go_to_login (flow=%s)" % flow)
         self.logout()
 
