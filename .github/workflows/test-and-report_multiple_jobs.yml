@@ -1,7 +1,7 @@
 name: Isolated Smoke Test & Report
 
 on:
-  push:         {}
+  push: {}
   pull_request: {}
   workflow_dispatch: {}
 
@@ -37,11 +37,9 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.collect-test-files.outputs.matrix) }}
 
-    # <<< THIS env: must be here, *not* under steps!
     env:
       HOME_URL_DEV:    ${{ secrets.HOME_URL_DEV }}
       BASE_URL:        ${{ secrets.BASE_URL }}
-      # map your single TEST_EMAIL/TEST_PASSWORD into both slots
       TEST_EMAIL_1:    ${{ secrets.TEST_EMAIL }}
       TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD }}
       TEST_EMAIL_2:    ${{ secrets.TEST_EMAIL }}
@@ -50,23 +48,23 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Debug: dump all TEST_* env vars
+      - name: "Debug: dump all TEST_* env vars"
         run: |
           echo ">>> ALL TEST_* ENV VARS <<<"
-          env | grep '^TEST_' || echo "(none)"
-
-      - name: (optional) Create .env file
-        run: |
-          cat > .env <<EOF
-          BASE_URL=${{ secrets.BASE_URL }}
-          HOME_URL_DEV=${{ secrets.HOME_URL_DEV }}
-          EOF
+          if env | grep '^TEST_'; then
+            echo "Found TEST_* variables above"
+          else
+            echo "No TEST_* environment variables found"
+          fi
+      
 
       - name: Cache pip
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -96,7 +94,7 @@ jobs:
       - name: List screenshots
         if: always()
         run: |
-          echo "=== Screenshots dir ==="
+          echo "=== Screenshots directory contents ==="
           ls -la screenshots || echo "(none)"
 
       - name: Upload Screenshots
