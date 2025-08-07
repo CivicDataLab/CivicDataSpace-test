@@ -16,7 +16,7 @@ from pages.provider.my_dashboard_page import MyDashboardPage
 from pages.provider.create_usecase_page import CreateUsecasePage
 
 @pytest.mark.smoke
-def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url):
+def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url,test_credentials):
     """
     Test Case ID: test_prv_003_ind_create_usecase
     Verify User is able to create a UseCase end-to-end as an Individual provider.
@@ -34,6 +34,8 @@ def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url):
       9. Assert that the UseCase is marked “Published”.
     """
     # ─── Step 1: Load Homepage ──────────────────────────────────────────────────────
+    driver.delete_all_cookies()
+    email, password = test_credentials
     home = HomePage(driver, base_url)
     try:
         if not home.is_loaded():
@@ -43,7 +45,7 @@ def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url):
         print(f"Error loading homepage: {e}")
 
     # ─── Step 2: Login as provider (auto-fill) ───────────────────────────────────────
-    prov_home = home.go_to_login(flow="provider")
+    prov_home = home.go_to_login(flow="provider", email=email, password=password,)
     assert isinstance(prov_home, ProviderHomePage), (
         f"Expected ProviderHomePage after auto-login, got {type(prov_home)}"
     )

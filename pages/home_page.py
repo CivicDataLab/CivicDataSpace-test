@@ -1,6 +1,8 @@
 # pages/home_page.py
+from __future__ import annotations
 
 import os
+import time
 from dotenv import load_dotenv
 from typing import Union
 
@@ -130,60 +132,105 @@ class HomePage(BasePage):
 
     # ─── Provider‐flow login method ──────────────────────────────────────────────────
 
-    def go_to_login(self, flow: str = "consumer") -> Union[LoginPage, ProviderHomePage]:
-        """
-        Click “LOGIN / SIGN UP,” then:
+    def go_to_login(self, flow: str = "consumer", email: str|None = None, password: str|None = None):
+        print("\n[STEP] Starting go_to_login (flow=%s)" % flow)
+        self.logout()
 
-        • flow == "consumer":
-            – Wait for the login form to appear.
-            – Return a LoginPage so tests can fill in credentials manually.
-
-        • flow == "provider":
-            – If we already detect the ProviderHomePage is visible, return it immediately.
-            – Otherwise, click “LOGIN / SIGN UP,” wait for the form, submit EMAIL/PASSWORD,
-              then wait up to 10 s for the dashboard header to appear—finally return ProviderHomePage.
-
-        Raises AssertionError if the login form never appears.
-        """
         if flow.lower() == "provider":
-            # 0) If the dashboard header is already visible, assume “already logged in”
+            print("[WAIT] Checking if dashboard header is already visible")
             try:
                 WebDriverWait(self.driver, 5).until(
                     EC.visibility_of_element_located((By.XPATH, ProviderHomepageLocators.HEADER))
                 )
+                print("[OK] Already logged in; ProviderHomePage visible")
                 return ProviderHomePage(self.driver)
             except TimeoutException:
-                pass
+                print("[INFO] Not already logged in, continuing to login.")
 
-        # 1) Click “LOGIN / SIGN UP”
-        WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, LoginLocators.LOGIN_BUTTON))
-        ).click()
+        print("[WAIT] Waiting for LOGIN / SIGN UP button to be clickable")
+        try:
+            login_btn = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, LoginLocators.LOGIN_BUTTON))
+            )
+            print("[OK] Login button found, clicking…")
+            login_btn.click()
+            self.driver.save_screenshot(f"after_login_click_{int(time.time())}.png")
+            print(f"[OK] Clicked LOGIN, current URL: {self.driver.current_url}")
+        except Exception as e:
+            print(f"[FAIL] Could not find or click login button: {e}")
+            self.driver.save_screenshot('debug_login_fail.png')
+            with open('debug_login_fail.html', 'w') as f:
+                f.write(self.driver.page_source)
+            raise
 
-        # 2) Wait up to 10 s for the login‐form container to appear
+        print("[WAIT] Waiting for login form to appear (10s)")
         try:
             WebDriverWait(self.driver, 10).until(
                 EC.visibility_of_element_located((By.XPATH, LoginLocators.FORM))
             )
-        except TimeoutException:
-            raise AssertionError(
-                "Tapped LOGIN / SIGN UP, but the login form never appeared."
-            )
+            print("[OK] Login form is now visible")
+        except TimeoutException as e:
+            print("[FAIL] Login form never appeared after clicking LOGIN")
+            self.driver.save_screenshot('debug_no_login_form.png')
+            with open('debug_no_login_form.html', 'w') as f:
+                f.write(self.driver.page_source)
+            raise AssertionError("Tapped LOGIN / SIGN UP, but the login form never appeared.")
 
-        # 3) Wrap that form in a LoginPage POM
         login_page = LoginPage(self.driver)
 
         if flow.lower() == "provider":
-            # 4a) Auto‐login as provider
-            login_page.login(os.getenv("TEST_EMAIL"), os.getenv("TEST_PASSWORD"))
+            print("[ACTION] Logging in as provider (auto-fill)")
+            # Use parameters if provided, else fallback
+            email = email or os.getenv("TEST_EMAIL")
+            password = password or os.getenv("TEST_PASSWORD")
+            login_page.login(email, password)
+            print("[WAIT] Waiting for ProviderHomePage header to appear (10s)")
+            try:
+                WebDriverWait(self.driver, 10).until(
+                    EC.visibility_of_element_located((By.XPATH, ProviderHomepageLocators.HEADER))
+                )
+                print("[OK] ProviderHomePage loaded after login")
+            except TimeoutException as e:
+                print("[FAIL] ProviderHomePage header did not appear after login")
+                self.driver.save_screenshot('debug_post_login_fail.png')
+                with open('debug_post_login_fail.html', 'w') as f:
+                    f.write(self.driver.page_source)
+                raise
 
-            # 5a) Now wait for the ProviderHomePage header to appear (up to 10 s).
-            WebDriverWait(self.driver, 10).until(
-                EC.visibility_of_element_located((By.XPATH, ProviderHomepageLocators.HEADER))
-            )
             return ProviderHomePage(self.driver)
 
-        # 4b) flow == "consumer": return the LoginPage so tests can fill it
         return login_page
 
     # ────────────────────────────────────────────────────────────────────────────────
+
+    # def test_login(driver, base_url, test_credentials):
+    #     email, password = test_credentials
+    #     home = HomePage(driver, base_url)
+    #     home.go_to_login(flow="provider", email=email, password=password)
+
+    def logout(self):
+        try:
+            # 1. Click the avatar/profile button
+            avatar_btn = WebDriverWait(self.driver, 5).until(
+                EC.element_to_be_clickable((By.XPATH, HomepageLocators.LOGOUT_PROFILE_LOGO))
+            )
+            avatar_btn.click()
+
+            # 2. Click "Log Out" in the dropdown
+            logout_btn = WebDriverWait(self.driver, 5).until(
+                EC.element_to_be_clickable((By.XPATH, HomepageLocators.LOGOUT))
+            )
+            logout_btn.click()
+
+            # 3. Optionally wait for login button to reappear (optional, adjust as needed)
+            WebDriverWait(self.driver, 10).until(
+                EC.visibility_of_element_located((By.XPATH, "//button[contains(.,'LOGIN') or contains(.,'Sign Up')]"))
+            )
+        except Exception as e:
+            print("Logout not needed or failed:", e)
+
+        # 4. Always clear cookies/storage for total isolation
+        self.driver.delete_all_cookies()
+        self.driver.execute_script("window.localStorage.clear(); window.sessionStorage.clear();")
+        self.driver.refresh()
+
