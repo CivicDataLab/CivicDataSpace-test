@@ -1,7 +1,7 @@
 name: Isolated Smoke Test & Report
 
 on:
-  push: {}
+  push:         {}
   pull_request: {}
   workflow_dispatch: {}
 
@@ -18,10 +18,10 @@ jobs:
       - name: Find all smoke test files and build matrix
         id: set-matrix
         run: |
-          # 1) Gather smoke tests
+          # gather all smoke tests
           readarray -t files < <(find tests -type f -path "*/smoke/test_*.py")
 
-          # 2) Build JSON entries with round-robin user_index
+          # build JSON entries with a round-robin user_index
           includes=(); i=0
           for file in "${files[@]}"; do
             flow=$(echo "$file" | awk -F'/' '{print $2}')
@@ -30,7 +30,7 @@ jobs:
             i=$((i + 1))
           done
 
-          # 3) Join, wrap, and emit
+          # wrap into a matrix
           joined=$(printf ",%s" "${includes[@]}")
           array="[${joined:1}]"
           matrix="{\"include\":${array}}"
@@ -44,11 +44,11 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.collect-test-files.outputs.matrix) }}
 
+    # ← this env: must be here, *not* under steps:
     env:
-      # base URLs
       HOME_URL_DEV:    ${{ secrets.HOME_URL_DEV }}
       BASE_URL:        ${{ secrets.BASE_URL }}
-      # map your single-secret into both slots so they’re never empty
+      # map your single TEST_EMAIL/TEST_PASSWORD into both slots:
       TEST_EMAIL_1:    ${{ secrets.TEST_EMAIL }}
       TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD }}
       TEST_EMAIL_2:    ${{ secrets.TEST_EMAIL }}
@@ -87,7 +87,6 @@ jobs:
           TEST_USER_INDEX: ${{ matrix.user_index }}
         run: |
           echo "=== Running ${{ matrix.test_file }} as user #$TEST_USER_INDEX ==="
-          # select the correct creds slot
           if [ "$TEST_USER_INDEX" = "1" ]; then
             export TEST_EMAIL="$TEST_EMAIL_1"
             export TEST_PASSWORD="$TEST_PASSWORD_1"
@@ -95,7 +94,6 @@ jobs:
             export TEST_EMAIL="$TEST_EMAIL_2"
             export TEST_PASSWORD="$TEST_PASSWORD_2"
           fi
-
           pytest -n auto "${{ matrix.test_file }}" -v --json-report
 
       - name: List screenshots
