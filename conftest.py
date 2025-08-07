@@ -170,10 +170,14 @@ def sample_logo_path():
 
 @pytest.fixture(scope="session")
 def test_credentials():
-    user_idx = int(os.getenv("TEST_USER_INDEX", "1"))  # Default to 1 if not set
-    email = os.getenv(f"TEST_EMAIL_{user_idx}")
-    password = os.getenv(f"TEST_PASSWORD_{user_idx}")
-    assert email and password, f"Credentials for user index {user_idx} not set!"
+    """
+        Reads TEST_USER_INDEX (1 or 2) from the environment,
+        then returns (email, password) pulled from TEST_EMAIL_1/2 and TEST_PASSWORD_1/2.
+        """
+    idx = int(os.getenv("TEST_USER_INDEX", "1"))
+    email = os.getenv(f"TEST_EMAIL_{idx}")
+    password = os.getenv(f"TEST_PASSWORD_{idx}")
+    assert email and password, f"Credentials for user index {idx} not set!"
     return email, password
 
 
