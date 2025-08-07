@@ -90,7 +90,7 @@ class CreateUsecasePage(BasePage):
 
     def select_sectors(self, items: list[str]):
         # 1) click into the combobox input
-
+        time,sleep(3)
         self.wait.until(
             EC.invisibility_of_element_located((By.CLASS_NAME, "toast"))
         )
@@ -118,6 +118,7 @@ class CreateUsecasePage(BasePage):
         return self
 
     def select_geography(self, value: str):
+        time.sleep(2)
         toggle = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.GEOGRAPHY_CONTAINER))
         toggle.click()
         opt = self.wait.until(EC.element_to_be_clickable(

@@ -1,6 +1,4 @@
-# .github/workflows/test-and-report.yml
-
-name: Test & Report
+name: Isolated Smoke Test & Report
 
 on:
   push: {}
@@ -8,17 +6,44 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  test:
-    name: Run ${{ matrix.flow }} / ${{ matrix.test_type }} tests
+  collect-test-files:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        flow: [consumer, provider]       # add 'provider' when ready
-        test_type: [smoke]      # add other types when needed
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
 
     steps:
-      - name: Check out code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Find all smoke test files (consumer and provider)
+        id: set-matrix
+        run: |
+          files=$(find tests -type f -path "*/smoke/test_*.py")
+          includes=()
+          for file in $files; do
+            flow=$(echo $file | awk -F'/' '{print $2}')
+            includes+=("{\"flow\":\"$flow\",\"test_file\":\"$file\"}")
+          done
+          matrix="{\"include\":["
+          sep=""
+          for item in "${includes[@]}"; do
+            matrix+="$sep$item"
+            sep=","
+          done
+          matrix+="]}"
+          echo "$matrix"
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+
+  test:
+    needs: collect-test-files
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.collect-test-files.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -32,45 +57,17 @@ jobs:
           pip install pytest pytest-json-report python-dotenv
 
       - name: Create .env file
-        env:
-          BASE_URL:       ${{ secrets.BASE_URL }}
-          TEST_EMAIL:     ${{ secrets.EMAIL }}
-          TEST_PASSWORD:  ${{ secrets.PASSWORD }}
-          HOME_URL_DEV:   ${{ secrets.HOME_URL_DEV }}
         run: |
-          cat <<EOF > .env
-          BASE_URL=${BASE_URL}
-          TEST_EMAIL=${TEST_EMAIL}
-          TEST_PASSWORD=${TEST_PASSWORD}
-          HOME_URL_DEV=${HOME_URL_DEV}
-          EOF
+          echo "BASE_URL=${{ secrets.BASE_URL }}" >> .env
+          echo "TEST_EMAIL=${{ secrets.TEST_EMAIL }}" >> .env
+          echo "TEST_PASSWORD=${{ secrets.TEST_PASSWORD }}" >> .env
+          echo "HOME_URL_DEV=${{ secrets.HOME_URL_DEV }}" >> .env
 
-      - name: 'Debug: show workspace'
+      - name: Run ${{ matrix.test_file }}
         run: |
-          pwd
-          ls -R .
+          echo "==================== Running: ${{ matrix.test_file }} ===================="
+          pytest "${{ matrix.test_file }}" -v --json-report
 
-      - name: Run pytest for ${{ matrix.flow }} / ${{ matrix.test_type }}
-        # ensure your pages/ package is on PYTHONPATH
-        env:
-          BASE_URL:       ${{ secrets.BASE_URL }}
-          TEST_EMAIL:     ${{ secrets.EMAIL }}
-          TEST_PASSWORD:  ${{ secrets.PASSWORD }}
-          PYTHONPATH:     ${{ github.workspace }}
-          HOME_URL_DEV:   ${{ secrets.HOME_URL_DEV }}
-        run: |
-          set +e
-          pytest tests/${{ matrix.flow }}/${{ matrix.test_type }} \
-            --json-report --json-report-file=report-${{ matrix.flow }}-${{ matrix.test_type }}.json \
-            -m smoke -q     # adjust markers/flags as you like
-          echo "exit_code=$?" >> $GITHUB_OUTPUT
-          set -e
-
-      - name: Upload JSON report artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: report-${{ matrix.flow }}-${{ matrix.test_type }}
-          path: report-${{ matrix.flow }}-${{ matrix.test_type }}.json
 #
 #  coverage:
 #    name: Coverage & Summary Report
@@ -97,11 +94,13 @@ jobs:
 #          BASE_URL:       ${{ secrets.BASE_URL }}
 #          TEST_EMAIL:     ${{ secrets.EMAIL }}
 #          TEST_PASSWORD:  ${{ secrets.PASSWORD }}
+#          HOME_URL_DEV:   ${{ secrets.HOME_URL_DEV }}
 #        run: |
 #          cat <<EOF > .env
 #          BASE_URL=${BASE_URL}
 #          TEST_EMAIL=${TEST_EMAIL}
 #          TEST_PASSWORD=${TEST_PASSWORD}
+#          HOME_URL_DEV=${{ secrets.HOME_URL_DEV }}
 #          EOF
 #
 #      - name: Run full test suite under coverage
