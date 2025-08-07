@@ -21,7 +21,7 @@ jobs:
           # 1) Gather all smoke tests under tests/*/smoke/
           readarray -t files < <(find tests -type f -path "*/smoke/test_*.py")
 
-          # 2) Build an array of JSON objects, assigning user_index round-robin 1 or 2
+          # 2) Build JSON objects with a round-robin user_index of 1 or 2
           includes=()
           i=0
           for file in "${files[@]}"; do
@@ -31,7 +31,7 @@ jobs:
             i=$((i + 1))
           done
 
-          # 3) Join them with commas and wrap into a JSON matrix
+          # 3) Join with commas and wrap into a valid JSON matrix
           joined=$(printf ",%s" "${includes[@]}")
           array="[${joined:1}]"
           matrix="{\"include\":${array}}"
@@ -46,7 +46,7 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.collect-test-files.outputs.matrix) }}
 
-    # inject secrets and base URLs at the job level
+    # Expose your two provider accounts and base URLs to *every* step in this job
     env:
       HOME_URL_DEV:    ${{ secrets.HOME_URL_DEV }}
       BASE_URL:        ${{ secrets.BASE_URL }}
@@ -64,7 +64,8 @@ jobs:
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: ${{ runner.os }}-pip-
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -78,19 +79,22 @@ jobs:
           pip install pytest pytest-json-report python-dotenv pytest-xdist
 
       - name: Run ${{ matrix.test_file }} (User #${{ matrix.user_index }})
+        # Only TEST_USER_INDEX comes from the matrix; the others are job-level env
         env:
           TEST_USER_INDEX: ${{ matrix.user_index }}
         run: |
           echo "=== ENV DUMP BEFORE pytest ==="
+          # prove that the four per-user secrets are present
           echo "TEST_USER_INDEX = $TEST_USER_INDEX"
           echo "TEST_EMAIL_1    = $TEST_EMAIL_1"
-          echo "TEST_PASSWORD_1 = $TEST_PASSWORD_1"
+          echo "TEST_PASSWORD_1 = ${TEST_PASSWORD_1:+(set)}"
           echo "TEST_EMAIL_2    = $TEST_EMAIL_2"
-          echo "TEST_PASSWORD_2 = $TEST_PASSWORD_2"
-          echo "--- all TEST_* vars ---"
+          echo "TEST_PASSWORD_2 = ${TEST_PASSWORD_2:+(set)}"
+          echo "Other TEST_*:"
           env | grep '^TEST_'
 
           echo "=== Running ${{ matrix.test_file }} as user #$TEST_USER_INDEX ==="
+          # Map the right indexed secrets into the generic TEST_EMAIL/TEST_PASSWORD
           if [ "$TEST_USER_INDEX" = "1" ]; then
             export TEST_EMAIL="$TEST_EMAIL_1"
             export TEST_PASSWORD="$TEST_PASSWORD_1"
@@ -105,7 +109,7 @@ jobs:
         if: always()
         run: |
           echo "=== Screenshots directory contents ==="
-          ls -la screenshots || echo "(none)"
+          ls -la screenshots || echo "(no screenshots)"
 
       - name: Upload Screenshots
         if: always()
@@ -113,77 +117,3 @@ jobs:
         with:
           name: screenshots-${{ matrix.flow }}-user${{ matrix.user_index }}
           path: screenshots/
-
-
-
-
-#
-#  coverage:
-#    name: Coverage & Summary Report
-#    needs: test
-#    runs-on: ubuntu-latest
-#
-#    steps:
-#      - name: Check out code
-#        uses: actions/checkout@v3
-#
-#      - name: Set up Python
-#        uses: actions/setup-python@v4
-#        with:
-#          python-version: '3.9'
-#
-#      - name: Install dependencies
-#        run: |
-#          python -m pip install --upgrade pip
-#          pip install -r requirements.txt
-#          pip install pytest pytest-json-report python-dotenv coverage
-#
-#      - name: Create .env file
-#        env:
-#          BASE_URL:       ${{ secrets.BASE_URL }}
-#          TEST_EMAIL:     ${{ secrets.EMAIL }}
-#          TEST_PASSWORD:  ${{ secrets.PASSWORD }}
-#          HOME_URL_DEV:   ${{ secrets.HOME_URL_DEV }}
-#        run: |
-#          cat <<EOF > .env
-#          BASE_URL=${BASE_URL}
-#          TEST_EMAIL=${TEST_EMAIL}
-#          TEST_PASSWORD=${TEST_PASSWORD}
-#          HOME_URL_DEV=${{ secrets.HOME_URL_DEV }}
-#          EOF
-#
-#      - name: Run full test suite under coverage
-#        env:
-#          PYTHONPATH: ${{ github.workspace }}
-#        run: |
-#          set +e
-#          coverage run -m pytest \
-#            --json-report \
-#            --json-report-file=report.json
-#          echo "exit_code=$?" >> $GITHUB_OUTPUT
-#          set -e
-#
-#      - name: Produce coverage report
-#        run: coverage report --fail-under=80
-#
-#      - name: Generate HTML coverage report
-#        run: coverage html
-#
-#      - name: Generate JSON & human-readable test report
-#        run: python report_generator.py
-#
-#      - name: Upload coverage & test-report artifacts
-#        if: always()
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: coverage-and-report
-#          path: |
-#            report.json
-#            TEST_REPORT.md
-#            TEST_REPORT.pdf
-#            htmlcov/
-#
-#      # Optional: Fail job if coverage tests failed
-#      - name: Fail job if tests failed
-#        if: steps.run_full_test_suite_under_coverage.outputs.exit_code != '0'
-#        run: exit 1
