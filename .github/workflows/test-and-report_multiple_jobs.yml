@@ -49,10 +49,10 @@ jobs:
       HOME_URL_DEV:    ${{ secrets.HOME_URL_DEV }}
       BASE_URL:        ${{ secrets.BASE_URL }}
       # map your single TEST_EMAIL/TEST_PASSWORD into both slots:
-      TEST_EMAIL_1:    ${{ secrets.TEST_EMAIL }}
-      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD }}
-      TEST_EMAIL_2:    ${{ secrets.TEST_EMAIL }}
-      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD }}
+      TEST_EMAIL_1:    ${{ secrets.TEST_EMAIL_1 }}
+      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+      TEST_EMAIL_2:    ${{ secrets.TEST_EMAIL_1 }}
+      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_1 }}
 
     steps:
       - name: Check out code
