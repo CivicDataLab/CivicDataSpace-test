@@ -18,12 +18,11 @@ jobs:
       - name: Find all smoke test files and build matrix
         id: set-matrix
         run: |
-          # 1) Gather all smoke tests under tests/*/smoke/
+          # 1) Gather smoke tests
           readarray -t files < <(find tests -type f -path "*/smoke/test_*.py")
 
-          # 2) Build JSON objects with a round-robin user_index of 1 or 2
-          includes=()
-          i=0
+          # 2) Build JSON entries with round-robin user_index
+          includes=(); i=0
           for file in "${files[@]}"; do
             flow=$(echo "$file" | awk -F'/' '{print $2}')
             idx=$(( (i % 2) + 1 ))
@@ -31,11 +30,10 @@ jobs:
             i=$((i + 1))
           done
 
-          # 3) Join with commas and wrap into a valid JSON matrix
+          # 3) Join, wrap, and emit
           joined=$(printf ",%s" "${includes[@]}")
           array="[${joined:1}]"
           matrix="{\"include\":${array}}"
-
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   test:
@@ -46,22 +44,21 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.collect-test-files.outputs.matrix) }}
 
-    # expose your one provider account to both USER_INDEXes
     env:
-      HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
-      BASE_URL: ${{ secrets.BASE_URL }}
-      TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
-      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
-      TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_1 }}
-      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_1 }}
-
+      # base URLs
+      HOME_URL_DEV:    ${{ secrets.HOME_URL_DEV }}
+      BASE_URL:        ${{ secrets.BASE_URL }}
+      # map your single-secret into both slots so they’re never empty
+      TEST_EMAIL_1:    ${{ secrets.TEST_EMAIL }}
+      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD }}
+      TEST_EMAIL_2:    ${{ secrets.TEST_EMAIL }}
+      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD }}
 
     steps:
       - name: Check out code
         uses: actions/checkout@v3
 
-      - name:
-          Debug: dump all TEST_* env vars
+      - name: Debug: dump all TEST_* env vars
         run: |
           echo ">>> ALL TEST_* ENV VARS <<<"
           env | grep '^TEST_' || echo "(none)"
@@ -86,22 +83,11 @@ jobs:
           pip install pytest pytest-json-report python-dotenv pytest-xdist
 
       - name: Run ${{ matrix.test_file }} (User #${{ matrix.user_index }})
-        # Only TEST_USER_INDEX comes from the matrix; the others are job-level env
         env:
           TEST_USER_INDEX: ${{ matrix.user_index }}
         run: |
-          echo "=== ENV DUMP BEFORE pytest ==="
-          # prove that the four per-user secrets are present
-          echo "TEST_USER_INDEX = $TEST_USER_INDEX"
-          echo "TEST_EMAIL_1    = $TEST_EMAIL_1"
-          echo "TEST_PASSWORD_1 = ${TEST_PASSWORD_1:+(set)}"
-          echo "TEST_EMAIL_2    = $TEST_EMAIL_2"
-          echo "TEST_PASSWORD_2 = ${TEST_PASSWORD_2:+(set)}"
-          echo "Other TEST_*:"
-          env | grep '^TEST_'
-
           echo "=== Running ${{ matrix.test_file }} as user #$TEST_USER_INDEX ==="
-          # Map the right indexed secrets into the generic TEST_EMAIL/TEST_PASSWORD
+          # select the correct creds slot
           if [ "$TEST_USER_INDEX" = "1" ]; then
             export TEST_EMAIL="$TEST_EMAIL_1"
             export TEST_PASSWORD="$TEST_PASSWORD_1"
@@ -116,7 +102,7 @@ jobs:
         if: always()
         run: |
           echo "=== Screenshots directory contents ==="
-          ls -la screenshots || echo "(no screenshots)"
+          ls -la screenshots || echo "(none)"
 
       - name: Upload Screenshots
         if: always()
