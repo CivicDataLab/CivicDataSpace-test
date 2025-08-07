@@ -60,6 +60,12 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
 
+      - name:
+          Debug: dump all TEST_* env vars
+        run: |
+          echo ">>> ALL TEST_* ENV VARS <<<"
+          env | grep '^TEST_' || echo "(none)"
+
       - name: Cache pip
         uses: actions/cache@v3
         with:
