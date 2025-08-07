@@ -51,11 +51,7 @@ jobs:
       - name: "Debug: dump all TEST_* env vars"
         run: |
           echo ">>> ALL TEST_* ENV VARS <<<"
-          if env | grep '^TEST_'; then
-            echo "Found TEST_* variables above"
-          else
-            echo "No TEST_* environment variables found"
-          fi
+          env | grep '^TEST_' || echo "(none)"
       
 
       - name: Cache pip
