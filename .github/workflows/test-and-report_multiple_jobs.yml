@@ -21,7 +21,7 @@ jobs:
           # 1) Gather all smoke tests under tests/*/smoke/
           readarray -t files < <(find tests -type f -path "*/smoke/test_*.py")
 
-          # 2) Build an array of JSON objects, round-robining user_index 1 or 2
+          # 2) Build an array of JSON objects, assigning user_index round-robin 1 or 2
           includes=()
           i=0
           for file in "${files[@]}"; do
@@ -31,22 +31,22 @@ jobs:
             i=$((i + 1))
           done
 
-          # 3) Join with commas, wrap in [ … ], then wrap in {"include": …}
+          # 3) Join them with commas and wrap into a JSON matrix
           joined=$(printf ",%s" "${includes[@]}")
           array="[${joined:1}]"
           matrix="{\"include\":${array}}"
 
-          # 4) Export for the next job
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   test:
     needs: collect-test-files
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     strategy:
       matrix: ${{ fromJson(needs.collect-test-files.outputs.matrix) }}
 
-    # Expose both sets of provider creds (and base URLs) to every step
+    # inject secrets and base URLs at the job level
     env:
       HOME_URL_DEV:    ${{ secrets.HOME_URL_DEV }}
       BASE_URL:        ${{ secrets.BASE_URL }}
@@ -81,8 +81,16 @@ jobs:
         env:
           TEST_USER_INDEX: ${{ matrix.user_index }}
         run: |
+          echo "=== ENV DUMP BEFORE pytest ==="
+          echo "TEST_USER_INDEX = $TEST_USER_INDEX"
+          echo "TEST_EMAIL_1    = $TEST_EMAIL_1"
+          echo "TEST_PASSWORD_1 = $TEST_PASSWORD_1"
+          echo "TEST_EMAIL_2    = $TEST_EMAIL_2"
+          echo "TEST_PASSWORD_2 = $TEST_PASSWORD_2"
+          echo "--- all TEST_* vars ---"
+          env | grep '^TEST_'
+
           echo "=== Running ${{ matrix.test_file }} as user #$TEST_USER_INDEX ==="
-          # Map the indexed secrets into the generic TEST_EMAIL/PASSWORD
           if [ "$TEST_USER_INDEX" = "1" ]; then
             export TEST_EMAIL="$TEST_EMAIL_1"
             export TEST_PASSWORD="$TEST_PASSWORD_1"
@@ -105,6 +113,7 @@ jobs:
         with:
           name: screenshots-${{ matrix.flow }}-user${{ matrix.user_index }}
           path: screenshots/
+
 
 
 
