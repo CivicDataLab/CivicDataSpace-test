@@ -50,10 +50,8 @@ jobs:
 
       - name: Dump TEST env vars
         run: |
-          echo ">>> All TEST_* variables >>>"
+          echo ">>> All TEST_* vars >>>"
           env | grep '^TEST_' || echo "(none)"
-      
-      
 
       - name: Cache pip
         uses: actions/cache@v3
