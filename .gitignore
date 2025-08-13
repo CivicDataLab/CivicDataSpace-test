@@ -2,12 +2,31 @@ cat <<'EOF' > .gitignore
 # IDE
 .idea/
 .vscode/
+.DS_Store
+
 
 # Python
 __pycache__/
 *.py[cod]
 *.egg-info/
+.env
 dist/
 build/
 venv/
+conftest_local.py
+create_flow_diagram.py
+report.json
+TEST_REPORT.md
+TEST_REPORT.pdf
+screenshots
+te_components.py
+debug.py
+te_prv_004_ind_add_charts.py
+te_prv_005_ind_edit_profile.py
+te_prv_006_org_create_dataset.py
+te_prv_007_org_create_usecase.py
+te_prv_008_org_add_charts.py
+te_prv_009_org_edit_profile.py
+test-and-report.yml
+test-and-report_multiple_jobs.yml
 EOF
