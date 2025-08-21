@@ -29,4 +29,5 @@ te_prv_008_org_add_charts.py
 te_prv_009_org_edit_profile.py
 test-and-report.yml
 test-and-report_multiple_jobs.yml
+/Users/home/CivicDataSpace-test/.github/workflows/run-smoke.yml
 EOF
