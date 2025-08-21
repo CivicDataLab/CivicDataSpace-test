@@ -22,7 +22,6 @@ screenshots
 te_components.py
 debug.py
 te_prv_004_ind_add_charts.py
-te_prv_005_ind_edit_profile.py
 te_prv_006_org_create_dataset.py
 te_prv_007_org_create_usecase.py
 te_prv_008_org_add_charts.py
