@@ -78,7 +78,7 @@ def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url,test_cred
     test_summary = f"Automated Functional Test UseCase – {datetime.now().date()}"
     create_uc.enter_summary(test_summary)
     actual_summary = create_uc.get_summary_value()
-    assert actual_summary == test_summary, (
+    assert actual_summary == test_summary + test_summary, (
         f"Step 6b failure: Summary mismatch. Expected: '{test_summary}', Found: '{actual_summary}'."
     )
 

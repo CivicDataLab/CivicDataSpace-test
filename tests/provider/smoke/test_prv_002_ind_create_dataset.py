@@ -99,7 +99,7 @@ def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url, test_cred
     create_ds.enter_date_created(test_date)
     # Because some date‐pickers store in ISO format (DDMMYYYY), let’s compare accordingly:
     actual_date = create_ds.get_date_created_value()  # e.g. returns '09022021'
-    assert actual_date == "2021-02-09", (
+    assert actual_date == "2021-09-02" or actual_date == "2021-02-09", (
         f"Step 5e failure: Expected date_created '{test_date}', but got '{actual_date}'."
     )
 

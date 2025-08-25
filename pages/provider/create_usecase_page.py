@@ -2,7 +2,6 @@
 
 import os
 import time
-from time import sleep
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver import Keys
 from selenium.webdriver.common.by import By
@@ -48,7 +47,9 @@ class CreateUsecasePage(BasePage):
         )
         fld.clear()
         fld.send_keys(text)
-        fld.send_keys(Keys.TAB)
+        time.sleep(2)
+        fld.send_keys(text)
+        # fld.send_keys(Keys.TAB)
         return self
 
     def enter_platform_url(self, url: str):
