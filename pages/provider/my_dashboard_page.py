@@ -9,6 +9,7 @@ from pages.base_page import BasePage
 from locators.provider.my_dashboard_locators import MyDashboardLocators
 from pages.provider.create_dataset_page import CreateDatasetPage
 from pages.provider.usecases_list_page import UseCasesListPage
+from pages.provider.update_profile_page import UpdateProfilePage
 
 class MyDashboardPage(BasePage):
     """
@@ -16,13 +17,6 @@ class MyDashboardPage(BasePage):
     There is a “My Dashboard” card → click it, then a sidebar appears; you click “Datasets”,
     and that reveals the “Drafts” tab (and the “Add New Dataset” button inside it).
     """
-
-    def click_usecases_card(self):
-        WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.USECASES_NAV_LINK)),
-            message="Timed out waiting for the 'Usecases' card to be clickable"
-        ).click()
-        return UseCasesListPage(self.driver)
 
     def load(self):
         """
@@ -80,14 +74,6 @@ class MyDashboardPage(BasePage):
             my_dash = prov_home.goto_my_dashboard().click_datasets_sidebar()
             create_ds = my_dash.click_add_new_dataset()
         """
-
-        # Step A: Make sure we are “inside” My Dashboard. If tests already did `.goto_my_dashboard()`,
-        # then the “My Dashboard” card is already clicked. In most test flows, we do:
-        #     prov_home = home.go_to_login(flow="provider")
-        #     my_dash = prov_home.goto_my_dashboard()               ← this clicks the card
-        #     my_dash.click_datasets_sidebar()                     ← clicks “Datasets” in sidebar
-        #
-        # But if a caller forgot `.goto_my_dashboard()`, we still can try to click it here. So:
         try:
             # If “My Dashboard” card is still visible, click it once.
             WebDriverWait(self.driver, 3).until(
@@ -115,3 +101,17 @@ class MyDashboardPage(BasePage):
 
         # Step F: Return a CreateDatasetPage so tests can continue:
         return CreateDatasetPage(self.driver)
+
+    def click_usecases_card(self):
+        WebDriverWait(self.driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.USECASES_NAV_LINK)),
+            message="Timed out waiting for the 'Usecases' card to be clickable"
+        ).click()
+        return UseCasesListPage(self.driver)
+
+    def click_profile_card(self):
+        WebDriverWait(self.driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.PROFILE_NAV_LINK)),
+            message="Timed out waiting for the 'Profile' card to be clickable"
+        ).click()
+        return UpdateProfilePage(self.driver)

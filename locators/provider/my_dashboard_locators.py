@@ -15,3 +15,6 @@ class MyDashboardLocators:
     ADD_NEW_DATASET_BTN = "(//button[normalize-space(.)='Add New Dataset'])[2]"
 
     USECASES_NAV_LINK = '//span[normalize-space()="UseCases"]'
+
+    #Profile tab locators
+    PROFILE_NAV_LINK = '//span[normalize-space()="Profile"]'
