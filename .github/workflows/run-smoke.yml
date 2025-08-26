@@ -1,9 +1,21 @@
-name: Isolated Smoke Test & Report
+# CivicDataSpace-test/.github/workflows/run-smoke.yml
+name: Smoke Test Suite
 
 on:
-  push: {}
-  pull_request: {}
-  workflow_dispatch: {}
+  workflow_call:
+    secrets:
+      BASE_URL:
+        required: true
+      HOME_URL_DEV:
+        required: true
+      TEST_EMAIL_1:
+        required: true
+      TEST_PASSWORD_1:
+        required: true
+      TEST_EMAIL_2:
+        required: true
+      TEST_PASSWORD_2:
+        required: true
 
 jobs:
   collect-test-files:
@@ -33,25 +45,20 @@ jobs:
     needs: collect-test-files
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     strategy:
       matrix: ${{ fromJson(needs.collect-test-files.outputs.matrix) }}
-
     env:
-      HOME_URL_DEV:    ${{ secrets.HOME_URL_DEV }}
       BASE_URL:        ${{ secrets.BASE_URL }}
+      HOME_URL_DEV:    ${{ secrets.HOME_URL_DEV }}
       TEST_EMAIL_1:    ${{ secrets.TEST_EMAIL_1 }}
       TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
       TEST_EMAIL_2:    ${{ secrets.TEST_EMAIL_2 }}
       TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
-
     steps:
       - uses: actions/checkout@v3
 
       - name: Dump TEST env vars
-        run: |
-          echo ">>> All TEST_* vars >>>"
-          env | grep '^TEST_' || echo "(none)"
+        run: env | grep '^TEST_' || echo "(none)"
 
       - name: Cache pip
         uses: actions/cache@v3
@@ -76,21 +83,16 @@ jobs:
         env:
           TEST_USER_INDEX: ${{ matrix.user_index }}
         run: |
-          echo "=== Running ${{ matrix.test_file }} as user #$TEST_USER_INDEX ==="
           if [ "$TEST_USER_INDEX" = "1" ]; then
-            export TEST_EMAIL="$TEST_EMAIL_1"
-            export TEST_PASSWORD="$TEST_PASSWORD_1"
+            export TEST_EMAIL="$TEST_EMAIL_1" TEST_PASSWORD="$TEST_PASSWORD_1"
           else
-            export TEST_EMAIL="$TEST_EMAIL_2"
-            export TEST_PASSWORD="$TEST_PASSWORD_2"
+            export TEST_EMAIL="$TEST_EMAIL_2" TEST_PASSWORD="$TEST_PASSWORD_2"
           fi
           pytest -n auto "${{ matrix.test_file }}" -v --json-report
 
       - name: List screenshots
         if: always()
-        run: |
-          echo "=== Screenshots directory contents ==="
-          ls -la screenshots || echo "(none)"
+        run: ls -la screenshots || echo "(none)"
 
       - name: Upload Screenshots
         if: always()
