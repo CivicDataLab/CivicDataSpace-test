@@ -2,6 +2,7 @@
 name: Smoke Test Suite
 
 on:
+  push: {}
   workflow_call:
     secrets:
       HOME_URL_PROD:
