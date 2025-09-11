@@ -168,6 +168,18 @@ def sample_logo_path():
         raise FileNotFoundError(f"Expected sample_logo.png at {logo_path}")
     return logo_path
 
+@pytest.fixture()
+def sample_profile_image_path():
+    """
+    Returns an absolute path to a small image under tests/data/
+    so that CreateUsecasePage.upload_logo(...) can send_keys() it.
+    """
+    here = os.path.dirname(__file__)    # this is a string
+    profile_image_path = os.path.abspath(os.path.join(here, "tests", "data", "sample_profile_image.png"))
+    if not os.path.isfile(profile_image_path):
+        raise FileNotFoundError(f"Expected sample_profile_image.png at {profile_image_path}")
+    return profile_image_path
+
 @pytest.fixture(scope="session")
 def test_credentials():
     """
