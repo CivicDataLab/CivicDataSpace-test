@@ -5,8 +5,8 @@ on:
   push: {}
   workflow_call:
     secrets:
-      HOME_URL_PROD:
-        required: true
+      BASE_URL:
+        required: true        # <— added to align with caller
       HOME_URL_DEV:
         required: true
       TEST_EMAIL_1:
@@ -25,14 +25,16 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - id: set-matrix
         name: Find all smoke test files and build matrix
+        shell: bash
         run: |
           readarray -t files < <(find tests -type f -path "*/smoke/test_*.py")
           includes=(); i=0
           for file in "${files[@]}"; do
+            # assumes path like tests/<flow>/smoke/test_*.py
             flow=$(echo "$file" | awk -F'/' '{print $2}')
             idx=$(( (i % 2) + 1 ))
             includes+=("{\"flow\":\"$flow\",\"test_file\":\"$file\",\"user_index\":$idx}")
@@ -47,19 +49,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
+      # keep all shards running even if one fails (optional; helps gather full signal)
+      fail-fast: false
       matrix: ${{ fromJson(needs.collect-test-files.outputs.matrix) }}
-    env:
-      HOME_URL_PROD:        ${{ secrets.HOME_URL_PROD }}
-      HOME_URL_DEV:    ${{ secrets.HOME_URL_DEV }}
-      TEST_EMAIL_1:    ${{ secrets.TEST_EMAIL_1 }}
-      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
-      TEST_EMAIL_2:    ${{ secrets.TEST_EMAIL_2 }}
-      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
-    steps:
-      - uses: actions/checkout@v3
 
-      - name: Dump TEST env vars
-        run: env | grep '^TEST_' || echo "(none)"
+    env:
+      BASE_URL:         ${{ secrets.BASE_URL }}      # <— now available
+      HOME_URL_DEV:     ${{ secrets.HOME_URL_DEV }}
+      TEST_EMAIL_1:     ${{ secrets.TEST_EMAIL_1 }}
+      TEST_PASSWORD_1:  ${{ secrets.TEST_PASSWORD_1 }}
+      TEST_EMAIL_2:     ${{ secrets.TEST_EMAIL_2 }}
+      TEST_PASSWORD_2:  ${{ secrets.TEST_PASSWORD_2 }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dump selected test user (sanity)
+        run: |
+          echo "BASE_URL set? $([ -n "$BASE_URL" ] && echo yes || echo no)"
+          echo "HOME_URL_DEV: ${HOME_URL_DEV:-"(empty)"}"
 
       - name: Cache pip
         uses: actions/cache@v3
@@ -70,7 +78,7 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.9'
 
@@ -83,12 +91,14 @@ jobs:
       - name: Run ${{ matrix.test_file }} (User #${{ matrix.user_index }})
         env:
           TEST_USER_INDEX: ${{ matrix.user_index }}
+        shell: bash
         run: |
           if [ "$TEST_USER_INDEX" = "1" ]; then
             export TEST_EMAIL="$TEST_EMAIL_1" TEST_PASSWORD="$TEST_PASSWORD_1"
           else
             export TEST_EMAIL="$TEST_EMAIL_2" TEST_PASSWORD="$TEST_PASSWORD_2"
           fi
+          # produces .report.json via pytest-json-report
           pytest -n auto "${{ matrix.test_file }}" -v --json-report
 
       - name: List screenshots
@@ -101,3 +111,17 @@ jobs:
         with:
           name: screenshots-${{ matrix.flow }}-user${{ matrix.user_index }}
           path: screenshots/
+
+      - name: Upload JSON report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ matrix.flow }}-user${{ matrix.user_index }}
+          path: .report.json
+
+      - name: Print summary
+        if: always()
+        run: |
+          echo "### Smoke Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- File: \`${{ matrix.test_file }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Flow: \`${{ matrix.flow }}\`, User: \`${{ matrix.user_index }}\`" >> $GITHUB_STEP_SUMMARY
