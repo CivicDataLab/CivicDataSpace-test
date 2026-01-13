@@ -4,6 +4,7 @@ import logging
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException
 import requests
 from pages.base_page import BasePage
 from locators.consumer.publishers_locators import PublishersLocators
@@ -20,7 +21,7 @@ class PublishersPage(BasePage):
         """
         Clicks the tab (if not already active) with overlap-safe logic.
         """
-        tab = WebDriverWait(self.driver, timeout).until(
+        tab = self.wait_with_timeout(timeout).until(
             EC.presence_of_element_located((By.XPATH, xpath))
         )
 
@@ -33,14 +34,14 @@ class PublishersPage(BasePage):
         # ----- safe-click with up to 3 attempts -----
         for attempt in range(3):
             try:
-                WebDriverWait(self.driver, timeout).until(
+                self.wait_with_timeout(timeout).until(
                     EC.element_to_be_clickable((By.XPATH, xpath))
                 )
                 tab.click()
                 return
             except ElementClickInterceptedException:
                 # Wait a short moment for overlay/animation to clear, then retry
-                WebDriverWait(self.driver, 2).until(
+                self.wait_with_timeout(2).until(
                     lambda drv: drv.execute_script(
                         "return arguments[0].getBoundingClientRect().top >= 0 && "
                         "arguments[0].getBoundingClientRect().bottom <= (window.innerHeight || document.documentElement.clientHeight);",
@@ -55,10 +56,10 @@ class PublishersPage(BasePage):
         Ensure the ‘All Publishers’ view is active (click the tab if needed),
         then return a list of all publisher‐card WebElements.
         """
-        # if there is an explicit “All Publishers” button/tab, click it:
+        # if there is an explicit "All Publishers" button/tab, click it:
         try:
             self.click((By.XPATH, PublishersLocators.ALL_PUBLISHERS_BUTTON))
-        except:
+        except (TimeoutException, NoSuchElementException):
             # assume All is default
             pass
 

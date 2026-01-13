@@ -19,11 +19,11 @@ class PublisherDetailPage(BasePage):
         """
         try:
             # wait for the grid
-            WebDriverWait(self.driver, timeout).until(
+            self.wait_with_timeout(timeout).until(
                 EC.presence_of_element_located((By.XPATH, PublisherDetailLocators.USECASE_GRID))
             )
             # wait for the grid
-            WebDriverWait(self.driver, timeout).until(
+            self.wait_with_timeout(timeout).until(
                 EC.presence_of_element_located((By.XPATH, PublisherDetailLocators.USECASE_CARD))
             )
         except TimeoutException:

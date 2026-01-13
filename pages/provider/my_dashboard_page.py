@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 
 from pages.base_page import BasePage
 from locators.provider.my_dashboard_locators import MyDashboardLocators
@@ -32,7 +33,7 @@ class MyDashboardPage(BasePage):
         Tests should call `is_loaded()` right after obtaining a MyDashboardPage
         to ensure that the login redirect finished.
         """
-        WebDriverWait(self.driver, timeout).until(
+        self.wait_with_timeout(timeout).until(
             EC.visibility_of_element_located(
                 (By.XPATH, MyDashboardLocators.CARD_MY_DASHBOARD)
             ),
@@ -45,7 +46,7 @@ class MyDashboardPage(BasePage):
         Click the big “My Dashboard” c  ard on /dashboard. This reveals the sidebar menu.
         Returns self (so tests can chain further calls).
         """
-        WebDriverWait(self.driver, 10).until(
+        self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.CARD_MY_DASHBOARD)),
             message="Timed out waiting for the 'My Dashboard' card to be clickable"
         ).click()
@@ -56,7 +57,7 @@ class MyDashboardPage(BasePage):
         Once the sidebar appears, click “Datasets” so that the Drafts/Published table loads.
         Returns self (so tests can chain).
         """
-        WebDriverWait(self.driver, 10).until(
+        self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.SIDEBAR_DATASETS)),
             message="Timed out waiting for the 'Datasets' link in sidebar to be clickable"
         ).click()
@@ -75,22 +76,22 @@ class MyDashboardPage(BasePage):
             create_ds = my_dash.click_add_new_dataset()
         """
         try:
-            # If “My Dashboard” card is still visible, click it once.
-            WebDriverWait(self.driver, 3).until(
+            # If "My Dashboard" card is still visible, click it once.
+            self.wait_with_timeout(3).until(
                 EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.CARD_MY_DASHBOARD))
             ).click()
-        except:
-            # If it’s not there, maybe they already clicked it. Either way—proceed.
+        except TimeoutException:
+            # If it's not there, maybe they already clicked it. Either way—proceed.
             pass
 
         # Step C: Wait for the “Drafts” tab to appear. This ensures the Datasets panel is fully rendered.
-        WebDriverWait(self.driver, 10).until(
+        self.wait_with_timeout(10).until(
             EC.visibility_of_element_located((By.XPATH, MyDashboardLocators.DRAFTS_TAB)),
             message="Timed out waiting for the 'Drafts' tab to appear"
         )
 
         # Step D: Now wait for “Add New Dataset” button to be clickable:
-        btn = WebDriverWait(self.driver, 10).until(
+        btn = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.ADD_NEW_DATASET_BTN)),
             message="Timed out waiting for the 'Add New Dataset' button to become clickable"
         )
@@ -103,14 +104,14 @@ class MyDashboardPage(BasePage):
         return CreateDatasetPage(self.driver)
 
     def click_usecases_card(self):
-        WebDriverWait(self.driver, 10).until(
+        self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.USECASES_NAV_LINK)),
             message="Timed out waiting for the 'Usecases' card to be clickable"
         ).click()
         return UseCasesListPage(self.driver)
 
     def click_profile_card(self):
-        WebDriverWait(self.driver, 10).until(
+        self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.PROFILE_NAV_LINK)),
             message="Timed out waiting for the 'Profile' card to be clickable"
         ).click()

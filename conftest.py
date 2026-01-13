@@ -133,7 +133,8 @@ def driver(request):
     # Teardown
     try:
         drv.quit()
-    except:
+    except WebDriverException:
+        # Ignore errors during driver cleanup (may already be closed)
         pass
     shutil.rmtree(tmp_profile, ignore_errors=True)
 

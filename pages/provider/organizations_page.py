@@ -13,7 +13,7 @@ class OrganizationsPage(BasePage):
         return self.find((By.XPATH, "//h1[text()='Organizations']")).is_displayed()
 
     def select_org(self) -> bool:
-        WebDriverWait(self.driver, 10).until(
+        self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, OrgLocators.ORG_TEST)),
             message="Timed out waiting for the 'ORG Dashboard' card to be clickable"
         ).click()

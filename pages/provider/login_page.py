@@ -17,7 +17,7 @@ class LoginPage(BasePage):
         Returns True once the login‐form container is visible.
         We wait on the FORM locator.
         """
-        WebDriverWait(self.driver, timeout).until(
+        self.wait_with_timeout(timeout).until(
             EC.visibility_of_element_located((By.XPATH, LoginLocators.FORM))
         )
         return True
@@ -25,7 +25,7 @@ class LoginPage(BasePage):
     def login(self, email: str, password: str) -> ProviderHomePage:
         print("[WAIT] Waiting for email input field...")
         try:
-            WebDriverWait(self.driver, 10).until(
+            self.wait_with_timeout(10).until(
                 EC.visibility_of_element_located((By.XPATH, LoginLocators.EMAIL_INPUT))
             )
             print("[OK] Email input found")
@@ -60,7 +60,7 @@ class LoginPage(BasePage):
 
         try:
             print("[WAIT] Waiting for ProviderHomePage header after login (10s)")
-            WebDriverWait(self.driver, 10).until(
+            self.wait_with_timeout(10).until(
                 EC.visibility_of_element_located(
                     (By.XPATH, ProviderHomepageLocators.HEADER)
                 )
