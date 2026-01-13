@@ -8,7 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import ElementClickInterceptedException
+from selenium.common.exceptions import ElementClickInterceptedException, TimeoutException
 from pages.base_page import BasePage
 from locators.provider.create_usecase_locators import CreateUsecaseLocators
 
@@ -208,7 +208,7 @@ class CreateUsecasePage(BasePage):
                 )
             )
             return bool(elt.text.strip())
-        except:
+        except TimeoutException:
             return False
 
     # ─── “Datasets” Tab ─────────────────────────────────────────────────────────────────────────────────────

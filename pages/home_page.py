@@ -54,7 +54,7 @@ class HomePage(BasePage):
     """
 
     def __init__(self, driver, base_url):
-        self.driver = driver
+        super().__init__(driver)  # Initialize BasePage with self.wait
         self.url = base_url.rstrip("/") + "/"
         
     def load(self) -> None:
@@ -67,7 +67,7 @@ class HomePage(BasePage):
         We wait on the FORM locator.
         """
         try:
-            WebDriverWait(self.driver, timeout).until(
+            self.wait_with_timeout(timeout).until(
             EC.visibility_of_element_located((By.XPATH, HomepageLocators.ICON))
             )
             return True
@@ -77,7 +77,7 @@ class HomePage(BasePage):
     # ─── Consumer‐flow navigation methods ───────────────────────────────────────────
 
     def go_to_about(self) -> AboutPage:
-        btn = WebDriverWait(self.driver, 10).until(
+        btn = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_ABOUT))
         )
         btn.click()
@@ -86,35 +86,35 @@ class HomePage(BasePage):
     def go_to_all_data_page(self) -> DatasetPage:
 
         try:
-            bann = WebDriverWait(self.driver, 10).until(
+            bann = self.wait_with_timeout(10).until(
                 EC.element_to_be_clickable((By.ID, "cookieConsentAccept"))
             )
             bann.click()
-        except:
+        except TimeoutException:
             pass
 
-        btn = WebDriverWait(self.driver, 10).until(
+        btn = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_DATASETS))
         )
         btn.click()
         return DatasetPage(self.driver)
 
     def go_to_publishers(self) -> PublishersPage:
-        btn = WebDriverWait(self.driver, 10).until(
+        btn = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_PUBLISHERS))
         )
         btn.click()
         return PublishersPage(self.driver)
 
     def go_to_sectors(self) -> SectorsPage:
-        btn = WebDriverWait(self.driver, 10).until(
+        btn = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_SECTORS))
         )
         btn.click()
         return SectorsPage(self.driver)
 
     def go_to_usecases(self) -> UseCasePage:
-        btn = WebDriverWait(self.driver, 10).until(
+        btn = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_USECASES))
         )
         btn.click()
@@ -122,7 +122,7 @@ class HomePage(BasePage):
 
     def is_icon_visible(self, timeout: int = 10) -> bool:
         """TC_HOM_01: Wait for the platform icon (logo) to be visible."""
-        WebDriverWait(self.driver, timeout).until(
+        self.wait_with_timeout(timeout).until(
             EC.visibility_of_element_located((By.XPATH, HomepageLocators.ICON))
         )
         return True
@@ -139,7 +139,7 @@ class HomePage(BasePage):
         if flow.lower() == "provider":
             print("[WAIT] Checking if dashboard header is already visible")
             try:
-                WebDriverWait(self.driver, 5).until(
+                self.wait.until(
                     EC.visibility_of_element_located((By.XPATH, ProviderHomepageLocators.HEADER))
                 )
                 print("[OK] Already logged in; ProviderHomePage visible")
@@ -149,7 +149,7 @@ class HomePage(BasePage):
 
         print("[WAIT] Waiting for LOGIN / SIGN UP button to be clickable")
         try:
-            login_btn = WebDriverWait(self.driver, 10).until(
+            login_btn = self.wait_with_timeout(10).until(
                 EC.element_to_be_clickable((By.XPATH, LoginLocators.LOGIN_BUTTON))
             )
             print("[OK] Login button found, clicking…")
@@ -165,7 +165,7 @@ class HomePage(BasePage):
 
         print("[WAIT] Waiting for login form to appear (10s)")
         try:
-            WebDriverWait(self.driver, 10).until(
+            self.wait_with_timeout(10).until(
                 EC.visibility_of_element_located((By.XPATH, LoginLocators.FORM))
             )
             print("[OK] Login form is now visible")
@@ -186,7 +186,7 @@ class HomePage(BasePage):
             login_page.login(email, password)
             print("[WAIT] Waiting for ProviderHomePage header to appear (10s)")
             try:
-                WebDriverWait(self.driver, 10).until(
+                self.wait_with_timeout(10).until(
                     EC.visibility_of_element_located((By.XPATH, ProviderHomepageLocators.HEADER))
                 )
                 print("[OK] ProviderHomePage loaded after login")
@@ -211,19 +211,19 @@ class HomePage(BasePage):
     def logout(self):
         try:
             # 1. Click the avatar/profile button
-            avatar_btn = WebDriverWait(self.driver, 5).until(
+            avatar_btn = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, HomepageLocators.LOGOUT_PROFILE_LOGO))
             )
             avatar_btn.click()
 
             # 2. Click "Log Out" in the dropdown
-            logout_btn = WebDriverWait(self.driver, 5).until(
+            logout_btn = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, HomepageLocators.LOGOUT))
             )
             logout_btn.click()
 
             # 3. Optionally wait for login button to reappear (optional, adjust as needed)
-            WebDriverWait(self.driver, 10).until(
+            self.wait_with_timeout(10).until(
                 EC.visibility_of_element_located((By.XPATH, "//button[contains(.,'LOGIN') or contains(.,'Sign Up')]"))
             )
         except Exception as e:

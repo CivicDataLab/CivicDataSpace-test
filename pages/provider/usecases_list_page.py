@@ -10,10 +10,10 @@ from locators.provider.usecases_list_page_locators import UseCaseListPageLocator
 class UseCasesListPage(BasePage):
 
     def __init__(self, driver):
-        self.driver = driver
+        super().__init__(driver)  # Initialize BasePage with self.wait
 
     def is_loaded(self):
-        return WebDriverWait(self.driver, 10).until(
+        return self.wait_with_timeout(10).until(
             EC.visibility_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON)
         )
 

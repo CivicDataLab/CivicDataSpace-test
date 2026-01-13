@@ -6,6 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
 from pages.base_page import BasePage
 from locators.provider.update_profile_locators import UpdateProfilePageLocators
 
@@ -13,7 +14,7 @@ from locators.provider.update_profile_locators import UpdateProfilePageLocators
 class UpdateProfilePage(BasePage):
 
     def is_loaded(self):
-        return WebDriverWait(self.driver, 10).until(
+        return self.wait_with_timeout(10).until(
             EC.visibility_of_element_located(UpdateProfilePageLocators.My_Profile_HEADING)
         )
 
@@ -37,7 +38,7 @@ class UpdateProfilePage(BasePage):
         return self.upload_file_to_dropzone(path_to_file)
 
     def click_save(self):
-        btn = WebDriverWait(self.driver, 10).until(
+        btn = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(UpdateProfilePageLocators.SAVE_BUTTON))
         btn.click()
         return self
@@ -59,5 +60,5 @@ class UpdateProfilePage(BasePage):
                 )
             )
             return bool(elt.text.strip())
-        except:
+        except TimeoutException:
             return False

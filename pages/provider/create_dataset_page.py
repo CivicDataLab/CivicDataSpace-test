@@ -207,7 +207,7 @@ class CreateDatasetPage(BasePage):
     def is_published(self) -> bool:
         # 1) wait for your redirect so you know the mutation has fired
         # Wait for URL to change to drafts tab
-        WebDriverWait(self.driver, 10).until(
+        self.wait_with_timeout(10).until(
             lambda d: "?tab=drafts" in d.current_url
         )
         # Wait for network activity to complete (performance logs populated)
