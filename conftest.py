@@ -71,8 +71,8 @@ def driver(request):
     # Common Chrome flags
     opts = webdriver.ChromeOptions()
     for flag in (
-        "--headless=new", "--no-sandbox", "--disable-gpu",
-        "--disable-dev-shm-usage", "--disable-extensions",
+        # "--headless=new", "--no-sandbox", "--disable-gpu",
+        # "--disable-dev-shm-usage", "--disable-extensions",
         "--window-size=1920,1080", "--start-maximized"
     ):
         opts.add_argument(flag)

@@ -12,6 +12,7 @@ from pages.provider.login_page import LoginPage
 from pages.provider.provider_home_page import ProviderHomePage
 from pages.provider.my_dashboard_page import MyDashboardPage
 from pages.provider.create_dataset_page import CreateDatasetPage
+from pages.provider.organizations_page import OrganizationsPage
 
 @pytest.mark.smoke
 def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_credentials):
@@ -57,7 +58,9 @@ def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_cred
 
     # Step 5: Select one of the orgs
     select_org = org_dash.select_org()
-    assert isinstance(select_org,)
+    assert isinstance(select_org, OrganizationsPage), (
+        "test_prv_006: expected select_org() to return OrganizationsPage"
+    )
 
     # Step 4: Within MyDashboardPage, click “Add New Dataset”:
     create_ds = org_dash.click_add_new_dataset()
