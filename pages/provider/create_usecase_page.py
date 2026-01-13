@@ -91,7 +91,7 @@ class CreateUsecasePage(BasePage):
 
     def select_sectors(self, items: list[str]):
         # 1) click into the combobox input
-        time,sleep(3)
+        time.sleep(3)
         self.wait.until(
             EC.invisibility_of_element_located((By.CLASS_NAME, "toast"))
         )
@@ -312,12 +312,12 @@ class CreateUsecasePage(BasePage):
 
     def go_to_contributors_tab(self):
         # Click the Contributors tab
-        time, sleep(5)
+        time.sleep(5)
         self.wait.until(
             EC.element_to_be_clickable(CreateUsecaseLocators.CONTRIBUTORS_TAB),
             message="Timed out waiting for Contributors tab"
         ).click()
-        time,sleep(5)
+        time.sleep(5)
         # Wait for the input field to appear and be ready
         self.wait.until(
             EC.element_to_be_clickable(CreateUsecaseLocators.CONTRIBUTORS_INPUT),
