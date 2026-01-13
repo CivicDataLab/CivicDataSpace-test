@@ -18,7 +18,7 @@ class LoginPage(BasePage):
         We wait on the FORM locator.
         """
         self.wait_with_timeout(timeout).until(
-            EC.visibility_of_element_located((By.XPATH, LoginLocators.FORM))
+            EC.visibility_of_element_located(LoginLocators.FORM)
         )
         return True
 
@@ -26,7 +26,7 @@ class LoginPage(BasePage):
         print("[WAIT] Waiting for email input field...")
         try:
             self.wait_with_timeout(10).until(
-                EC.visibility_of_element_located((By.XPATH, LoginLocators.EMAIL_INPUT))
+                EC.visibility_of_element_located(LoginLocators.EMAIL_INPUT)
             )
             print("[OK] Email input found")
             self.driver.save_screenshot('login_step_email_found.png')
@@ -37,10 +37,10 @@ class LoginPage(BasePage):
 
         try:
             print("[ACTION] Filling email/password...")
-            self.find((By.XPATH, LoginLocators.EMAIL_INPUT)).clear()
-            self.find((By.XPATH, LoginLocators.EMAIL_INPUT)).send_keys(email)
-            self.find((By.XPATH, LoginLocators.PASSWORD_INPUT)).clear()
-            self.find((By.XPATH, LoginLocators.PASSWORD_INPUT)).send_keys(password)
+            self.find(LoginLocators.EMAIL_INPUT).clear()
+            self.find(LoginLocators.EMAIL_INPUT).send_keys(email)
+            self.find(LoginLocators.PASSWORD_INPUT).clear()
+            self.find(LoginLocators.PASSWORD_INPUT).send_keys(password)
             self.driver.save_screenshot('username_password.png')
             print("[OK] Filled email and password")
         except Exception as e:
@@ -50,7 +50,7 @@ class LoginPage(BasePage):
 
         try:
             print("[ACTION] Clicking SIGN IN button...")
-            self.find((By.XPATH, LoginLocators.SIGNIN_BUTTON)).click()
+            self.find(LoginLocators.SIGNIN_BUTTON).click()
             print("[OK] SIGN IN clicked")
             self.driver.save_screenshot('login_step_signin_clicked.png')
         except Exception as e:
