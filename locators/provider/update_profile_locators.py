@@ -13,4 +13,4 @@ class UpdateProfilePageLocators:
     GET_FIRST_NAME_INPUT = (By.XPATH, '//input[@name="firstName"]')
     GET_LAST_NAME_INPUT = (By.XPATH, '//input[@name="lastName"]')
     GET_BIO_TEXT_INPUT = (By.XPATH, '//textarea[@name="bio"]')
-    GET_UPDATE_STATUS = (By.XPATH, '/html/body/main/section/ol/li/div/div')
+    GET_UPDATE_STATUS = (By.XPATH, '//main//section[@role="alert" or contains(@class, "alert")]//div | //main//li//div[contains(@class, "status")]')
