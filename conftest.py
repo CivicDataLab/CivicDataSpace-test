@@ -193,6 +193,43 @@ def test_credentials():
     assert email and password, f"Credentials for user index {idx} not set!"
     return email, password
 
+#  ─────────────────────── Login Fixtures (Phase 12) ─────────────────────────────
+
+@pytest.fixture
+def logged_in_provider(driver, base_url, test_credentials):
+    """
+    Auto-login as provider and return ProviderHomePage.
+    Eliminates duplicated login setup across tests.
+
+    Usage:
+        def test_something(logged_in_provider):
+            prov_home = logged_in_provider
+            # ... continue test from logged-in state
+    """
+    from pages.home_page import HomePage
+
+    driver.delete_all_cookies()
+    email, password = test_credentials
+    home = HomePage(driver, base_url)
+    home.load()
+    assert home.is_loaded(), "Homepage did not load successfully"
+
+    prov_home = home.go_to_login(flow="provider", email=email, password=password)
+    return prov_home
+
+@pytest.fixture
+def provider_dashboard(logged_in_provider):
+    """
+    Navigate to provider dashboard (My Dashboard page).
+    Builds on logged_in_provider fixture.
+
+    Usage:
+        def test_something(provider_dashboard):
+            my_dash = provider_dashboard
+            # ... test starts from My Dashboard page
+    """
+    return logged_in_provider.goto_my_dashboard()
+
 
 # 1) pytest_runtest_makereport
 #    After each test “call” phase, if it failed and a WebDriver fixture is present,
