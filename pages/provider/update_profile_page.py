@@ -32,26 +32,9 @@ class UpdateProfilePage(BasePage):
     def upload_profile_image(self, path_to_file: str):
         """
         Triggers logo upload by clicking visible DropZone and sending keys to hidden input.
+        Uses BasePage utility method to eliminate code duplication.
         """
-
-        # Ensure file is present
-        assert os.path.isfile(path_to_file), f"File does not exist: {path_to_file}"
-
-        # First, click anywhere on the DropZone to focus the input (important for React UIs)
-        dropzone = self.wait.until(
-            EC.element_to_be_clickable((By.CLASS_NAME, "DropZone-module_DropZone__xD9-6")),
-            message="Could not find clickable DropZone"
-        )
-        dropzone.click()
-
-        # Then get the real <input type="file"> and send keys
-        input_el = self.driver.find_element(By.XPATH, "//input[@type='file']")
-
-        self.driver.execute_script("arguments[0].style.display = 'block';", input_el)
-        time.sleep(1)  # Give time for UI to stabilize
-        input_el.send_keys(path_to_file)
-
-        return self
+        return self.upload_file_to_dropzone(path_to_file)
 
     def click_save(self):
         btn = WebDriverWait(self.driver, 10).until(

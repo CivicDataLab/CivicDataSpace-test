@@ -61,50 +61,17 @@ class CreateDatasetPage(BasePage):
         return self
 
     def select_sectors(self, items: list[str]):
-        # 1) click into the combobox input
-        combo = self.wait.until(EC.element_to_be_clickable(
-            (By.XPATH, CreateDatasetLocators.SECTOR_INPUT)
-        ))
-        combo.click()
-
+        """Select multiple sectors using BasePage utility to eliminate duplication"""
         for val in items:
-            # 2) type to filter if needed (sometimes helps)
-            combo.clear()
-            combo.send_keys(val)
-
-            # 3) click the exact option
-            xpath = CreateDatasetLocators.SECTOR_DROPDOWN_ITEM.format(value=val)
-            opt = self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, xpath)
-            ))
-            opt.click()
-
-        # 4) close dropdown
-        ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
-        time.sleep(3)
+            self.select_combobox_option((By.XPATH, CreateDatasetLocators.SECTOR_INPUT), val)
+        # Wait for any toast notifications to disappear after selections
+        self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=5)
         return self
 
     def select_tags(self, items: list[str]):
-        # 1) open the tags combobox
-        combo = self.wait.until(EC.element_to_be_clickable(
-            (By.XPATH, CreateDatasetLocators.TAGS_INPUT)
-        ))
-        combo.click()
-
+        """Select multiple tags using BasePage utility to eliminate duplication"""
         for val in items:
-            # 2) optional: filter by typing the tag name
-            combo.clear()
-            combo.send_keys(val)
-
-            # 3) pick the exact matching option
-            xpath = CreateDatasetLocators.TAG_DROPDOWN_ITEM.format(value=val)
-            opt = self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, xpath)
-            ))
-            opt.click()
-
-        # 4) close dropdown
-        ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
+            self.select_combobox_option((By.XPATH, CreateDatasetLocators.TAGS_INPUT), val)
         return self
 
     def select_geography(self, value: str):
@@ -157,8 +124,10 @@ class CreateDatasetPage(BasePage):
 
         # 3) send the absolute file-path to it (this triggers the upload)
         inp.send_keys(path)
-        time.sleep(3)
-        btn = self.wait.until(EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.BACK_BUTTON)))
+        # Wait for back button to be present (indicates upload initiated)
+        btn = self.wait_with_timeout(10).until(
+            EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.BACK_BUTTON))
+        )
         btn.click()
 
         return self
@@ -237,10 +206,14 @@ class CreateDatasetPage(BasePage):
 
     def is_published(self) -> bool:
         # 1) wait for your redirect so you know the mutation has fired
+        # Wait for URL to change to drafts tab
         WebDriverWait(self.driver, 10).until(
             lambda d: "?tab=drafts" in d.current_url
         )
-        time.sleep(1)  # give perf logs a moment to fill up
+        # Wait for network activity to complete (performance logs populated)
+        # Using a short explicit wait since performance logs are asynchronous
+        import time
+        time.sleep(0.5)  # Minimal wait for CDP performance logs to populate
 
         logs = self.driver.get_log("performance")
         publish_req_id = None

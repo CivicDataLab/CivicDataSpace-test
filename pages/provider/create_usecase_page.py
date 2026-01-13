@@ -40,20 +40,21 @@ class CreateUsecasePage(BasePage):
         return self  # for method chaining
 
     def enter_summary(self, text: str):
-        time.sleep(2)
+        # Wait for toast/overlay to disappear before interacting
+        self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=5)
         fld = self.wait.until(
             EC.visibility_of_element_located(CreateUsecaseLocators.USECASE_SUMMARY_INPUT),
             message="Could not find UseCase summary textarea"
         )
         fld.clear()
         fld.send_keys(text)
-        time.sleep(2)
+        # Send text twice (application-specific behavior)
         fld.send_keys(text)
-        # fld.send_keys(Keys.TAB)
         return self
 
     def enter_platform_url(self, url: str):
-        time.sleep(3)
+        # Wait for any overlays to disappear
+        self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=5)
         fld = self.wait.until(
             EC.visibility_of_element_located(CreateUsecaseLocators.PLATFORM_URL_INPUT),
             message="Could not find Platform Url input"
@@ -65,61 +66,22 @@ class CreateUsecasePage(BasePage):
         return self
 
     def select_tags(self, items: list[str]):
-        # time.sleep(2)
-        # 1) open the tags combobox
-        combo = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.TAGS_INPUT))
-        combo.click()
-
+        """Select multiple tags using BasePage utility to eliminate duplication"""
         for val in items:
-            # 2) optional: filter by typing the tag name
-            combo.clear()
-            combo.send_keys(val)
-
-            # 3) pick the exact matching option
-            xpath = CreateUsecaseLocators.TAG_DROPDOWN_ITEM.format(value=val)
-            opt = self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, xpath)
-            ))
-            try:
-                opt.click()
-            except ElementClickInterceptedException:
-                self.driver.execute_script("arguments[0].click();", opt)
-
-        # 4) close dropdown
-        ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
+            self.select_combobox_option(CreateUsecaseLocators.TAGS_INPUT, val)
         return self
 
     def select_sectors(self, items: list[str]):
-        # 1) click into the combobox input
-        time.sleep(3)
-        self.wait.until(
-            EC.invisibility_of_element_located((By.CLASS_NAME, "toast"))
-        )
-
-        combo = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.SECTOR_INPUT))
-        combo.click()
+        """Select multiple sectors using BasePage utility to eliminate duplication"""
+        # Wait for any toast notifications to disappear before clicking combobox
+        self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=5)
 
         for val in items:
-            # 2) type to filter if needed (sometimes helps)
-            combo.clear()
-            combo.send_keys(val)
-
-            # 3) click the exact option
-            xpath = CreateUsecaseLocators.SECTOR_DROPDOWN_ITEM.format(value=val)
-            opt = self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, xpath)
-            ))
-            try:
-                opt.click()
-            except ElementClickInterceptedException:
-                self.driver.execute_script("arguments[0].click();", opt)
-
-        # 4) close dropdown
-        ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
+            self.select_combobox_option(CreateUsecaseLocators.SECTOR_INPUT, val)
         return self
 
     def select_geography(self, value: str):
-        time.sleep(2)
+        # Wait for geography toggle to be clickable
         toggle = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.GEOGRAPHY_CONTAINER))
         toggle.click()
         opt = self.wait.until(EC.element_to_be_clickable(
@@ -133,7 +95,7 @@ class CreateUsecasePage(BasePage):
         return self
 
     def select_sdg_goals(self, value: str):
-        time.sleep(3)
+        # Wait for SDG goals toggle to be clickable
         toggle = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.SDG_GOALS_CONTAINER))
         toggle.click()
         opt = self.wait.until(EC.element_to_be_clickable(
@@ -179,26 +141,9 @@ class CreateUsecasePage(BasePage):
     def upload_logo(self, path_to_file: str):
         """
         Triggers logo upload by clicking visible DropZone and sending keys to hidden input.
+        Uses BasePage utility method to eliminate code duplication.
         """
-
-        # Ensure file is present
-        assert os.path.isfile(path_to_file), f"File does not exist: {path_to_file}"
-
-        # First, click anywhere on the DropZone to focus the input (important for React UIs)
-        dropzone = self.wait.until(
-            EC.element_to_be_clickable((By.CLASS_NAME, "DropZone-module_DropZone__xD9-6")),
-            message="Could not find clickable DropZone"
-        )
-        dropzone.click()
-
-        # Then get the real <input type="file"> and send keys
-        input_el = self.driver.find_element(By.XPATH, "//input[@type='file']")
-
-        self.driver.execute_script("arguments[0].style.display = 'block';", input_el)
-        time.sleep(1)  # Give time for UI to stabilize
-        input_el.send_keys(path_to_file)
-
-        return self
+        return self.upload_file_to_dropzone(path_to_file)
 
     def get_usecase_name_value(self):
         return self.driver.find_element(*CreateUsecaseLocators.USECASE_NAME_INPUT).get_attribute("value")
@@ -228,7 +173,7 @@ class CreateUsecasePage(BasePage):
         return elt.text.strip()
 
     def get_selected_sdg_goals(self) -> str:
-        time.sleep(2)
+        # Wait for SDG goals elements to be present
         elements = self.wait.until(
             EC.presence_of_all_elements_located((By.XPATH, CreateUsecaseLocators.SELECTED_SDG_GOALS))
         )
@@ -237,7 +182,7 @@ class CreateUsecasePage(BasePage):
         raise IndexError("Less than 4 SDG goals selected.")
 
     def get_started_on_value(self) -> str:
-        time.sleep(2)
+        # Wait for started_on input to be visible
         elt = self.wait.until(
             EC.visibility_of_element_located(CreateUsecaseLocators.STARTED_ON_VALUE_INPUT)
         )
@@ -249,7 +194,7 @@ class CreateUsecasePage(BasePage):
         return dropdown.first_selected_option.text
 
     def get_completed_on_value(self):
-        time.sleep(2)
+        # Wait for completed_on input to be visible
         elt = self.wait.until(
             EC.visibility_of_element_located(CreateUsecaseLocators.COMPLETED_ON_VALUE_INPUT)
         )
@@ -311,15 +256,13 @@ class CreateUsecasePage(BasePage):
     # ─── “Contributors” Tab ─────────────────────────────────────────────────────────────────────────────────
 
     def go_to_contributors_tab(self):
-        # Click the Contributors tab
-        time.sleep(5)
-        self.wait.until(
+        # Wait for Contributors tab to be clickable, then click
+        self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(CreateUsecaseLocators.CONTRIBUTORS_TAB),
             message="Timed out waiting for Contributors tab"
         ).click()
-        time.sleep(5)
         # Wait for the input field to appear and be ready
-        self.wait.until(
+        self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(CreateUsecaseLocators.CONTRIBUTORS_INPUT),
             message="Timed out waiting for 'Add Contributors' input field"
         )
@@ -335,7 +278,8 @@ class CreateUsecasePage(BasePage):
             fld.clear()
             fld.send_keys(name)
             fld.send_keys(Keys.ENTER)
-            time.sleep(0.5)  # slight wait in case async search is involved
+            # Wait for async search to complete (element remains visible)
+            self.wait.until(EC.visibility_of_element_located(CreateUsecaseLocators.CONTRIBUTORS_INPUT))
 
         return self
 
@@ -376,8 +320,8 @@ class CreateUsecasePage(BasePage):
     # ─── “Publish” Tab ─────────────────────────────────────────────────────────────────────────────────
 
     def go_to_publish_tab(self):
-        time.sleep(3)
-        self.wait.until(
+        # Wait for Publish tab to be clickable, then click
+        self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(CreateUsecaseLocators.PUBLISH_TAB),
             message="Timed out waiting for Publish tab"
         ).click()
