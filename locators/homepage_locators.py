@@ -13,3 +13,6 @@ class HomepageLocators:
     LOGIN_SIGNUP_BUTTON = (By.XPATH, "//header//nav//button[contains(., 'LOGIN') or contains(., 'SIGN UP')]")
     LOGOUT_PROFILE_LOGO = (By.XPATH, "//button[.//div[contains(@class, 'Avatar-module_Wrapper')]]")
     LOGOUT              = (By.XPATH, "//button[normalize-space()='Log Out']")
+
+    # Tour popup
+    SKIP_TOUR_BUTTON    = (By.XPATH, "//button[contains(., 'Skip tour') or contains(., 'Skip Tour')]")

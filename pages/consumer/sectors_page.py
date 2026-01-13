@@ -10,12 +10,12 @@ class SectorsPage(BasePage):
     """Interactions on the Sectors tab / page."""
 
     def is_loaded(self) -> bool:
-        """Wait for the ‘Our Sectors’ header to be visible."""
-        return self.find((By.XPATH, SectorsLocators.HEADER)).is_displayed()
+        """Wait for the 'Our Sectors' header to be visible."""
+        return self.find(SectorsLocators.HEADER).is_displayed()
 
     def has_cards(self):
         """Wait for sector cards to be present, then return them."""
-        return self.finds((By.XPATH, SectorsLocators.SEC_CARD))
+        return self.finds(SectorsLocators.SEC_CARD)
 
     def download_first_associated_dataset(self, sector_index: int = 0, dataset_index: int = 0):
         """
@@ -23,10 +23,10 @@ class SectorsPage(BasePage):
         HEAD it, and assert both presence and HTTP‐200 in‐method.
         Returns (href, status_code).
         """
-        # 1) click the Nth sector’s link
+        # 1) click the Nth sector's link
         sector_link = self.wait.until(
             EC.element_to_be_clickable((By.XPATH,
-                f"({SectorsLocators.SEC_FIRST_CARD})[{sector_index+1}]"
+                f"({SectorsLocators.SEC_FIRST_CARD[1]})[{sector_index+1}]"
             ))
         )
         sector_link.click()
@@ -34,14 +34,14 @@ class SectorsPage(BasePage):
         # 2) click the Mth dataset card
         dataset_card = self.wait.until(
             EC.element_to_be_clickable((By.XPATH,
-                f"({SectorsLocators.SEC_DATASET_FIRST_CARD})[{dataset_index+1}]"
+                f"({SectorsLocators.SEC_DATASET_FIRST_CARD[1]})[{dataset_index+1}]"
             ))
         )
         dataset_card.click()
 
         # 3) find & wait for the Download link
         download_link = self.wait.until(
-            EC.element_to_be_clickable((By.XPATH, SectorsLocators.DOWNLOAD_LINK))
+            EC.element_to_be_clickable(SectorsLocators.DOWNLOAD_LINK)
         )
         href = download_link.get_attribute("href")
 

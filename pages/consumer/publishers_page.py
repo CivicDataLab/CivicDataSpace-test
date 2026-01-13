@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 class PublishersPage(BasePage):
     def is_loaded(self) -> bool:
-        """Wait for ‘Our Publishers’ header to be visible."""
-        return self.find((By.XPATH, PublishersLocators.HEADER)).is_displayed()
+        """Wait for 'Our Publishers' header to be visible."""
+        return self.find(PublishersLocators.HEADER).is_displayed()
 
     def _select_tab(self, xpath: str, timeout: int = 10) -> None:
         """
@@ -53,18 +53,18 @@ class PublishersPage(BasePage):
 
     def list_all_publishers(self):
         """
-        Ensure the ‘All Publishers’ view is active (click the tab if needed),
+        Ensure the 'All Publishers' view is active (click the tab if needed),
         then return a list of all publisher‐card WebElements.
         """
         # if there is an explicit "All Publishers" button/tab, click it:
         try:
-            self.click((By.XPATH, PublishersLocators.ALL_PUBLISHERS_BUTTON))
+            self.click(PublishersLocators.ALL_PUBLISHERS_BUTTON)
         except (TimeoutException, NoSuchElementException):
             # assume All is default
             pass
 
         # wait for cards to appear
-        return self.finds((By.XPATH, PublishersLocators.ALL_CARD))
+        return self.finds(PublishersLocators.ALL_CARD)
 
     def list_publishers(self, view: str = ""):
         """
@@ -83,10 +83,10 @@ class PublishersPage(BasePage):
         self._select_tab(tab_xpath)
 
         # wait for the grid container to show up
-        self.wait.until(EC.presence_of_element_located((By.XPATH, PublishersLocators.GRID_CONTAINER)))
+        self.wait.until(EC.presence_of_element_located(PublishersLocators.GRID_CONTAINER))
 
         # return all the <a> publisher cards
-        return self.finds((By.XPATH, PublishersLocators.PUBLISHER_CARD))
+        return self.finds(PublishersLocators.PUBLISHER_CARD)
 
 
     def open_publisher_by_index(self, index: int = 0, view: str = "") -> "PublisherDetailPage":
@@ -105,7 +105,7 @@ class PublishersPage(BasePage):
 
     def list_usecase_cards(self):
         """Return all usecase‐card elements on the publisher detail page."""
-        return self.finds((By.XPATH, PublishersLocators.USECASE_CARD))
+        return self.finds(PublishersLocators.USECASE_CARD)
 
     def open_usecase_by_index(self, index: int = 0):
         """
@@ -114,8 +114,7 @@ class PublishersPage(BasePage):
         """
         link_locator = (
             By.XPATH,
-            f"({PublishersLocators.All_UC_Card})[{index+1}]"
-            f"{PublishersLocators.ALL_UC_FIRST_CARD}"
+            f"({PublishersLocators.All_UC_Card[1]}//a)[{index+1}]"
         )
         self.wait.until(EC.element_to_be_clickable(link_locator)).click()
         return self
