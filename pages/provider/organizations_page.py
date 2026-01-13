@@ -3,6 +3,7 @@
 from selenium.webdriver.common.by import By
 from pages.base_page import BasePage
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from locators.provider.org_locators import OrgLocators
 
 class OrganizationsPage(BasePage):
@@ -13,7 +14,7 @@ class OrganizationsPage(BasePage):
 
     def select_org(self) -> bool:
         WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, ORGLocators.ORG_TEST)),
+            EC.element_to_be_clickable((By.XPATH, OrgLocators.ORG_TEST)),
             message="Timed out waiting for the 'ORG Dashboard' card to be clickable"
         ).click()
         return self
