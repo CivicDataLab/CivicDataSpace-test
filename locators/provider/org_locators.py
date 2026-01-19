@@ -1,21 +1,30 @@
-# locators/provider/Org_locators.py
+# locators/provider/org_locators.py
+
+from selenium.webdriver.common.by import By
+from locators.provider.my_dashboard_locators import MyDashboardLocators
 
 class OrgLocators:
     """
-    XPaths for the “Provider → Org Dashboard” flow.
+    XPaths for the "Provider → Org Dashboard" flow.
+
+    After selecting an organization, the URL redirects to:
+    /dashboard/organization/{org-name}/dataset
+
+    The dashboard structure after org selection is IDENTICAL to MyDashboard,
+    so we reuse those locators.
     """
 
-    # (1) The two big landing cards on /dashboard when you first log in
-    CARD_ORG_DASHBOARD = "//a[contains(@href,'/dashboard') and .//span[normalize-space()='My Dashboard']]"
-    # (2) Test org agency
-    ORG_TEST = '//span[normalize-space()="my test agency"]'
-    # (3) Inside the “Datasets” panel, the “Drafts” tab is visible by default.
-    DRAFTS_TAB = "//span[normalize-space(.)='Drafts']"
+    # The organization card on the organizations list page
+    # Using ID selector for more reliable targeting
+    ORG_TEST = (By.XPATH, '//a[@id="my-test-agency"]')
 
-    # (4) The orange “Add New Dataset” button lives inside the “Drafts” tab panel.
-    ADD_NEW_DATASET_BTN = "(//button[normalize-space(.)='Add New Dataset'])[2]"
+    # Alternative: using text-based selector (less reliable)
+    # ORG_TEST = (By.XPATH, '//span[normalize-space()="my test agency"]')
 
-    USECASES_NAV_LINK = '//span[normalize-space()="UseCases"]'
-
-    #Profile tab locators
-    PROFILE_NAV_LINK = '//span[normalize-space()="Profile"]'
+    # After selecting org, the dashboard UI is identical to MyDashboard
+    # So we reuse all the locators from MyDashboardLocators
+    SIDEBAR_DATASETS = MyDashboardLocators.SIDEBAR_DATASETS
+    DRAFTS_TAB = MyDashboardLocators.DRAFTS_TAB
+    ADD_NEW_DATASET_BTN = MyDashboardLocators.ADD_NEW_DATASET_BTN
+    USECASES_NAV_LINK = MyDashboardLocators.USECASES_NAV_LINK
+    PROFILE_NAV_LINK = MyDashboardLocators.PROFILE_NAV_LINK
