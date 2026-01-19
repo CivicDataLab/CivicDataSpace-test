@@ -249,7 +249,6 @@ class HomePage(BasePage):
             )
             print("[OK] Login button found, clicking…")
             login_btn.click()
-            self.driver.save_screenshot(f"after_login_click_{int(time.time())}.png")
             print(f"[OK] Clicked LOGIN, current URL: {self.driver.current_url}")
         except Exception as e:
             print(f"[FAIL] Could not find or click login button: {e}")
