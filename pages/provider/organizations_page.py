@@ -116,11 +116,18 @@ class OrganizationsPage(BasePage):
         Returns a UseCasesListPage instance.
         """
         from pages.provider.usecases_list_page import UseCasesListPage
+        from locators.provider.usecases_list_page_locators import UseCaseListPageLocators
 
         self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(OrgLocators.USECASES_NAV_LINK),
             message="Timed out waiting for the 'UseCases' link to be clickable"
         ).click()
+
+        # Wait for the UseCases page to load by checking for the "Add New UseCase" button
+        self.wait_with_timeout(10).until(
+            EC.visibility_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON),
+            message="Timed out waiting for UseCases page to load"
+        )
 
         return UseCasesListPage(self.driver)
 
@@ -134,10 +141,17 @@ class OrganizationsPage(BasePage):
         Returns an UpdateProfilePage instance.
         """
         from pages.provider.update_profile_page import UpdateProfilePage
+        from locators.provider.update_profile_locators import UpdateProfilePageLocators
 
         self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(OrgLocators.PROFILE_NAV_LINK),
             message="Timed out waiting for the 'Profile' link to be clickable"
         ).click()
+
+        # Wait for the profile page to load by checking for the "My Profile" heading
+        self.wait_with_timeout(10).until(
+            EC.visibility_of_element_located(UpdateProfilePageLocators.My_Profile_HEADING),
+            message="Timed out waiting for Profile page to load"
+        )
 
         return UpdateProfilePage(self.driver)
