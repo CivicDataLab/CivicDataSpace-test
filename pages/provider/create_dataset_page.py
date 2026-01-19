@@ -76,14 +76,24 @@ class CreateDatasetPage(BasePage):
         return self
 
     def select_geography(self, value: str):
-        toggle = self.wait.until(EC.element_to_be_clickable(
+        import time
+
+        toggle = self.wait_with_timeout(10).until(EC.element_to_be_clickable(
             (By.XPATH, CreateDatasetLocators.GEOGRAPHY_CONTAINER)
         ))
         toggle.click()
-        opt = self.wait.until(EC.element_to_be_clickable(
+
+        # Give dropdown time to appear
+        time.sleep(1)
+
+        opt = self.wait_with_timeout(15).until(EC.element_to_be_clickable(
             (By.XPATH, CreateDatasetLocators.GEO_OPTION.format(value=value))
         ))
         opt.click()
+
+        # Give time for selection to register
+        time.sleep(0.5)
+
         ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
         return self
 
