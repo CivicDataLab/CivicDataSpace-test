@@ -231,58 +231,35 @@ class CreateDatasetPage(BasePage):
         ))
 
     def is_published(self) -> bool:
-        # 1) wait for your redirect so you know the mutation has fired
-        # Wait for URL to change to drafts tab
+        """
+        Check if the dataset has been published by looking for the "Published" status badge.
+
+        After clicking Publish, the page redirects to the drafts tab where the newly
+        published dataset should have a "Published" status badge visible.
+
+        Returns:
+            True if the "Published" status badge is found, False otherwise
+        """
+        # Wait for URL to change to drafts tab (confirms redirect after publish)
         self.wait_with_timeout(10).until(
             lambda d: "?tab=drafts" in d.current_url
         )
-        # Wait for network activity to complete (performance logs populated)
-        # Using a short explicit wait since performance logs are asynchronous
+
+        # Wait a moment for the UI to update after redirect
         import time
-        time.sleep(0.5)  # Minimal wait for CDP performance logs to populate
+        time.sleep(1)
 
-        logs = self.driver.get_log("performance")
-        publish_req_id = None
-
-        # 2) find the requestId for the GraphQL call whose payload contains your mutation
-        for entry in logs:
-            msg = json.loads(entry["message"])["message"]
-            if msg.get("method") != "Network.requestWillBeSent":
-                continue
-            req = msg["params"]["request"]
-            # GraphQL POST bodies always have an "operationName"
-            # or will literally contain your mutation field
-            if req.get("postData") and "publishDataset" in req["postData"]:
-                publish_req_id = msg["params"]["requestId"]
-                break
-
-        if not publish_req_id:
+        # Check for the "Published" status badge
+        try:
+            self.wait_with_timeout(10).until(
+                EC.presence_of_element_located(
+                    (By.XPATH, CreateDatasetLocators.PUBLISHED_STATUS_BADGE)
+                )
+            )
+            return True
+        except TimeoutException:
+            # If badge not found within timeout, dataset is not published
             return False
-
-        # 3) find exactly that request’s response
-        for entry in logs:
-            msg = json.loads(entry["message"])["message"]
-            if msg.get("method") != "Network.responseReceived":
-                continue
-            if msg["params"]["requestId"] != publish_req_id:
-                continue
-
-            resp = msg["params"]["response"]
-            # HTTP 200?
-            if resp.get("status") != 200:
-                return False
-
-            # pull the actual JSON body via CDP
-            body = self.driver.execute_cdp_cmd(
-                "Network.getResponseBody", {"requestId": publish_req_id}
-            )["body"]
-            data = json.loads(body)
-            status = data.get("data", {}) \
-                         .get("publishDataset", {}) \
-                         .get("status")
-            return status == "PUBLISHED"
-
-        return False
 
     def get_download_url(self) -> str:
         link = self.wait.until(
