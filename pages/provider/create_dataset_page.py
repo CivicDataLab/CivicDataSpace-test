@@ -8,6 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
+from selenium.common.exceptions import TimeoutException
 from pages.base_page import BasePage
 from locators.provider.create_dataset_locators import CreateDatasetLocators
 from pages.provider.dataset_detail_page import DatasetDetailPage
