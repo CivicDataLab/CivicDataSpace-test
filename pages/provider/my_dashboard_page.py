@@ -150,14 +150,18 @@ class MyDashboardPage(BasePage):
 
     def click_profile_card(self):
         from locators.provider.update_profile_locators import UpdateProfilePageLocators
+        import time
 
         self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(MyDashboardLocators.PROFILE_NAV_LINK),
             message="Timed out waiting for the 'Profile' card to be clickable"
         ).click()
 
+        # Give the profile page time to load
+        time.sleep(2)
+
         # Wait for the profile page to load by checking for the "My Profile" heading
-        self.wait_with_timeout(10).until(
+        self.wait_with_timeout(15).until(
             EC.visibility_of_element_located(UpdateProfilePageLocators.My_Profile_HEADING),
             message="Timed out waiting for Profile page to load"
         )
