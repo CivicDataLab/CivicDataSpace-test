@@ -26,11 +26,11 @@ class PublishersLocators:
     # All publisher cards
     ALL_CARD = PUBLISHER_CARD
 
-    # Usecase cards on publisher detail page
-    USECASE_CARD = (By.XPATH, "//div[contains(@class, 'usecase-card') or contains(@class, 'UseCaseCard')]")
+    # Usecase cards on publisher detail page - using actual structure
+    USECASE_CARD = (By.XPATH, "//a[@href[contains(., '/usecases/')]][contains(@class, 'shadow-card')]")
 
     # First usecase card link
-    ALL_UC_FIRST_CARD = (By.XPATH, "(//div[contains(@class, 'usecase-card') or contains(@class, 'UseCaseCard')]//a)[1]")
+    ALL_UC_FIRST_CARD = (By.XPATH, "//a[@href[contains(., '/usecases/')]]")
 
     # All usecase cards container
-    All_UC_Card = (By.XPATH, "//div[contains(@class, 'usecase-card') or contains(@class, 'UseCaseCard')]")
+    All_UC_Card = (By.XPATH, "//a[@href[contains(., '/usecases/')]]")

@@ -9,17 +9,17 @@ class SectorsLocators:
     # The page header ("Our Sectors")
     HEADER = (By.XPATH, "//main//span[contains(., 'Sectors') or contains(., 'Our Sectors')] | //main//h1[contains(., 'Sectors')]")
 
-    # All sector-card containers
-    SEC_CARD = (By.XPATH, "//div[contains(@class, 'sector-card') or contains(@class, 'SectorCard')]")
+    # All sector-card containers - match links to sector pages
+    SEC_CARD = (By.XPATH, "//a[@href[contains(., '/sectors/')]]//div[contains(@class, 'shadow-card')]")
 
-    # First Sector Card
-    SEC_FIRST_CARD = (By.XPATH, "(//div[contains(@class, 'sector-card') or contains(@class, 'SectorCard')]//a)[1]")
+    # First Sector Card - clickable link
+    SEC_FIRST_CARD = (By.XPATH, "//a[@href[contains(., '/sectors/')]]")
 
-    # All dataset cards under a sector page
-    SEC_DATASET_CARD = (By.XPATH, "//div[contains(@class, 'dataset-card') or contains(@class, 'DatasetCard')]")
+    # All dataset cards under a sector page - using the actual class
+    SEC_DATASET_CARD = (By.XPATH, "//div[contains(@class, 'datasets_List')]")
 
-    # First dataset card under a sector page
-    SEC_DATASET_FIRST_CARD = (By.XPATH, "(//div[contains(@class, 'dataset-card') or contains(@class, 'DatasetCard')]//a)[1]")
+    # First dataset card under a sector page - clickable link
+    SEC_DATASET_FIRST_CARD = (By.XPATH, "//div[contains(@class, 'datasets_List')]//a[@href[contains(., '/datasets/')]]")
 
     # Download link of the first dataset
     DOWNLOAD_LINK = (By.XPATH, "//a[contains(@class, 'flex') and contains(@class, 'justify-center')] | //a[contains(., 'Download')]")

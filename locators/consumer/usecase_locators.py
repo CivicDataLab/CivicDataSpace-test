@@ -9,14 +9,14 @@ class UseCaseLocators:
     # The page header ("Our Use Cases")
     HEADER = (By.XPATH, "//main//span[contains(., 'Use Case') or contains(., 'UseCases')] | //main//h1[contains(., 'Use Case')]")
 
-    # All usecase-card containers
-    CARD = (By.XPATH, "//div[contains(@class, 'usecase-card') or contains(@class, 'UseCaseCard')]")
+    # All usecase-card containers - match links to usecase pages
+    CARD = (By.XPATH, "//a[@href[contains(., '/usecases/')]][contains(@class, 'shadow-card')]")
 
-    # First UseCase
-    UC_FIRST_CARD = (By.XPATH, "(//div[contains(@class, 'usecase-card') or contains(@class, 'UseCaseCard')]//a)[1]")
+    # First UseCase - clickable link
+    UC_FIRST_CARD = (By.XPATH, "//a[@href[contains(., '/usecases/')]]")
 
-    # First Dataset under Usecase
-    UC_DATASET_FIRST_CARD = (By.XPATH, "(//div[contains(@class, 'dataset-card') or contains(@class, 'DatasetCard')]//a)[1]")
+    # First Dataset under Usecase - using actual class
+    UC_DATASET_FIRST_CARD = (By.XPATH, "//div[contains(@class, 'datasets_List')]//a[@href[contains(., '/datasets/')]]")
 
     # Download link for dataset under use case
     DOWNLOAD_LINK = (By.XPATH, "//a[contains(@class, 'flex') and contains(@class, 'justify-center')] | //a[contains(., 'Download')]")

@@ -14,5 +14,5 @@ class HomepageLocators:
     LOGOUT_PROFILE_LOGO = (By.XPATH, "//button[.//div[contains(@class, 'Avatar-module_Wrapper')]]")
     LOGOUT              = (By.XPATH, "//button[normalize-space()='Log Out']")
 
-    # Tour popup
-    SKIP_TOUR_BUTTON    = (By.XPATH, "//button[contains(., 'Skip tour') or contains(., 'Skip Tour')]")
+    # Tour popup - using data-test-id for more reliable targeting
+    SKIP_TOUR_BUTTON    = (By.XPATH, "//button[@data-test-id='button-skip' or @data-action='skip' or contains(., 'Skip tour')]")
