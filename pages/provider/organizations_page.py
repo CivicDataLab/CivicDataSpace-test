@@ -21,6 +21,9 @@ class OrganizationsPage(BasePage):
             EC.element_to_be_clickable((By.XPATH, OrgLocators.ORG_TEST)),
             message="Timed out waiting for the 'ORG Dashboard' card to be clickable"
         ).click()
+        # Wait for page to load after org selection
+        import time
+        time.sleep(2)
         return self
 
     def click_add_new_dataset(self):
