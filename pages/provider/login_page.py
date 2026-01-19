@@ -29,7 +29,6 @@ class LoginPage(BasePage):
                 EC.visibility_of_element_located(LoginLocators.EMAIL_INPUT)
             )
             print("[OK] Email input found")
-            self.driver.save_screenshot('login_step_email_found.png')
         except Exception as e:
             print("[FAIL] Email input not found:", e)
             self.driver.save_screenshot('login_step_email_NOT_found.png')
@@ -41,7 +40,6 @@ class LoginPage(BasePage):
             self.find(LoginLocators.EMAIL_INPUT).send_keys(email)
             self.find(LoginLocators.PASSWORD_INPUT).clear()
             self.find(LoginLocators.PASSWORD_INPUT).send_keys(password)
-            self.driver.save_screenshot('username_password.png')
             print("[OK] Filled email and password")
         except Exception as e:
             print("[FAIL] Could not fill credentials:", e)
@@ -52,7 +50,6 @@ class LoginPage(BasePage):
             print("[ACTION] Clicking SIGN IN button...")
             self.find(LoginLocators.SIGNIN_BUTTON).click()
             print("[OK] SIGN IN clicked")
-            self.driver.save_screenshot('login_step_signin_clicked.png')
         except Exception as e:
             print("[FAIL] Could not click sign-in button:", e)
             self.driver.save_screenshot('login_step_signin_click_FAIL.png')
