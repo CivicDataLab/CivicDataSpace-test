@@ -118,17 +118,27 @@ class CreateDatasetPage(BasePage):
 
     # ---- File upload ----
     def upload_datafile(self, path: str):
-           
+
         # locate the file‐input directly
         inp = self.wait.until(EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.DATAFILES_INPUT)))
 
-        # 3) send the absolute file-path to it (this triggers the upload)
+        # send the absolute file-path to it (this triggers the upload)
+        print(f"[DEBUG] Uploading file: {path}")
         inp.send_keys(path)
+
         # Wait for back button to be present (indicates upload initiated)
         btn = self.wait_with_timeout(10).until(
             EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.BACK_BUTTON))
         )
+        print("[DEBUG] Back button found, clicking...")
         btn.click()
+
+        # Wait for the uploaded file to appear in the resource list
+        # Give it a moment to process and display
+        import time
+        time.sleep(3)  # Increased wait time
+
+        print(f"[DEBUG] Current URL after upload: {self.driver.current_url}")
 
         return self
 
@@ -189,14 +199,30 @@ class CreateDatasetPage(BasePage):
 
     def get_uploaded_resource_names(self) -> list[str]:
         """
-        Returns the text of every cell under the “NAME OF RESOURCE” column.
+        Returns the text of every cell under the "NAME OF RESOURCE" column.
         """
         # wait until at least one row has appeared
-        els = self.wait.until(EC.presence_of_all_elements_located(
-            (By.XPATH, CreateDatasetLocators.RESOURCE_NAME_CELLS)
-        ))
-        # strip() in case there’s extra whitespace
-        return [el.text.strip() for el in els]
+        # Try multiple locator strategies in case the table structure changed
+        try:
+            els = self.wait_with_timeout(10).until(EC.presence_of_all_elements_located(
+                (By.XPATH, CreateDatasetLocators.RESOURCE_NAME_CELLS)
+            ))
+        except:
+            # Try alternative: any table row's first cell
+            try:
+                els = self.wait_with_timeout(5).until(EC.presence_of_all_elements_located(
+                    (By.XPATH, "//table//tbody//tr//td[1]")
+                ))
+            except:
+                # Try another alternative: look for file names anywhere in the data files section
+                els = self.wait_with_timeout(5).until(EC.presence_of_all_elements_located(
+                    (By.XPATH, "//div[contains(@class, 'datafile') or contains(@class, 'resource')]//span | //div[contains(@class, 'datafile') or contains(@class, 'resource')]//div")
+                ))
+
+        # strip() in case there's extra whitespace
+        result = [el.text.strip() for el in els if el.text.strip()]
+        print(f"[DEBUG] Found uploaded resources: {result}")
+        return result
 
     # ─── Publish‐tab getters ─────────────────────────────────────────────────────────────────
     def is_publish_tab_visible(self) -> bool:
