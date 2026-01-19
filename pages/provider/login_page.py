@@ -61,9 +61,7 @@ class LoginPage(BasePage):
         try:
             print("[WAIT] Waiting for ProviderHomePage header after login (10s)")
             self.wait_with_timeout(10).until(
-                EC.visibility_of_element_located(
-                    (By.XPATH, ProviderHomepageLocators.HEADER)
-                )
+                EC.visibility_of_element_located(ProviderHomepageLocators.HEADER)
             )
             print("[OK] ProviderHomePage loaded after login")
         except Exception as e:

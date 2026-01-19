@@ -17,20 +17,20 @@ class ProviderHomePage(BasePage):
     def is_header_visible(self) -> bool:
         # this waits for the actual dashboard header
         self.wait.until(
-            EC.visibility_of_element_located((By.XPATH, ProviderHomepageLocators.HEADER))
+            EC.visibility_of_element_located(ProviderHomepageLocators.HEADER)
         )
         return True
 
     def goto_my_dashboard(self) -> MyDashboardPage:
-        """Click the ‘My dashboard’ card."""
+        """Click the 'My dashboard' card."""
         self.wait.until(
-            EC.element_to_be_clickable((By.XPATH, ProviderHomepageLocators.CARD_MY_DASH))
+            EC.element_to_be_clickable(ProviderHomepageLocators.CARD_MY_DASH)
         ).click()
         return MyDashboardPage(self.driver)
 
     def goto_organizations(self) -> "OrganizationsPage":
-        """Click the ‘Organizations’ card."""
+        """Click the 'Organizations' card."""
         self.wait.until(
-            EC.element_to_be_clickable((By.XPATH, ProviderHomepageLocators.CARD_ORGANIZATIONS))
+            EC.element_to_be_clickable(ProviderHomepageLocators.CARD_ORGANIZATIONS)
         ).click()
         return OrganizationsPage(self.driver)
