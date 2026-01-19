@@ -17,12 +17,13 @@ class PublishersPage(BasePage):
         """Wait for 'Our Publishers' header to be visible."""
         return self.find(PublishersLocators.HEADER).is_displayed()
 
-    def _select_tab(self, xpath: str, timeout: int = 10) -> None:
+    def _select_tab(self, locator: tuple, timeout: int = 10) -> None:
         """
         Clicks the tab (if not already active) with overlap-safe logic.
+        Accepts a locator tuple like (By.XPATH, "xpath_string").
         """
         tab = self.wait_with_timeout(timeout).until(
-            EC.presence_of_element_located((By.XPATH, xpath))
+            EC.presence_of_element_located(locator)
         )
 
         # Already selected?
@@ -35,7 +36,7 @@ class PublishersPage(BasePage):
         for attempt in range(3):
             try:
                 self.wait_with_timeout(timeout).until(
-                    EC.element_to_be_clickable((By.XPATH, xpath))
+                    EC.element_to_be_clickable(locator)
                 )
                 tab.click()
                 return
@@ -48,8 +49,8 @@ class PublishersPage(BasePage):
                         tab,
                     )
                 )
-        # If we’re still here → fail fast so the test shows a clear error
-        raise TimeoutException(f"Could not click tab located by {xpath} after retries")
+        # If we're still here → fail fast so the test shows a clear error
+        raise TimeoutException(f"Could not click tab located by {locator} after retries")
 
     def list_all_publishers(self):
         """
