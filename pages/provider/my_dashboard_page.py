@@ -28,37 +28,35 @@ class MyDashboardPage(BasePage):
 
     def is_loaded(self, timeout: int = 10) -> bool:
         """
-        Verify that at least the “My Dashboard” card is visible (this is the first screen you see
+        Verify that at least the "My Dashboard" card is visible (this is the first screen you see
         after login). We do *not* yet assume we are inside the Datasets panel.
         Tests should call `is_loaded()` right after obtaining a MyDashboardPage
         to ensure that the login redirect finished.
         """
         self.wait_with_timeout(timeout).until(
-            EC.visibility_of_element_located(
-                (By.XPATH, MyDashboardLocators.CARD_MY_DASHBOARD)
-            ),
+            EC.visibility_of_element_located(MyDashboardLocators.CARD_MY_DASHBOARD),
             message="Timed out waiting for the 'My Dashboard' card to appear on the Provider landing page"
         )
         return True
 
     def goto_my_dashboard(self) -> "MyDashboardPage":
         """
-        Click the big “My Dashboard” c  ard on /dashboard. This reveals the sidebar menu.
+        Click the big "My Dashboard" c  ard on /dashboard. This reveals the sidebar menu.
         Returns self (so tests can chain further calls).
         """
         self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.CARD_MY_DASHBOARD)),
+            EC.element_to_be_clickable(MyDashboardLocators.CARD_MY_DASHBOARD),
             message="Timed out waiting for the 'My Dashboard' card to be clickable"
         ).click()
         return self
 
     def click_datasets_sidebar(self) -> "MyDashboardPage":
         """
-        Once the sidebar appears, click “Datasets” so that the Drafts/Published table loads.
+        Once the sidebar appears, click "Datasets" so that the Drafts/Published table loads.
         Returns self (so tests can chain).
         """
         self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.SIDEBAR_DATASETS)),
+            EC.element_to_be_clickable(MyDashboardLocators.SIDEBAR_DATASETS),
             message="Timed out waiting for the 'Datasets' link in sidebar to be clickable"
         ).click()
         return self
@@ -83,7 +81,7 @@ class MyDashboardPage(BasePage):
         try:
             # If "My Dashboard" card is still visible, click it once.
             self.wait_with_timeout(3).until(
-                EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.CARD_MY_DASHBOARD))
+                EC.element_to_be_clickable(MyDashboardLocators.CARD_MY_DASHBOARD)
             ).click()
         except TimeoutException:
             # If it's not there, maybe they already clicked it. Either way—proceed.
@@ -91,13 +89,13 @@ class MyDashboardPage(BasePage):
 
         # Step C: Wait for the "Drafts" tab to appear. This ensures the Datasets panel is fully rendered.
         self.wait_with_timeout(10).until(
-            EC.visibility_of_element_located((By.XPATH, MyDashboardLocators.DRAFTS_TAB)),
+            EC.visibility_of_element_located(MyDashboardLocators.DRAFTS_TAB),
             message="Timed out waiting for the 'Drafts' tab to appear"
         )
 
         # Step D: Now wait for "Add New Dataset" button to be clickable:
         btn = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.ADD_NEW_DATASET_BTN)),
+            EC.element_to_be_clickable(MyDashboardLocators.ADD_NEW_DATASET_BTN),
             message="Timed out waiting for the 'Add New Dataset' button to become clickable"
         )
 
@@ -136,14 +134,14 @@ class MyDashboardPage(BasePage):
 
     def click_usecases_card(self):
         self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.USECASES_NAV_LINK)),
+            EC.element_to_be_clickable(MyDashboardLocators.USECASES_NAV_LINK),
             message="Timed out waiting for the 'Usecases' card to be clickable"
         ).click()
         return UseCasesListPage(self.driver)
 
     def click_profile_card(self):
         self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable((By.XPATH, MyDashboardLocators.PROFILE_NAV_LINK)),
+            EC.element_to_be_clickable(MyDashboardLocators.PROFILE_NAV_LINK),
             message="Timed out waiting for the 'Profile' card to be clickable"
         ).click()
         return UpdateProfilePage(self.driver)
