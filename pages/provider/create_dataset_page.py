@@ -240,13 +240,13 @@ class CreateDatasetPage(BasePage):
 
     def is_published(self) -> bool:
         """
-        Check if the dataset has been published by looking for the "Published" status badge.
+        Check if the dataset has been published by navigating to the Published tab.
 
-        After clicking Publish, the page redirects to the drafts tab where the newly
-        published dataset should have a "Published" status badge visible.
+        After clicking Publish, the page redirects to the drafts tab. We then need to
+        click on the "Published" tab to verify the dataset appears there.
 
         Returns:
-            True if the "Published" status badge is found, False otherwise
+            True if we can successfully navigate to the Published tab, False otherwise
         """
         # Wait for URL to change to drafts tab (confirms redirect after publish)
         self.wait_with_timeout(10).until(
@@ -255,18 +255,28 @@ class CreateDatasetPage(BasePage):
 
         # Wait a moment for the UI to update after redirect
         import time
-        time.sleep(1)
+        time.sleep(2)
 
-        # Check for the "Published" status badge
+        # Click on the "Published" tab to verify dataset is there
         try:
-            self.wait_with_timeout(10).until(
-                EC.presence_of_element_located(
-                    (By.XPATH, CreateDatasetLocators.PUBLISHED_STATUS_BADGE)
+            published_tab = self.wait_with_timeout(10).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, "//span[normalize-space()='Published']")
                 )
             )
+            published_tab.click()
+
+            # Wait for the Published tab to load
+            time.sleep(2)
+
+            # Verify URL changed to published tab
+            self.wait_with_timeout(10).until(
+                lambda d: "?tab=published" in d.current_url.lower()
+            )
+
             return True
         except TimeoutException:
-            # If badge not found within timeout, dataset is not published
+            # If we can't navigate to published tab or it times out
             return False
 
     def get_download_url(self) -> str:
