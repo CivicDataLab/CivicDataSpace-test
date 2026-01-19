@@ -1,4 +1,11 @@
 class CreateDatasetLocators:
+    # ---- Dataset Type Selection Modal (appears when clicking "Add New Dataset") ----
+    MODAL_TITLE = "//h2[contains(., 'Create New Dataset')] | //div[contains(., 'Select the type of dataset')]"
+    DATA_DATASET_CARD = "//div[contains(., 'Data Dataset')] | //div[.//span[contains(., 'Data Dataset')]]"
+    PROMPT_DATASET_CARD = "//div[contains(., 'Prompt Dataset')] | //div[.//span[contains(., 'Prompt Dataset')]]"
+    CREATE_DATASET_BUTTON = "//button[normalize-space()='Create Dataset']"
+    MODAL_CANCEL_BUTTON = "//button[normalize-space()='Cancel']"
+
     # ---- Tabs ----
     TAB_METADATA        = "//button[normalize-space()='Metadata']"
     TAB_DATAFILES       = "//button[normalize-space()='Data Files']"
