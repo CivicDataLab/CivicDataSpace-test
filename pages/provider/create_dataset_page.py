@@ -133,10 +133,17 @@ class CreateDatasetPage(BasePage):
         print("[DEBUG] Back button found, clicking...")
         btn.click()
 
-        # Wait for the uploaded file to appear in the resource list
-        # Give it a moment to process and display
+        # Wait a moment for navigation to complete
         import time
-        time.sleep(3)  # Increased wait time
+        time.sleep(2)
+
+        # After clicking back, the page navigates to metadata
+        # We need to explicitly go back to the Data Files tab
+        print("[DEBUG] Navigating back to Data Files tab after upload...")
+        self.go_to_datafiles_tab()
+
+        # Wait for the uploaded file to appear in the resource list
+        time.sleep(2)
 
         print(f"[DEBUG] Current URL after upload: {self.driver.current_url}")
 
