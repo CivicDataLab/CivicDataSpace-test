@@ -10,7 +10,7 @@ from datetime import datetime
 # ═══════════════════════════════════════════════════════════════════════════════
 
 DATASET_DESCRIPTION = "Automated test dataset created on {date}"
-DATASET_SECTORS = ["Public Finance", "Education"]
+DATASET_SECTORS = ["Budgets", "Education"]
 DATASET_TAGS = ["Budget", "Transparency"]
 DATASET_GEOGRAPHY = "India"
 DATASET_SOURCE_URL = "https://example.com/data-source"
@@ -25,7 +25,7 @@ USECASE_PLATFORM_URL = "https://example.com/platform"
 USECASE_STATUS_ONGOING = "On Going"
 USECASE_STATUS_COMPLETED = "Completed"
 USECASE_SDG_GOAL = "SDG13"
-USECASE_SECTORS = ["Public Finance", "Education"]
+USECASE_SECTORS = ["Budgets", "Education"]
 USECASE_TAGS = ["Budget", "Transparency"]
 
 # ═══════════════════════════════════════════════════════════════════════════════

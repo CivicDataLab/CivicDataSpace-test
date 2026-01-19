@@ -106,9 +106,9 @@ def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url,test_cred
     )
 
     # (6f) Sectors
-    create_uc.select_sectors(["Public Finance"])
+    create_uc.select_sectors(["Budgets"])
     selected_sectors = create_uc.get_selected_sectors()
-    assert "Public Finance" in selected_sectors, (
+    assert "Budgets" in selected_sectors, (
         f"Step 6f failure: Sector not selected correctly. Current sectors: {selected_sectors}"
     )
 
