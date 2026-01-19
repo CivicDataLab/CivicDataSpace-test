@@ -11,19 +11,20 @@ from locators.provider.login_locators import LoginLocators
 
 
 @pytest.mark.smoke
-def test_prv_001_login_smoke(driver, base_url):
+def test_prv_001_login_smoke(driver, base_url, test_credentials):
     # Step 0: ensure a clean session
     driver.delete_all_cookies()
     home = HomePage(driver, base_url)
     home.load()
 
     # Step 1: click LOGIN / SIGN UP and expect a LoginPage
-    prov_home = home.go_to_login(flow="provider")
+    email, password = test_credentials
+    prov_home = home.go_to_login(flow="provider", email=email, password=password)
     # Assert that go_to_login actually returned a ProviderHomePage
     assert isinstance(prov_home, ProviderHomePage), "Did not land on ProviderHomePage"
 
     # Optionally, verify some element on ProviderHomePage is visible:
     WebDriverWait(driver, 5).until(
-        EC.visibility_of_element_located((By.XPATH, ProviderHomepageLocators.HEADER))
+        EC.visibility_of_element_located(ProviderHomepageLocators.HEADER)
     )
     assert prov_home.is_header_visible()
