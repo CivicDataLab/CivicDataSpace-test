@@ -14,9 +14,23 @@ from locators.provider.update_profile_locators import UpdateProfilePageLocators
 class UpdateProfilePage(BasePage):
 
     def is_loaded(self):
-        return self.wait_with_timeout(10).until(
-            EC.visibility_of_element_located(UpdateProfilePageLocators.My_Profile_HEADING)
-        )
+        """
+        Check if profile page (individual or organization) is loaded.
+        Individual profiles have "My Profile" heading, organizations just have the Save button.
+        """
+        from selenium.common.exceptions import TimeoutException
+        from selenium.webdriver.common.by import By
+
+        # Try individual profile heading first
+        try:
+            return self.wait_with_timeout(10).until(
+                EC.visibility_of_element_located(UpdateProfilePageLocators.My_Profile_HEADING)
+            )
+        except TimeoutException:
+            # If not found, try organization profile (Save button)
+            return self.wait_with_timeout(10).until(
+                EC.visibility_of_element_located((By.XPATH, "//button[normalize-space()='Save']"))
+            )
 
     def enter_first_name(self, url: str):
         self.clear_and_type(UpdateProfilePageLocators.FIRST_NAME_INPUT, url)

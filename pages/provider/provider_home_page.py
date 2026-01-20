@@ -22,10 +22,28 @@ class ProviderHomePage(BasePage):
         return True
 
     def goto_my_dashboard(self) -> MyDashboardPage:
-        """Click the 'My dashboard' card."""
-        self.wait.until(
+        """Click the 'My dashboard' card, handling any Joyride tour overlays."""
+        from selenium.common.exceptions import TimeoutException, NoSuchElementException
+        import time
+
+        # Try to dismiss Joyride tour overlay if present
+        try:
+            # Look for Joyride skip/close button
+            skip_button = self.wait_with_timeout(2).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[contains(@aria-label, 'Skip') or contains(text(), 'Skip') or @data-action='skip']"))
+            )
+            skip_button.click()
+            time.sleep(0.5)
+        except (TimeoutException, NoSuchElementException):
+            # No Joyride tour present, or couldn't find skip button - continue anyway
+            pass
+
+        # Click the 'My Dashboard' card
+        card = self.wait.until(
             EC.element_to_be_clickable(ProviderHomepageLocators.CARD_MY_DASH)
-        ).click()
+        )
+        # Use JavaScript click to bypass any remaining overlays
+        self.driver.execute_script("arguments[0].click();", card)
         return MyDashboardPage(self.driver)
 
     def goto_organizations(self) -> "OrganizationsPage":
