@@ -117,14 +117,23 @@ class OrganizationsPage(BasePage):
         """
         from pages.provider.usecases_list_page import UseCasesListPage
         from locators.provider.usecases_list_page_locators import UseCaseListPageLocators
+        import time
 
-        self.wait_with_timeout(10).until(
+        # Wait for and click the UseCases navigation link
+        usecases_link = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(OrgLocators.USECASES_NAV_LINK),
             message="Timed out waiting for the 'UseCases' link to be clickable"
-        ).click()
+        )
+
+        # Scroll into view and click
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", usecases_link)
+        usecases_link.click()
+
+        # Give the page time to navigate
+        time.sleep(2)
 
         # Wait for the UseCases page to load by checking for the "Add New UseCase" button
-        self.wait_with_timeout(10).until(
+        self.wait_with_timeout(15).until(
             EC.visibility_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON),
             message="Timed out waiting for UseCases page to load"
         )
@@ -144,18 +153,24 @@ class OrganizationsPage(BasePage):
         from locators.provider.update_profile_locators import UpdateProfilePageLocators
         import time
 
-        self.wait_with_timeout(10).until(
+        # Wait for and click the Profile navigation link
+        profile_link = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(OrgLocators.PROFILE_NAV_LINK),
             message="Timed out waiting for the 'Profile' link to be clickable"
-        ).click()
+        )
 
-        # Give the profile page time to load
+        # Scroll into view and click
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", profile_link)
+        profile_link.click()
+
+        # Give the page time to navigate
         time.sleep(2)
 
-        # Wait for the profile page to load by checking for the "My Profile" heading
+        # Wait for the organization profile page to load
+        # Organization profiles don't have "My Profile" heading - wait for Save button instead
         self.wait_with_timeout(15).until(
-            EC.visibility_of_element_located(UpdateProfilePageLocators.My_Profile_HEADING),
-            message="Timed out waiting for Profile page to load"
+            EC.visibility_of_element_located((By.XPATH, "//button[normalize-space()='Save']")),
+            message="Timed out waiting for Organization Profile page to load"
         )
 
         return UpdateProfilePage(self.driver)

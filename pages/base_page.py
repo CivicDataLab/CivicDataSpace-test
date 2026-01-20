@@ -2,6 +2,7 @@
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver import Keys
 
 class BasePage:
     def __init__(self, driver, timeout=5):
@@ -25,10 +26,23 @@ class BasePage:
     # ── Text Input Utilities ──────────────────────────────────────────────────
 
     def clear_and_type(self, locator, text):
-        """Clear field and type text - fixes missing method called by update_profile_page"""
+        """
+        Clear field and type text using triple-click selection for React forms.
+        Triple-click selects all text, then typing replaces the selection.
+        """
+        import time
+        from selenium.webdriver.common.action_chains import ActionChains
+
         element = self.wait.until(EC.visibility_of_element_located(locator))
-        element.clear()
+
+        # Triple-click to select all text (more reliable than Ctrl+A for React)
+        actions = ActionChains(self.driver)
+        actions.move_to_element(element).click().click().click().perform()
+        time.sleep(0.1)
+
+        # Type the new text (replaces the selection)
         element.send_keys(text)
+
         return element
 
     def type_text(self, locator, text):

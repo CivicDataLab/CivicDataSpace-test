@@ -134,14 +134,23 @@ class MyDashboardPage(BasePage):
 
     def click_usecases_card(self):
         from locators.provider.usecases_list_page_locators import UseCaseListPageLocators
+        import time
 
-        self.wait_with_timeout(10).until(
+        # Wait for and click the UseCases navigation link
+        usecases_link = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(MyDashboardLocators.USECASES_NAV_LINK),
             message="Timed out waiting for the 'Usecases' card to be clickable"
-        ).click()
+        )
+
+        # Scroll into view and click
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", usecases_link)
+        usecases_link.click()
+
+        # Give the page time to navigate
+        time.sleep(2)
 
         # Wait for the UseCases page to load by checking for the "Add New UseCase" button
-        self.wait_with_timeout(10).until(
+        self.wait_with_timeout(15).until(
             EC.visibility_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON),
             message="Timed out waiting for UseCases page to load"
         )
@@ -152,12 +161,17 @@ class MyDashboardPage(BasePage):
         from locators.provider.update_profile_locators import UpdateProfilePageLocators
         import time
 
-        self.wait_with_timeout(10).until(
+        # Wait for and click the Profile navigation link
+        profile_link = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(MyDashboardLocators.PROFILE_NAV_LINK),
             message="Timed out waiting for the 'Profile' card to be clickable"
-        ).click()
+        )
 
-        # Give the profile page time to load
+        # Scroll into view and click
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", profile_link)
+        profile_link.click()
+
+        # Give the page time to navigate
         time.sleep(2)
 
         # Wait for the profile page to load by checking for the "My Profile" heading

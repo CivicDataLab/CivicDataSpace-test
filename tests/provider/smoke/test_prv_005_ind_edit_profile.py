@@ -10,7 +10,7 @@ from pages.provider.update_profile_page import UpdateProfilePage
 
 
 @pytest.mark.smoke
-def test_prv_005_ind_edit_profile(driver, profile_image_path, base_url, test_credentials):
+def test_prv_005_ind_edit_profile(driver, sample_profile_image_path, base_url, test_credentials):
     """
         Test Case ID: test_prv_005_ind_edit_profile
         Verify User is able to edit profile details.
@@ -81,7 +81,7 @@ def test_prv_005_ind_edit_profile(driver, profile_image_path, base_url, test_cre
         f"Step 5b failure: Expected first name to be '{bio_text}', but found '{get_bio_text}'."
     )
     # (5c) Upload Profile Picture
-    up_profile.upload_profile_image(profile_image_path)
+    up_profile.upload_profile_image(sample_profile_image_path)
     assert up_profile.is_profile_image_uploaded(), "Step 5c failure: profile picture upload did not succeed."
 
     # (5d) Click Save Button
