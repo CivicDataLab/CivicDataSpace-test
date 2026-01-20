@@ -40,21 +40,33 @@ class CreateUsecasePage(BasePage):
         return self  # for method chaining
 
     def enter_summary(self, text: str):
-        # Wait for toast/overlay to disappear before interacting
-        self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=5)
+        # Try to wait for toast/overlay to disappear, but don't fail if they persist
+        try:
+            self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=3)
+        except TimeoutException:
+            pass  # Continue anyway
+
         fld = self.wait.until(
             EC.visibility_of_element_located(CreateUsecaseLocators.USECASE_SUMMARY_INPUT),
-            message="Could not find UseCase summary textarea"
+            message="Could not find UseCase summary editor"
         )
-        fld.clear()
+        # For Quill editor (contenteditable div), clear using Ctrl+A then type
+        fld.click()
+        # Ctrl+A works cross-platform (Selenium maps to Cmd+A on Mac)
+        fld.send_keys(Keys.CONTROL + 'a')
+        fld.send_keys(Keys.DELETE)
         fld.send_keys(text)
         # Send text twice (application-specific behavior)
         fld.send_keys(text)
         return self
 
     def enter_platform_url(self, url: str):
-        # Wait for any overlays to disappear
-        self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=5)
+        # Try to wait for any overlays to disappear, but don't fail if they persist
+        try:
+            self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=3)
+        except TimeoutException:
+            pass  # Continue anyway
+
         fld = self.wait.until(
             EC.visibility_of_element_located(CreateUsecaseLocators.PLATFORM_URL_INPUT),
             message="Could not find Platform Url input"
@@ -73,8 +85,12 @@ class CreateUsecasePage(BasePage):
 
     def select_sectors(self, items: list[str]):
         """Select multiple sectors using BasePage utility to eliminate duplication"""
-        # Wait for any toast notifications to disappear before clicking combobox
-        self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=5)
+        # Try to wait for toast notifications to disappear, but don't fail if they persist
+        # (toasts don't block interaction with the form)
+        try:
+            self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=3)
+        except TimeoutException:
+            pass  # Continue anyway - toasts don't block interaction
 
         for val in items:
             self.select_combobox_option(CreateUsecaseLocators.SECTOR_INPUT, val)
@@ -115,9 +131,14 @@ class CreateUsecasePage(BasePage):
         return self
 
     def select_running_status(self, status_text: str):
-        self.wait.until(
-            EC.invisibility_of_element_located((By.CLASS_NAME, "toast"))
-        )
+        # Try to wait for toasts to disappear, but don't fail if they persist
+        try:
+            self.wait_with_timeout(3).until(
+                EC.invisibility_of_element_located((By.CLASS_NAME, "toast"))
+            )
+        except TimeoutException:
+            pass  # Continue anyway
+
         select_el = self.wait.until(
             EC.presence_of_element_located(CreateUsecaseLocators.RUNNING_STATUS_INPUT),
             message="Could not find Running Status <select>"
@@ -149,7 +170,8 @@ class CreateUsecasePage(BasePage):
         return self.driver.find_element(*CreateUsecaseLocators.USECASE_NAME_INPUT).get_attribute("value")
 
     def get_summary_value(self):
-        return self.driver.find_element(*CreateUsecaseLocators.SUMMARY_INPUT).get_attribute("value")
+        # For contenteditable div, use textContent instead of value attribute
+        return self.driver.find_element(*CreateUsecaseLocators.SUMMARY_INPUT).text
 
     def get_platform_url_value(self):
         return self.driver.find_element(*CreateUsecaseLocators.PLATFORM_URL_INPUT).get_attribute("value")

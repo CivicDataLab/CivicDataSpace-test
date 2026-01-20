@@ -13,7 +13,8 @@ class CreateUsecaseLocators:
 
     USECASE_NAME_INPUT = (By.XPATH, "//div[@class=' pl-2']//button[@type='button']")
     USECASE_SUMMARY_LABEL = (By.XPATH, "//label[normalize-space()='Summary *']")
-    USECASE_SUMMARY_INPUT = (By.XPATH, "//textarea[@name='summary']")
+    # Rich text editor (Quill) - uses contenteditable div, not textarea
+    USECASE_SUMMARY_INPUT = (By.XPATH, "//div[contains(@class, 'ql-editor') and @contenteditable='true']")
 
     PLATFORM_URL_INPUT = (By.XPATH, "//input[@name='platformUrl']")
 
@@ -39,7 +40,8 @@ class CreateUsecaseLocators:
     LOGO_UPLOAD_INPUT = (By.XPATH, "//div[@class='FileUpload-module_Action__Hg0nE']")
 
     # ─── Fields Used for Value Retrieval / Assertions ──────────────────────────
-    SUMMARY_INPUT = (By.XPATH, "//textarea[@name='summary']")
+    # Rich text editor (Quill) - uses contenteditable div, not textarea
+    SUMMARY_INPUT = (By.XPATH, "//div[contains(@class, 'ql-editor') and @contenteditable='true']")
     STARTED_ON_VALUE_INPUT = (By.XPATH, "//input[@type='date' and @name='startedOn']")
     COMPLETED_ON_VALUE_INPUT = (By.XPATH, "//input[normalize-space(.)='Completed On']")
     RUNNING_STATUS_SELECT = (By.XPATH, "//select[@name='runningStatus']")
