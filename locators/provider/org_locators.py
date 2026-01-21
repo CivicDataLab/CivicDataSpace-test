@@ -27,4 +27,5 @@ class OrgLocators:
     DRAFTS_TAB = MyDashboardLocators.DRAFTS_TAB
     ADD_NEW_DATASET_BTN = MyDashboardLocators.ADD_NEW_DATASET_BTN
     USECASES_NAV_LINK = MyDashboardLocators.USECASES_NAV_LINK
+    COLLABORATIVES_NAV_LINK = MyDashboardLocators.COLLABORATIVES_NAV_LINK
     PROFILE_NAV_LINK = MyDashboardLocators.PROFILE_NAV_LINK

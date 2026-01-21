@@ -157,6 +157,32 @@ class MyDashboardPage(BasePage):
 
         return UseCasesListPage(self.driver)
 
+    def click_collaboratives_card(self):
+        from locators.provider.collaboratives_list_page_locators import CollaborativesListPageLocators
+        from pages.provider.collaboratives_list_page import CollaborativesListPage
+        import time
+
+        # Wait for and click the Collaboratives navigation link
+        collaboratives_link = self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable(MyDashboardLocators.COLLABORATIVES_NAV_LINK),
+            message="Timed out waiting for the 'Collaboratives' card to be clickable"
+        )
+
+        # Scroll into view and click
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", collaboratives_link)
+        collaboratives_link.click()
+
+        # Give the page time to navigate
+        time.sleep(2)
+
+        # Wait for the Collaboratives page to load by checking for the "Add New Collaborative" button
+        self.wait_with_timeout(15).until(
+            EC.visibility_of_element_located(CollaborativesListPageLocators.ADD_NEW_COLLABORATIVE_BUTTON),
+            message="Timed out waiting for Collaboratives page to load"
+        )
+
+        return CollaborativesListPage(self.driver)
+
     def click_profile_card(self):
         from locators.provider.update_profile_locators import UpdateProfilePageLocators
         import time

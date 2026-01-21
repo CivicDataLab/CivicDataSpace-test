@@ -148,6 +148,89 @@ class UseCaseTestData:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Collaborative Test Data - Individual & Organization
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class CollaborativeTestData:
+    """Test data constants for Collaborative creation flows"""
+
+    # Collaborative name templates (keep short for DB varchar(75) limit)
+    NAME_TEMPLATE_IND = "Test Collab {timestamp}"
+    NAME_TEMPLATE_ORG = "Org Collab {timestamp}"
+
+    # Summary templates
+    SUMMARY_TEMPLATE = "Automated test collaborative summary for testing purposes – {date}"
+
+    # Platform URLs
+    PLATFORM_URL_IND = "https://collaborative-platform.url"
+    PLATFORM_URL_ORG = "https://org-collaborative-platform.url"
+
+    # SDG Goals
+    SDG_GOALS = "SDG13"
+    SDG_GOALS_ALTERNATIVE = ["SDG1", "SDG2"]
+
+    # Tags
+    TAGS = ["Budget"]
+    TAGS_ALTERNATIVE = ["Transparency", "Collaboration"]
+
+    # Sectors
+    SECTORS = ["Budgets"]
+    SECTORS_ALTERNATIVE = ["Education"]
+
+    # Geography
+    GEOGRAPHY = "India"
+    GEOGRAPHY_ALTERNATIVE = "Assam"
+
+    # Dates
+    START_DATE_INPUT = "01012023"  # DDMMYYYY format
+    START_DATE_ISO = "2023-01-01"  # ISO format
+    COMPLETED_DATE_INPUT = "01062023"
+    COMPLETED_DATE_ISO = "2023-06-01"
+
+    @staticmethod
+    def get_collaborative_name(user_type: str = "individual") -> str:
+        """
+        Generate unique timestamped name for Collaborative (max 75 chars for DB)
+
+        Args:
+            user_type: Either "individual" or "organization"
+        """
+        timestamp = datetime.now().strftime("%d%b%y_%H%M%S")  # Shorter format: 21Jan26_173713
+        if user_type == "organization":
+            return CollaborativeTestData.NAME_TEMPLATE_ORG.format(timestamp=timestamp)
+        return CollaborativeTestData.NAME_TEMPLATE_IND.format(timestamp=timestamp)
+
+    @staticmethod
+    def get_summary() -> str:
+        """Generate timestamped summary for Collaborative"""
+        date = datetime.now().date()
+        return CollaborativeTestData.SUMMARY_TEMPLATE.format(date=date)
+
+    @staticmethod
+    def get_platform_url(user_type: str = "individual") -> str:
+        """Get platform URL based on user type"""
+        return (CollaborativeTestData.PLATFORM_URL_ORG if user_type == "organization"
+                else CollaborativeTestData.PLATFORM_URL_IND)
+
+    @staticmethod
+    def get_all_data(user_type: str = "individual") -> Dict[str, Any]:
+        """Get complete Collaborative test data as dictionary"""
+        return {
+            'name': CollaborativeTestData.get_collaborative_name(user_type),
+            'summary': CollaborativeTestData.get_summary(),
+            'platform_url': CollaborativeTestData.get_platform_url(user_type),
+            'tags': CollaborativeTestData.TAGS,
+            'sectors': CollaborativeTestData.SECTORS,
+            'geography': CollaborativeTestData.GEOGRAPHY,
+            'sdg_goals': CollaborativeTestData.SDG_GOALS,
+            'start_date': CollaborativeTestData.START_DATE_INPUT,
+            'start_date_iso': CollaborativeTestData.START_DATE_ISO,
+            'completed_date': CollaborativeTestData.COMPLETED_DATE_INPUT,
+            'completed_date_iso': CollaborativeTestData.COMPLETED_DATE_ISO
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Profile Test Data - Individual
 # ═══════════════════════════════════════════════════════════════════════════════
 
