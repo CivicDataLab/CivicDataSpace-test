@@ -181,6 +181,18 @@ def sample_profile_image_path():
         raise FileNotFoundError(f"Expected sample_profile_image.png at {profile_image_path}")
     return profile_image_path
 
+@pytest.fixture()
+def sample_cover_image_path():
+    """
+    Returns an absolute path to a cover image under tests/data/
+    for cover image uploads in collaborative creation.
+    """
+    here = os.path.dirname(__file__)
+    cover_image_path = os.path.abspath(os.path.join(here, "tests", "data", "sample_profile_image.png"))
+    if not os.path.isfile(cover_image_path):
+        raise FileNotFoundError(f"Expected sample_profile_image.png at {cover_image_path}")
+    return cover_image_path
+
 @pytest.fixture(scope="session")
 def test_credentials():
     """
