@@ -1,6 +1,6 @@
 # CivicDataSpace Automated Test Suite
 
-A Python + Selenium test framework for the CivicDataSpace platform, covering both **consumer** and **provider** workflows. Tests are organized into smoke, functional, and mobile suites; they produce JSON/Markdown/PDF reports (with embedded screenshots) and measure coverage. A GitHub Actions workflow runs everything on each push/PR.
+A Python + Selenium test framework for the CivicDataSpace platform, covering both **consumer** and **provider** workflows. Provider tests include dataset creation, UseCase creation, collaborative creation, profile editing, and organization workflows. Tests are organized into smoke, functional, and mobile suites; they produce JSON/Markdown/PDF reports (with embedded screenshots) and measure coverage. A GitHub Actions workflow runs everything on each push/PR.
 
 ---
 
@@ -139,8 +139,12 @@ CivicDataSpace-test/
 │       ├── provider_homepage_locators.py
 │       ├── login_locators.py
 │       ├── my_dashboard_locators.py
+│       ├── org_locators.py
 │       ├── create_dataset_locators.py
 │       ├── create_usecase_locators.py
+│       ├── collaboratives_list_page_locators.py
+│       ├── create_collaborative_locators.py
+│       ├── update_profile_locators.py
 │       └── ... (others as needed)
 ├── pages/
 │   ├── base_page.py                  # Shared BasePage with common helpers
@@ -156,12 +160,19 @@ CivicDataSpace-test/
 │       ├── login_page.py
 │       ├── provider_home_page.py
 │       ├── my_dashboard_page.py
+│       ├── organizations_page.py
 │       ├── create_dataset_page.py
 │       ├── create_usecase_page.py
+│       ├── collaboratives_list_page.py
+│       ├── create_collaborative_page.py
+│       ├── update_profile_page.py
 │       └── ... (others as needed)
 ├── screenshots/                      # Auto-created: failure screenshots are captured here
 │   └── ... (*.png)
 ├── tests/
+│   ├── data/
+│   │   ├── test_data.py                  # Test data constants (Dataset, UseCase, Collaborative, Profile)
+│   │   └── sample_profile_image.png      # Sample image for uploads
 │   ├── consumer/
 │   │   ├── smoke/
 │   │   │   └── test_con_flow.py
@@ -171,10 +182,18 @@ CivicDataSpace-test/
 │   │       └── test_consumer_mobile_*.py
 │   └── provider/
 │       ├── smoke/
-│       │   └── test_prv_001_login.py
-│       ├── functional/
+│       │   ├── test_prv_001_login.py
 │       │   ├── test_prv_002_ind_create_dataset.py
 │       │   ├── test_prv_003_ind_create_usecase.py
+│       │   ├── test_prv_004_ind_add_charts.py
+│       │   ├── test_prv_005_ind_edit_profile.py
+│       │   ├── test_prv_006_org_create_dataset.py
+│       │   ├── test_prv_007_org_create_usecase.py
+│       │   ├── test_prv_008_org_add_charts.py
+│       │   ├── test_prv_009_org_edit_profile.py
+│       │   ├── test_prv_010_ind_create_collaborative.py
+│       │   └── test_prv_011_org_create_collaborative.py
+│       ├── functional/
 │       │   └── ...
 │       └── mobile/
 │           └── test_prv_mobile_*.py
@@ -189,9 +208,52 @@ CivicDataSpace-test/
 
 ---
 
+## Test Data Structure
+
+The framework uses centralized test data classes in `tests/data/test_data.py`:
+
+- **DatasetTestData**: Dataset creation constants (name templates, descriptions, tags, sectors, geography, licenses)
+- **UseCaseTestData**: UseCase creation constants (name templates, descriptions, URLs, SDG goals, sectors)
+- **CollaborativeTestData**: Collaborative creation constants (name templates, summaries, platform URLs, dates, SDG goals)
+- **ProfileTestData**: Profile editing constants (first name, last name, bio, social links)
+
+Each class provides:
+- Static template strings for reproducible test data
+- Helper methods (e.g., `get_dataset_name()`, `get_use_case_name()`) that generate timestamped unique values
+- `get_all_data()` methods that return complete data dictionaries for form filling
+
+This centralized approach ensures:
+- Consistent test data across all test files
+- Easy maintenance and updates
+- Database constraint compliance (e.g., varchar limits)
+- Unique identifiers for parallel test execution
+
+---
+
 ## Running Tests Locally
 
 All test suites rely on **ChromeDriver**, managed automatically by `webdriver-manager` or via `CHROMEDRIVER_PATH` environment variable. By default, tests run in **headed** mode unless you explicitly set headless.
+
+### Provider Test Coverage
+
+The provider smoke test suite includes comprehensive end-to-end workflows:
+
+- **PRV_001**: Login flow (individual user)
+- **PRV_002-004**: Individual user workflows
+  - Dataset creation
+  - UseCase creation
+  - Chart/visualization addition
+- **PRV_005**: Individual profile editing
+- **PRV_006-008**: Organization workflows
+  - Dataset creation (as organization)
+  - UseCase creation (as organization)
+  - Chart/visualization addition (as organization)
+- **PRV_009**: Organization profile editing
+- **PRV_010-011**: Collaborative creation workflows
+  - Individual user collaborative creation
+  - Organization collaborative creation
+
+Each test uses the **Page Object Model** with dedicated locators, page classes, and test data from `tests/data/test_data.py`.
 
 ### 1. Consumer Tests
 
