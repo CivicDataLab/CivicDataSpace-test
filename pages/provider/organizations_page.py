@@ -166,11 +166,24 @@ class OrganizationsPage(BasePage):
         # Give the page time to navigate
         time.sleep(2)
 
-        # Wait for the Collaboratives page to load by checking for the "Add New Collaborative" button
-        self.wait_with_timeout(15).until(
-            EC.visibility_of_element_located(CollaborativesListPageLocators.ADD_NEW_COLLABORATIVE_BUTTON),
-            message="Timed out waiting for Collaboratives page to load"
-        )
+        # Wait for the Collaboratives page to load — try multiple indicators for resilience
+        from selenium.common.exceptions import TimeoutException
+        from selenium.webdriver.common.by import By
+        loaded = False
+        for locator in [
+            CollaborativesListPageLocators.ADD_NEW_COLLABORATIVE_BUTTON,
+            (By.XPATH, "//span[contains(normalize-space(),'Collaborative')]"),
+            (By.XPATH, "//*[contains(normalize-space(),'Collaborative')]"),
+        ]:
+            try:
+                self.wait_with_timeout(20).until(EC.visibility_of_element_located(locator))
+                loaded = True
+                break
+            except TimeoutException:
+                continue
+
+        if not loaded:
+            raise TimeoutException("Timed out waiting for Collaboratives page to load")
 
         return CollaborativesListPage(self.driver)
 

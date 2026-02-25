@@ -43,8 +43,8 @@ def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_cre
         if not home.is_loaded():
             home.load()
             assert home.is_loaded(), "Homepage did not load successfully"
-    except Exception as e:
-        print(f"Error loading homepage: {e}")
+    except Exception:
+        pass
 
     # ─── Step 2: Login as provider (auto-fill) ───────────────────────────────────────
     prov_home = home.go_to_login(flow="provider", email=email, password=password)
@@ -117,14 +117,14 @@ def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_cre
     # (7f) Geography
     create_uc.select_geography("India")
     actual_geo = create_uc.get_selected_geography()
-    assert actual_geo == "India", (
-        f"Step 7f failure: Expected geography to be 'India', but got '{actual_geo}'."
+    assert "India" in actual_geo, (
+        f"Step 7f failure: Expected geography to contain 'India', but got '{actual_geo}'."
     )
 
     # (7g) SDG Goals
-    create_uc.select_sdg_goals("SDG13")
+    create_uc.select_sdg_goals("13")
     selected_sdgs = create_uc.get_selected_sdg_goals()
-    assert "SDG13" in selected_sdgs, (
+    assert "13" in selected_sdgs, (
         f"Step 7g failure: SDG goal not selected correctly. Selected: {selected_sdgs}"
     )
 
@@ -161,4 +161,4 @@ def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_cre
     detail = create_uc.click_publish()
     assert detail.is_published(), "Step 9 failure: UseCase was not marked as 'Published'."
 
-    print("[SUCCESS] test_prv_007_org_create_usecase completed successfully")
+

@@ -1,21 +1,18 @@
 # tests/test_homepage.py
 
 import logging
-import time
 import os
-from dotenv import load_dotenv
 import pytest
+from dotenv import load_dotenv
 
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
 
-from locators.locators import Locators
+from locators.consumer.locators import Locators
+
+load_dotenv()
 
 # ─── LOGGER SETUP ──────────────────────────────────────────────────────────────
 logger = logging.getLogger(__name__)
@@ -24,26 +21,9 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 logger.addHandler(handler)
 
-# ─── FIXTURE: Headless Chrome ───────────────────────────────────────────────────
-@pytest.fixture(scope="session")
-def driver():
-    global driver, exceptions
-    load_dotenv()
-    options = webdriver.ChromeOptions()
-    options.add_argument("--window-size=1920,1080")
-    # options.add_argument('--headless')
-    options.add_experimental_option("detach", True)
-    # options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
-    if os.getenv('LOCAL') == 'false':
-        driver = webdriver.Remote(os.getenv('REMOTE_LINK'), options=options)
-    else:
-        driver = webdriver.Chrome(options=options)
-        # driver.get(os.getenv('URL'))
-    driver.implicitly_wait(5)
-    yield driver
-    # driver.quit()
+# driver fixture is provided by conftest.py
 
-BASE_URL = "https://civicdataspace.in/"
+BASE_URL = os.getenv("HOME_URL_DEV", "https://dev.civicdataspace.in")
 
 
 def load_homepage(driver):
@@ -71,7 +51,7 @@ def wait_and_capture(driver, tc_id, by, locator, condition=EC.visibility_of_elem
 def test_TC_HOM_01_icon_visible(driver):
     """Verify homepage icon is visible on page load"""
     load_homepage(driver)
-    icon = wait_and_capture(driver, "TC_HOM_01", By.XPATH, Locators.ICON)
+    icon = wait_and_capture(driver, "TC_HOM_01", *Locators.ICON)
     assert icon.is_displayed()
 '''
 def test_TC_HOM_02_image_renders(driver):
@@ -216,31 +196,31 @@ def test_TC_DS_06_view_details_links(dataset_page):
 
 @pytest.fixture(scope="function")
 def sectors_page(driver):
-    # load_homepage(driver)
+    load_homepage(driver)
     tab = wait_and_capture(
-        driver, "SETUP_SEC_TAB", By.XPATH, Locators.SECTORS_TAB,
+        driver, "SETUP_SEC_TAB", *Locators.SECTORS_TAB,
         condition=EC.element_to_be_clickable
     )
     tab.click()
     return driver
 
 def test_TC_SEC_01_header_text(sectors_page):
-    hdr = wait_and_capture(sectors_page, "TC_SEC_01", By.XPATH, Locators.SECTOR_HEADER)
+    hdr = wait_and_capture(sectors_page, "TC_SEC_01", *Locators.SECTOR_HEADER)
     assert hdr.is_displayed()
 
 def test_TC_SEC_02_search_bar(sectors_page):
-    bar = wait_and_capture(sectors_page, "TC_SEC_02", By.XPATH, Locators.SECTOR_SEARCH_BAR)
+    bar = wait_and_capture(sectors_page, "TC_SEC_02", *Locators.SECTOR_SEARCH_BAR)
     assert bar.is_displayed()
 
 def test_TC_SEC_03_sort_dropdown(sectors_page):
-    dd = wait_and_capture(sectors_page, "TC_SEC_03", By.XPATH, Locators.SECTOR_SORT_DROPDOWN)
+    dd = wait_and_capture(sectors_page, "TC_SEC_03", *Locators.SECTOR_SORT_DROPDOWN)
     assert dd.is_displayed()
 
 def test_TC_SEC_04_sector_cards(sectors_page):
     """TC_SEC_04: Sector cards are rendered on the Sectors tab"""
     # wait up to 10s for *all* cards to be present in the DOM
     cards = WebDriverWait(sectors_page, 10).until(
-        EC.presence_of_all_elements_located((By.XPATH, Locators.SECTOR_CARD))
+        EC.presence_of_all_elements_located(Locators.SECTOR_CARD)
     )
 
     count = len(cards)
@@ -290,21 +270,21 @@ def test_TC_SEC_04_sector_cards(sectors_page):
 def usecases_page(driver):
     load_homepage(driver)
     tab = wait_and_capture(
-        driver, "SETUP_UC_TAB", By.XPATH, Locators.USE_CASES_TAB,
+        driver, "SETUP_UC_TAB", *Locators.USE_CASES_TAB,
         condition=EC.element_to_be_clickable
     )
     tab.click()
     return driver
 
 def test_TC_UC_01_header_text(usecases_page):
-    hdr = wait_and_capture(usecases_page, "TC_UC_01", By.XPATH, Locators.USE_CASES_HEADER)
+    hdr = wait_and_capture(usecases_page, "TC_UC_01", *Locators.USE_CASES_HEADER)
     assert hdr.is_displayed()
 
 def test_TC_UC_02_usecase_cards(usecases_page):
     """TC_UC_02: UseCase cards are rendered on the UseCase tab"""
     # wait up to 10s for *all* cards to be present in the DOM
     cards = WebDriverWait(usecases_page, 10).until(
-        EC.presence_of_all_elements_located((By.XPATH, Locators.USE_CASE_CARD))
+        EC.presence_of_all_elements_located(Locators.USE_CASE_CARD)
     )
 
     count = len(cards)
@@ -333,25 +313,31 @@ def test_TC_UC_02_usecase_cards(usecases_page):
 def about_page(driver):
     load_homepage(driver)
     tab = wait_and_capture(
-        driver, "SETUP_ABOUT_TAB", By.XPATH, Locators.ABOUT_TAB,
+        driver, "SETUP_ABOUT_TAB", *Locators.ABOUT_TAB,
         condition=EC.element_to_be_clickable
     )
-    tab.click()
+    try:
+        tab.click()
+    except ElementClickInterceptedException:
+        driver.execute_script("arguments[0].click();", tab)
     return driver
 
 def test_TC_ABOUT_01_heading(about_page):
-    h = wait_and_capture(about_page, "TC_ABOUT_01", By.XPATH, Locators.ABOUT_HEADING)
+    h = wait_and_capture(about_page, "TC_ABOUT_01", *Locators.ABOUT_HEADING)
     assert h.is_displayed()
 
 def test_TC_ABOUT_02_paragraph(about_page):
-    p = wait_and_capture(about_page, "TC_ABOUT_02", By.XPATH, Locators.ABOUT_PARAGRAPH)
+    p = wait_and_capture(about_page, "TC_ABOUT_02", *Locators.ABOUT_PARAGRAPH)
     assert p.is_displayed()
 
 def test_TC_ABOUT_03_mobile_layout(about_page):
     about_page.set_window_size(375, 812)
-    h = wait_and_capture(about_page, "TC_ABOUT_03", By.XPATH, Locators.ABOUT_HEADING)
-    p = wait_and_capture(about_page, "TC_ABOUT_03", By.XPATH, Locators.ABOUT_PARAGRAPH)
-    assert h.is_displayed() and p.is_displayed()
+    try:
+        h = wait_and_capture(about_page, "TC_ABOUT_03", *Locators.ABOUT_HEADING)
+        p = wait_and_capture(about_page, "TC_ABOUT_03", *Locators.ABOUT_PARAGRAPH)
+        assert h.is_displayed() and p.is_displayed()
+    finally:
+        about_page.set_window_size(1920, 1080)
 
 # # ─── LOGIN / SIGN UP TESTS ─────────────────────────────────────────────────────
 # 

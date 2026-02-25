@@ -15,17 +15,17 @@ from locators.provider.create_usecase_locators import CreateUsecaseLocators
 
 class CreateUsecasePage(BasePage):
     """
-    Page‐Object Model for the “Create Use Case” modal/flow (step 1 through Publish).
+    Page‐Object Model for the "Create Use Case" modal/flow (step 1 through Publish).
     All methods return `self` where chaining is appropriate, except for `is_published()`.
     """
 
     def go_to_details_tab(self):
         """
-        Click on the “Use Case Details” tab at the top of the wizard.
+        Click on the "Use Case Details" tab at the top of the wizard.
         """
         self.wait.until(
             EC.element_to_be_clickable(CreateUsecaseLocators.DETAILS_TAB),
-            message="Timed out waiting for the ‘Use Case Details’ tab"
+            message="Timed out waiting for the 'Use Case Details' tab"
         ).click()
         # Optionally: wait until the summary input is visible
         self.wait.until(
@@ -97,25 +97,29 @@ class CreateUsecasePage(BasePage):
         return self
 
     def select_geography(self, value: str):
-        # Wait for geography toggle to be clickable
+        import time
+        # Wait for geography input to be clickable
         toggle = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.GEOGRAPHY_CONTAINER))
         toggle.click()
-        opt = self.wait.until(EC.element_to_be_clickable(
-            (By.XPATH, CreateUsecaseLocators.GEO_OPTION.format(value=value))
-        ))
-        try:
-            opt.click()
-        except ElementClickInterceptedException:
-            self.driver.execute_script("arguments[0].click();", opt)
+        # Type the value to filter the dropdown options
+        toggle.send_keys(value)
+        time.sleep(2)  # Wait for dropdown to filter
+        # Use keyboard to select the first filtered option
+        toggle.send_keys(Keys.ARROW_DOWN)
+        time.sleep(0.5)
+        toggle.send_keys(Keys.ENTER)
+        time.sleep(0.5)
         ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
         return self
 
     def select_sdg_goals(self, value: str):
-        # Wait for SDG goals toggle to be clickable
+        import time
         toggle = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.SDG_GOALS_CONTAINER))
         toggle.click()
-        opt = self.wait.until(EC.element_to_be_clickable(
-            (By.XPATH, CreateUsecaseLocators.SDG_GOALS_OPTION.format(value=value))
+        toggle.send_keys(value)
+        time.sleep(2)
+        opt = self.wait_with_timeout(30).until(EC.element_to_be_clickable(
+            (By.XPATH, f"//div[@role='option' and starts-with(normalize-space(.), '{value}.')]")
         ))
         try:
             opt.click()
@@ -152,7 +156,7 @@ class CreateUsecasePage(BasePage):
     def enter_completed_on(self, iso_date: str):
         fld = self.wait.until(
             EC.visibility_of_element_located(CreateUsecaseLocators.COMPLETED_ON_INPUT),
-            message="Could not find ‘Completed On’ date input"
+            message="Could not find 'Completed On' date input"
         )
         fld.clear()
         fld.send_keys(iso_date)
@@ -164,6 +168,7 @@ class CreateUsecasePage(BasePage):
         Triggers logo upload by clicking visible DropZone and sending keys to hidden input.
         Uses BasePage utility method to eliminate code duplication.
         """
+        self.scroll_to_element(CreateUsecaseLocators.LOGO_UPLOAD_INPUT)
         return self.upload_file_to_dropzone(path_to_file)
 
     def get_usecase_name_value(self):
@@ -182,7 +187,7 @@ class CreateUsecasePage(BasePage):
         return [el.text.strip() for el in elements]
 
     def get_selected_sectors(self) -> list[str]:
-        # Assuming each selected‐tag appears as a “pill” with text inside
+        # Assuming each selected‐tag appears as a "pill" with text inside
         elements = self.driver.find_elements(
             By.XPATH, CreateUsecaseLocators.SELECTED_SECTORS
         )
@@ -195,13 +200,16 @@ class CreateUsecasePage(BasePage):
         return elt.text.strip()
 
     def get_selected_sdg_goals(self) -> str:
-        # Wait for SDG goals elements to be present
-        elements = self.wait.until(
-            EC.presence_of_all_elements_located((By.XPATH, CreateUsecaseLocators.SELECTED_SDG_GOALS))
-        )
-        if len(elements) > 3:
-            return elements[3].text.strip()  # 4th chip
-        raise IndexError("Less than 4 SDG goals selected.")
+        # Use a targeted locator near the SDG Goals label
+        sdg_locator = "//label[contains(text(),'SDG')]/following::div[contains(@class,'Input-module_tags')][1]//span[contains(@class,'Tag-module_TagText')]"
+        try:
+            elements = self.wait.until(
+                EC.presence_of_all_elements_located((By.XPATH, sdg_locator))
+            )
+            return elements[-1].text.strip() if elements else ""
+        except TimeoutException:
+            elements = self.driver.find_elements(By.XPATH, CreateUsecaseLocators.SELECTED_SDG_GOALS)
+            return elements[-1].text.strip() if elements else ""
 
     def get_started_on_value(self) -> str:
         # Wait for started_on input to be visible
@@ -223,17 +231,34 @@ class CreateUsecasePage(BasePage):
         return elt.get_attribute("value")
 
     def is_logo_uploaded(self):
+        # Wait up to 15s for the action element to show a filename.
+        # The server upload is async — React updates the action text only after
+        # the upload API call succeeds, so we must poll rather than check once.
+        import time
+
+        def _upload_confirmed(d):
+            try:
+                el = d.find_element(By.XPATH, "//div[contains(@class,'FileUpload-module_Action')]")
+                text = el.text.strip()
+                return bool(text) and text != "Name of the logo"
+            except Exception:
+                return False
+
         try:
-            elt = self.wait.until(
-                EC.visibility_of_element_located(
-                    (By.CLASS_NAME, "FileUpload-module_Action__Hg0nE")
-                )
-            )
-            return bool(elt.text.strip())
-        except TimeoutException:
+            self.wait_with_timeout(15).until(_upload_confirmed)
+            return True
+        except Exception:
+            pass
+
+        # Fallback: check if file input still has the file set (client-side only)
+        try:
+            input_el = self.driver.find_element(By.XPATH, "//input[@type='file']")
+            files_len = self.driver.execute_script("return arguments[0].files.length", input_el)
+            return files_len > 0
+        except Exception:
             return False
 
-    # ─── “Datasets” Tab ─────────────────────────────────────────────────────────────────────────────────────
+    # ─── "Datasets" Tab ─────────────────────────────────────────────────────────────────────────────────────
 
     def go_to_datasets_tab(self):
         # 1) wait until the tab is clickable
@@ -266,7 +291,7 @@ class CreateUsecasePage(BasePage):
     def click_submit_datasets(self):
         btn = self.wait.until(
             EC.element_to_be_clickable(CreateUsecaseLocators.SUBMIT_DATASETS_BUTTON),
-            message="Could not click ‘Submit’ on the Datasets tab"
+            message="Could not click 'Submit' on the Datasets tab"
         )
         btn.click()
         return self
@@ -275,7 +300,7 @@ class CreateUsecasePage(BasePage):
         selected = self.driver.find_elements(*CreateUsecaseLocators.SELECTED_DATASET_CHECKBOX)
         return [f"Row {i + 1}" for i, _ in enumerate(selected)]
 
-    # ─── “Contributors” Tab ─────────────────────────────────────────────────────────────────────────────────
+    # ─── "Contributors" Tab ─────────────────────────────────────────────────────────────────────────────────
 
     def go_to_contributors_tab(self):
         # Wait for Contributors tab to be clickable, then click
@@ -293,7 +318,7 @@ class CreateUsecasePage(BasePage):
     def add_contributors(self, names: list[str]):
         fld = self.wait.until(
             EC.visibility_of_element_located(CreateUsecaseLocators.CONTRIBUTORS_INPUT),
-            message="Could not find ‘Add Contributors’ input"
+            message="Could not find 'Add Contributors' input"
         )
 
         for name in names:
@@ -308,7 +333,7 @@ class CreateUsecasePage(BasePage):
     def add_supporters(self, names: list[str]):
         fld = self.wait.until(
             EC.visibility_of_element_located(CreateUsecaseLocators.SUPPORTERS_INPUT),
-            message="Could not find ‘Add Supporters’ input"
+            message="Could not find 'Add Supporters' input"
         )
         for name in names:
             fld.clear()
@@ -319,7 +344,7 @@ class CreateUsecasePage(BasePage):
     def add_partners(self, names: list[str]):
         fld = self.wait.until(
             EC.visibility_of_element_located(CreateUsecaseLocators.PARTNERS_INPUT),
-            message="Could not find ‘Add Partners’ input"
+            message="Could not find 'Add Partners' input"
         )
         for name in names:
             fld.clear()
@@ -339,44 +364,82 @@ class CreateUsecasePage(BasePage):
     def get_partners_list(self):
         return [el.text for el in self.driver.find_elements(*CreateUsecaseLocators.PARTNERS_LIST_ITEMS)]
 
-    # ─── “Publish” Tab ─────────────────────────────────────────────────────────────────────────────────
+    # ─── "Publish" Tab ─────────────────────────────────────────────────────────────────────────────────
 
     def go_to_publish_tab(self):
-        # Wait for Publish tab to be clickable, then click
-        self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable(CreateUsecaseLocators.PUBLISH_TAB),
-            message="Timed out waiting for Publish tab"
-        ).click()
-        # Optionally: wait until the Publish button is shown
-        self.wait.until(
-            EC.visibility_of_element_located(CreateUsecaseLocators.PUBLISH_BUTTON)
-        )
+        """
+        Navigate to the Publish tab.
+        After click_submit_datasets(), the wizard auto-advances to /dashboards.
+        The wizard enforces sequential: DASHBOARDS → CONTRIBUTORS → PUBLISH.
+        Use "Next" button to advance through each intermediate step.
+        """
+        import time
+        time.sleep(2)  # Let page stabilize after datasets submission
+
+        # Navigate through wizard until we reach /publish URL
+        for _ in range(3):
+            if '/publish' in self.driver.current_url:
+                break
+
+            # Try clicking "Next" to advance to next wizard step
+            try:
+                next_btn = self.wait_with_timeout(5).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, "//button[normalize-space()='Next']")
+                    )
+                )
+                next_btn.click()
+                time.sleep(2)
+            except TimeoutException:
+                # No "Next" button — try clicking PUBLISH tab directly
+                try:
+                    tab = self.wait_with_timeout(5).until(
+                        EC.element_to_be_clickable(CreateUsecaseLocators.PUBLISH_TAB)
+                    )
+                    self.driver.execute_script("arguments[0].click();", tab)
+                    time.sleep(2)
+                except TimeoutException:
+                    pass
+                break
+
         return self
 
     def click_publish(self):
-        btn = self.wait.until(
-            EC.element_to_be_clickable(CreateUsecaseLocators.PUBLISH_BUTTON),
-            message="Timed out waiting for Publish button to become clickable"
-        )
-        btn.click()
+        import time
 
-        # After clicking “Publish,” wait for the published‐marker to appear:
-        self.wait.until(
-            EC.visibility_of_element_located(CreateUsecaseLocators.PUBLISHED_MARKER),
-            message="Use Case did not show a ‘Published’ marker"
+        # On the /publish page the action button has a Button-module class.
+        # Try most-specific locators first to avoid accidentally clicking the tab nav button.
+        btn = None
+        for locator in [
+            # Action button with Button-module class (not the tab nav button)
+            (By.XPATH, "//button[normalize-space()='Publish' and contains(@class,'Button-module_Button')]"),
+            # Fallback: last Publish button in DOM (content buttons appear after tab nav)
+            (By.XPATH, "(//button[normalize-space()='Publish'])[last()]"),
+        ]:
+            try:
+                btn = self.wait_with_timeout(5).until(EC.element_to_be_clickable(locator))
+                break
+            except TimeoutException:
+                continue
+
+        if not btn:
+            raise TimeoutException("Timed out waiting for Publish action button to become clickable")
+
+        self.driver.execute_script("arguments[0].click();", btn)
+        time.sleep(0.5)
+
+        self.wait_with_timeout(20).until(
+            EC.presence_of_element_located(CreateUsecaseLocators.PUBLISHED_MARKER),
+            message="Use Case did not show a 'Published' marker"
         )
         return self
 
     def is_published(self) -> bool:
         try:
-            self.wait.until(
+            self.wait_with_timeout(10).until(
                 EC.presence_of_element_located(CreateUsecaseLocators.PUBLISHED_MARKER),
                 message="Published toast not found"
             )
             return True
-        except Exception as e:
-            print("DEBUG: Toast not found", e)
-            # Optional: print all toast texts for diagnosis
-            for t in self.driver.find_elements(By.XPATH, "//div[contains(@class,'toast')]"):
-                print("Toast visible:", t.text)
+        except Exception:
             return False

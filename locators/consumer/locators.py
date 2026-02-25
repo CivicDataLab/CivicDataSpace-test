@@ -50,9 +50,9 @@ class Locators:
 
     SECTORS_TAB          = (By.XPATH, "//header//nav//a[contains(@href, 'sectors') or contains(., 'Sectors')]")
     SECTOR_HEADER        = (By.XPATH, "//main//div[contains(@class, 'header') or .//h1 or .//h2]")
-    SECTOR_SEARCH_BAR    = (By.XPATH, "//input[@type='search' or @placeholder='Search sectors']")
+    SECTOR_SEARCH_BAR    = (By.XPATH, "//input[@type='search' or @placeholder='Search' or contains(@placeholder, 'Search')]")
     SECTOR_SORT_DROPDOWN = (By.XPATH, "//div[contains(@class, 'sort') or .//select or .//button[contains(., 'Sort')]]")
-    SECTOR_CARD          = (By.XPATH, "//div[contains(@class, 'sector-card') or contains(@class, 'SectorCard')]")
+    SECTOR_CARD          = (By.XPATH, "//main//a[@href[contains(., '/sectors/')]]")
     SECTOR_MOBILE_TAB    = (By.XPATH, "//div[@role='dialog' or contains(@class, 'mobile')]//a[contains(., 'Sectors')]")
     SECTOR_SORT_DROPDOWN_MOBILE = (By.XPATH, "//select[contains(@name, 'sort') or contains(@class, 'sort')]")
 
@@ -61,16 +61,16 @@ class Locators:
     # ═══════════════════════════════════════════════════════════════════════════
 
     USE_CASES_TAB    = (By.XPATH, "//header//nav//a[contains(@href, 'usecases') or contains(., 'Use Cases')]")
-    USE_CASES_HEADER = (By.XPATH, "//main//span[contains(., 'Use Cases') or contains(., 'UseCases')]")
-    USE_CASE_CARD    = (By.XPATH, "//div[contains(@class, 'usecase-card') or contains(@class, 'UseCaseCard')]")
+    USE_CASES_HEADER = (By.XPATH, "//main//span[contains(., 'Use Cases') or contains(., 'UseCases')] | //main//*[self::h1 or self::h2][contains(., 'Use Cases')]")
+    USE_CASE_CARD    = (By.XPATH, "//main//a[@href[contains(., '/usecases/')]]")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # ABOUT TAB
     # ═══════════════════════════════════════════════════════════════════════════
 
     ABOUT_TAB       = (By.XPATH, "//header//nav//a[contains(@href, 'about') or contains(., 'About')]")
-    ABOUT_HEADING   = (By.XPATH, "//main//span[contains(., 'About') or preceding::h1[contains(., 'About')]]")
-    ABOUT_PARAGRAPH = (By.XPATH, "//main//span[2] | //main//p[contains(@class, 'description')]")
+    ABOUT_HEADING   = (By.XPATH, "//main//*[self::h1 or self::h2 or self::span][contains(., 'About CivicDataSpace')]")
+    ABOUT_PARAGRAPH = (By.XPATH, "//main//div[contains(@class, 'container')]//span[contains(., 'CivicDataSpace is')]")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # LOGIN / SIGN UP (already optimized)

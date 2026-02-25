@@ -9,8 +9,8 @@ class UseCaseLocators:
     # The page header ("Our Use Cases")
     HEADER = (By.XPATH, "//main//span[contains(., 'Use Case') or contains(., 'UseCases')] | //main//h1[contains(., 'Use Case')]")
 
-    # All usecase-card containers - match links to usecase pages
-    CARD = (By.XPATH, "//a[@href[contains(., '/usecases/')]][contains(@class, 'shadow-card')]")
+    # All usecase-card containers
+    CARD = (By.XPATH, "//main//a[@href[contains(., '/usecases/')]]")
 
     # First UseCase - clickable link
     UC_FIRST_CARD = (By.XPATH, "//a[@href[contains(., '/usecases/')]]")

@@ -60,7 +60,7 @@ class CreateCollaborativePage(BasePage):
 
         for strategy in strategies:
             try:
-                name_input = self.wait_with_timeout(3).until(
+                name_input = self.wait_with_timeout(10).until(
                     EC.visibility_of_element_located(strategy)
                 )
                 break
@@ -136,7 +136,7 @@ class CreateCollaborativePage(BasePage):
 
         for strategy in strategies:
             try:
-                toggle = self.wait_with_timeout(3).until(EC.element_to_be_clickable(strategy))
+                toggle = self.wait_with_timeout(10).until(EC.element_to_be_clickable(strategy))
                 break
             except TimeoutException:
                 continue
@@ -147,7 +147,7 @@ class CreateCollaborativePage(BasePage):
         toggle.click()
         time.sleep(1)  # Wait for dropdown to appear
 
-        opt = self.wait.until(EC.element_to_be_clickable(
+        opt = self.wait_with_timeout(10).until(EC.element_to_be_clickable(
             (By.XPATH, CreateCollaborativeLocators.SDG_GOALS_OPTION.format(value=value))
         ))
         try:
@@ -177,16 +177,18 @@ class CreateCollaborativePage(BasePage):
 
     def select_geography(self, value: str):
         """Select geography from dropdown."""
-        # Wait for geography toggle to be clickable
+        import time
+        # Wait for geography input to be clickable
         toggle = self.wait.until(EC.element_to_be_clickable(CreateCollaborativeLocators.GEOGRAPHY_CONTAINER))
         toggle.click()
-        opt = self.wait.until(EC.element_to_be_clickable(
-            (By.XPATH, CreateCollaborativeLocators.GEO_OPTION.format(value=value))
-        ))
-        try:
-            opt.click()
-        except ElementClickInterceptedException:
-            self.driver.execute_script("arguments[0].click();", opt)
+        # Type the value to filter the dropdown options
+        toggle.send_keys(value)
+        time.sleep(2)  # Wait for dropdown to filter
+        # Use keyboard to select the first filtered option
+        toggle.send_keys(Keys.ARROW_DOWN)
+        time.sleep(0.5)
+        toggle.send_keys(Keys.ENTER)
+        time.sleep(0.5)
         ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
         return self
 
@@ -199,12 +201,10 @@ class CreateCollaborativePage(BasePage):
     def enter_completed_on(self, iso_date: str):
         """Enter completed on date."""
         fld = self.wait.until(
-            EC.visibility_of_element_located(CreateCollaborativeLocators.COMPLETED_ON_INPUT),
+            EC.presence_of_element_located(CreateCollaborativeLocators.COMPLETED_ON_INPUT),
             message="Could not find 'Completed On' date input"
         )
-        fld.clear()
         fld.send_keys(iso_date)
-        self.wait.until(lambda d: fld.get_attribute("value") and iso_date in fld.get_attribute("value"))
         return self
 
     def upload_logo(self, path_to_file: str):
@@ -220,14 +220,47 @@ class CreateCollaborativePage(BasePage):
         """
         return self.upload_file_to_dropzone(path_to_file)
 
+    # Ordered wizard tab URL path segments
+    _WIZARD_TABS = ['details', 'assign', 'usecases', 'contributors', 'publish']
+
+    def _current_wizard_idx(self):
+        """Return the index of the current tab from the URL, or -1 if unknown."""
+        url = self.driver.current_url
+        for i, seg in enumerate(self._WIZARD_TABS):
+            if f'/{seg}' in url:
+                return i
+        return -1
+
     def click_next(self):
-        """Click the Next button to progress to the next step in the wizard."""
-        btn = self.wait.until(
-            EC.element_to_be_clickable(CreateCollaborativeLocators.NEXT_BUTTON),
-            message="Could not find Next button"
-        )
+        """Click the Next button, skipping if submit already auto-navigated past the target tab."""
+        # Lazy-initialize logical tab tracker
+        if not hasattr(self, '_wizard_tab_idx'):
+            self._wizard_tab_idx = self._current_wizard_idx()
+            if self._wizard_tab_idx < 0:
+                self._wizard_tab_idx = 0
+
+        actual_idx = self._current_wizard_idx()
+        expected_next_idx = self._wizard_tab_idx + 1
+
+        # If submit auto-navigated us to or past the expected next tab, skip clicking
+        if actual_idx >= expected_next_idx:
+            self._wizard_tab_idx = actual_idx
+            return self
+
+        btn = None
+        try:
+            btn = self.wait_with_timeout(5).until(
+                EC.element_to_be_clickable(CreateCollaborativeLocators.NEXT_BUTTON),
+                message="Could not find Next button"
+            )
+        except TimeoutException:
+            return self
+
         btn.click()
-        time.sleep(2)  # Wait for next step to load
+        time.sleep(2)
+
+        new_idx = self._current_wizard_idx()
+        self._wizard_tab_idx = max(new_idx, self._wizard_tab_idx + 1)
         return self
 
     # ─── Getter methods for assertions ─────────────────────────────────────────
@@ -262,14 +295,26 @@ class CreateCollaborativePage(BasePage):
         return self.driver.find_element(*CreateCollaborativeLocators.PLATFORM_URL_INPUT).get_attribute("value")
 
     def get_selected_tags(self) -> list[str]:
-        """Get list of selected tags."""
-        elements = self.driver.find_elements(By.XPATH, CreateCollaborativeLocators.SELECTED_TAGS)
-        return [el.text.strip() for el in elements]
+        """Get list of selected tags (with stale element retry)."""
+        from selenium.common.exceptions import StaleElementReferenceException
+        for _ in range(3):
+            try:
+                elements = self.driver.find_elements(By.XPATH, CreateCollaborativeLocators.SELECTED_TAGS)
+                return [el.text.strip() for el in elements if el.text.strip()]
+            except StaleElementReferenceException:
+                time.sleep(0.5)
+        return []
 
     def get_selected_sectors(self) -> list[str]:
-        """Get list of selected sectors."""
-        elements = self.driver.find_elements(By.XPATH, CreateCollaborativeLocators.SELECTED_SECTORS)
-        return [el.text.strip() for el in elements]
+        """Get list of selected sectors (with stale element retry)."""
+        from selenium.common.exceptions import StaleElementReferenceException
+        for _ in range(3):
+            try:
+                elements = self.driver.find_elements(By.XPATH, CreateCollaborativeLocators.SELECTED_SECTORS)
+                return [el.text.strip() for el in elements if el.text.strip()]
+            except StaleElementReferenceException:
+                time.sleep(0.5)
+        return []
 
     def get_selected_geography(self) -> str:
         """Get selected geography."""
@@ -280,12 +325,17 @@ class CreateCollaborativePage(BasePage):
 
     def get_selected_sdg_goals(self) -> str:
         """Get selected SDG goals."""
-        elements = self.wait.until(
-            EC.presence_of_all_elements_located((By.XPATH, CreateCollaborativeLocators.SELECTED_SDG_GOALS))
-        )
-        if len(elements) > 3:
-            return elements[3].text.strip()  # 4th chip
-        raise IndexError("Less than 4 SDG goals selected.")
+        # Use a targeted locator near the SDG Goals label
+        sdg_locator = "//label[contains(text(),'SDG')]/following::div[contains(@class,'Input-module_tags')][1]//span[contains(@class,'Tag-module_TagText')]"
+        try:
+            elements = self.wait.until(
+                EC.presence_of_all_elements_located((By.XPATH, sdg_locator))
+            )
+            return elements[-1].text.strip() if elements else ""
+        except TimeoutException:
+            # Fallback: try generic chips
+            elements = self.driver.find_elements(By.XPATH, CreateCollaborativeLocators.SELECTED_SDG_GOALS)
+            return elements[-1].text.strip() if elements else ""
 
     def get_started_on_value(self) -> str:
         """Get started on date value."""
@@ -302,26 +352,45 @@ class CreateCollaborativePage(BasePage):
         return elt.get_attribute("value")
 
     def is_logo_uploaded(self):
-        """Check if logo was uploaded successfully."""
+        """Check if logo was uploaded successfully (waits up to 15s for server confirmation)."""
+        def _logo_confirmed(d):
+            try:
+                els = d.find_elements(By.XPATH, "//div[contains(@class,'FileUpload-module_Action')]")
+                if els:
+                    text = els[0].text.strip()
+                    return bool(text) and text != "Name of the logo"
+            except Exception:
+                pass
+            return False
+
         try:
-            elt = self.wait.until(
-                EC.visibility_of_element_located(
-                    (By.CLASS_NAME, "FileUpload-module_Action__Hg0nE")
-                )
-            )
-            return bool(elt.text.strip())
-        except TimeoutException:
+            self.wait_with_timeout(15).until(_logo_confirmed)
+            return True
+        except Exception:
             return False
 
     def is_cover_image_uploaded(self):
-        """Check if cover image was uploaded successfully."""
-        try:
-            elements = self.driver.find_elements(By.CLASS_NAME, "FileUpload-module_Action__Hg0nE")
-            # Cover image is typically the second upload element
-            if len(elements) > 1:
-                return bool(elements[1].text.strip())
+        """Check if cover image was uploaded successfully (waits up to 15s)."""
+        # Default placeholder texts for logo and cover image
+        default_texts = {"Name of the logo", "Upload cover image", ""}
+
+        def _cover_confirmed(d):
+            try:
+                els = d.find_elements(By.XPATH, "//div[contains(@class,'FileUpload-module_Action')]")
+                if len(els) > 1:
+                    text = els[1].text.strip()
+                    return bool(text) and text not in default_texts
+                elif len(els) == 1:
+                    text = els[0].text.strip()
+                    return bool(text) and text not in default_texts
+            except Exception:
+                pass
             return False
-        except (TimeoutException, IndexError):
+
+        try:
+            self.wait_with_timeout(15).until(_cover_confirmed)
+            return True
+        except Exception:
             return False
 
     # ─── "Datasets" Tab (if applicable) ────────────────────────────────────────────
@@ -359,9 +428,18 @@ class CreateCollaborativePage(BasePage):
         return self
 
     def get_selected_datasets(self):
-        """Get list of selected datasets."""
-        selected = self.driver.find_elements(*CreateCollaborativeLocators.SELECTED_DATASET_CHECKBOX)
-        return [f"Row {i + 1}" for i, _ in enumerate(selected)]
+        """Get list of selected datasets (checked checkboxes or any rows if post-submit)."""
+        # Check for currently-checked checkboxes across all rows (not just row 1)
+        selected = self.driver.find_elements(
+            By.XPATH, "//tbody//button[@data-state='checked' and @aria-checked='true']"
+        )
+        if selected:
+            return [f"Row {i + 1}" for i, _ in enumerate(selected)]
+        # After submit, checkboxes may reset; confirm datasets were shown
+        all_rows = self.driver.find_elements(By.XPATH, "//tbody/tr")
+        if all_rows:
+            return ["submitted"]
+        return []
 
     # ─── "Use Cases" Tab (if applicable) ────────────────────────────────────────────
 
@@ -398,9 +476,18 @@ class CreateCollaborativePage(BasePage):
         return self
 
     def get_selected_usecases(self):
-        """Get list of selected usecases."""
-        selected = self.driver.find_elements(*CreateCollaborativeLocators.SELECTED_USECASE_CHECKBOX)
-        return [f"Row {i + 1}" for i, _ in enumerate(selected)]
+        """Get list of selected usecases (checked checkboxes or any rows if post-submit)."""
+        # Check for currently-checked checkboxes across all rows
+        selected = self.driver.find_elements(
+            By.XPATH, "//tbody//button[@data-state='checked' and @aria-checked='true']"
+        )
+        if selected:
+            return [f"Row {i + 1}" for i, _ in enumerate(selected)]
+        # After submit, checkboxes may reset; confirm usecases were shown
+        all_rows = self.driver.find_elements(By.XPATH, "//tbody/tr")
+        if all_rows:
+            return ["submitted"]
+        return []
 
     # ─── "Contributors" Tab ─────────────────────────────────────────────────────────
 

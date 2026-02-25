@@ -5,7 +5,7 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver import Keys
 
 class BasePage:
-    def __init__(self, driver, timeout=5):
+    def __init__(self, driver, timeout=15):
         self.driver = driver
         self.wait   = WebDriverWait(driver, timeout)
 
@@ -91,6 +91,10 @@ class BasePage:
             # Fallback to JavaScript click if regular click is intercepted
             self.driver.execute_script("arguments[0].click();", opt)
 
+        # Wait briefly for React state to update before closing dropdown
+        import time
+        time.sleep(0.5)
+
         # Close dropdown with Escape key
         ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
         return self
@@ -117,21 +121,58 @@ class BasePage:
     def upload_file_to_dropzone(self, path_to_file, dropzone_class="DropZone-module_DropZone__xD9-6"):
         """
         Standard file upload to React DropZone component.
-        Handles making hidden file input visible and sending file path.
+        Primary: send_keys after removing display:none (triggers real browser/React events + server upload).
+        Fallback: JavaScript DataTransfer (updates client-side state only).
         """
-        import os
+        import os, time, base64
         from selenium.webdriver.common.by import By
 
         assert os.path.isfile(path_to_file), f"File does not exist: {path_to_file}"
-
-        dropzone = self.wait.until(
-            EC.element_to_be_clickable((By.CLASS_NAME, dropzone_class))
-        )
-        dropzone.click()
+        abs_path = os.path.abspath(path_to_file)
+        file_name = os.path.basename(abs_path)
+        ext = file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
+        mime_map = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+                    "gif": "image/gif", "webp": "image/webp", "svg": "image/svg+xml"}
+        mime_type = mime_map.get(ext, "application/octet-stream")
 
         input_el = self.driver.find_element(By.XPATH, "//input[@type='file']")
-        self.driver.execute_script("arguments[0].style.display = 'block';", input_el)
-        input_el.send_keys(path_to_file)
+
+        # Remove display:none so ChromeDriver can interact with the file input.
+        # ChromeDriver uses CDP DOM.setFileInputFiles which triggers real browser events
+        # (including React's synthetic onChange), enabling server-side upload.
+        self.driver.execute_script("arguments[0].removeAttribute('style');", input_el)
+        time.sleep(0.2)
+
+        try:
+            input_el.send_keys(abs_path)
+            time.sleep(2)
+            files_len = self.driver.execute_script("return arguments[0].files.length", input_el)
+            if files_len > 0:
+                return self
+        except Exception:
+            pass
+
+        # Fallback: JavaScript DataTransfer (updates React state client-side)
+        with open(abs_path, "rb") as f:
+            file_b64 = base64.b64encode(f.read()).decode()
+
+        result = self.driver.execute_script("""
+            var b64 = arguments[0], name = arguments[1], mime = arguments[2], input = arguments[3];
+            try {
+                var bytes = atob(b64);
+                var arr = new Uint8Array(bytes.length);
+                for (var i = 0; i < bytes.length; i++) { arr[i] = bytes.charCodeAt(i); }
+                var blob = new Blob([arr], {type: mime});
+                var file = new File([blob], name, {type: mime});
+                var dt = new DataTransfer();
+                dt.items.add(file);
+                Object.defineProperty(input, 'files', {writable: true, configurable: true, value: dt.files});
+                var event = new Event('change', {bubbles: true, cancelable: false});
+                input.dispatchEvent(event);
+                return input.files.length;
+            } catch(e) { return 'error: ' + e; }
+        """, file_b64, file_name, mime_type, input_el)
+        time.sleep(2)
         return self
 
     # ── Element State Utilities ────────────────────────────────────────────────
