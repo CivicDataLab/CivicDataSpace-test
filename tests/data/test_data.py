@@ -97,9 +97,9 @@ class UseCaseTestData:
     GEOGRAPHY = "India"
     GEOGRAPHY_ALTERNATIVE = "Assam"
 
-    # SDG Goals
-    SDG_GOALS = "SDG13"
-    SDG_GOALS_ALTERNATIVE = ["SDG1", "SDG2"]
+    # SDG Goals (must match exact dropdown option text)
+    SDG_GOALS = "13. Climate Action"
+    SDG_GOALS_ALTERNATIVE = ["01. No Poverty", "02. Zero Hunger"]
 
     # Dates
     START_DATE_INPUT = "01012023"  # DDMMYYYY format
@@ -165,9 +165,9 @@ class CollaborativeTestData:
     PLATFORM_URL_IND = "https://collaborative-platform.url"
     PLATFORM_URL_ORG = "https://org-collaborative-platform.url"
 
-    # SDG Goals
-    SDG_GOALS = "SDG13"
-    SDG_GOALS_ALTERNATIVE = ["SDG1", "SDG2"]
+    # SDG Goals (must match exact dropdown option text)
+    SDG_GOALS = "13. Climate Action"
+    SDG_GOALS_ALTERNATIVE = ["01. No Poverty", "02. Zero Hunger"]
 
     # Tags
     TAGS = ["Budget"]

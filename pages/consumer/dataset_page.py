@@ -29,14 +29,12 @@ class DatasetPage(BasePage):
         )
         card.click()
 
-        # wait for dataset page load
-        dataset_page = self.wait.until(
+        # wait for download link to be clickable
+        download_link = self.wait.until(
             EC.element_to_be_clickable(DatasetLocators.DOWNLOAD_LINK)
         )
 
-        # find and click download
-        link = dataset_page.find_element(*DatasetLocators.DOWNLOAD_LINK)
-        href = link.get_attribute("href")
+        href = download_link.get_attribute("href")
         if not href:
             raise AssertionError("Download link has no href")
 

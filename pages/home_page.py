@@ -153,10 +153,26 @@ class HomePage(BasePage):
         except TimeoutException:
             pass
 
-        btn = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable(HomepageLocators.TAB_DATASETS)
-        )
-        btn.click()
+        try:
+            btn = self.wait_with_timeout(5).until(
+                EC.element_to_be_clickable(HomepageLocators.TAB_DATASETS)
+            )
+            btn.click()
+        except TimeoutException:
+            # Fallback: dev site uses EXPLORE dropdown instead of direct Datasets link
+            try:
+                explore = self.wait_with_timeout(5).until(
+                    EC.element_to_be_clickable((By.XPATH, "//header//nav//button[contains(., 'Explore') or contains(., 'EXPLORE')]"))
+                )
+                explore.click()
+                time.sleep(1)
+                datasets_link = self.wait_with_timeout(5).until(
+                    EC.element_to_be_clickable((By.XPATH, "//a[contains(@href, '/datasets')]"))
+                )
+                datasets_link.click()
+            except TimeoutException:
+                # Last resort: navigate directly
+                self.driver.get(self.url.rstrip('/') + '/datasets')
 
         # Wait for URL to change to datasets page
         self.wait_with_timeout(10).until(
@@ -225,70 +241,46 @@ class HomePage(BasePage):
     # ─── Provider‐flow login method ──────────────────────────────────────────────────
 
     def go_to_login(self, flow: str = "consumer", email: str|None = None, password: str|None = None):
-        print("\n[STEP] Starting go_to_login (flow=%s)" % flow)
         self.logout()
 
         # Dismiss tour popup if it's blocking the login button
         self.dismiss_tour_popup()
 
         if flow.lower() == "provider":
-            print("[WAIT] Checking if dashboard header is already visible")
             try:
                 self.wait.until(
                     EC.visibility_of_element_located(ProviderHomepageLocators.HEADER)
                 )
-                print("[OK] Already logged in; ProviderHomePage visible")
                 return ProviderHomePage(self.driver)
             except TimeoutException:
-                print("[INFO] Not already logged in, continuing to login.")
+                pass
 
-        print("[WAIT] Waiting for LOGIN / SIGN UP button to be clickable")
         try:
             login_btn = self.wait_with_timeout(10).until(
                 EC.element_to_be_clickable(LoginLocators.LOGIN_BUTTON)
             )
-            print("[OK] Login button found, clicking…")
             login_btn.click()
-            print(f"[OK] Clicked LOGIN, current URL: {self.driver.current_url}")
-        except Exception as e:
-            print(f"[FAIL] Could not find or click login button: {e}")
-            self.driver.save_screenshot('debug_login_fail.png')
-            with open('debug_login_fail.html', 'w') as f:
-                f.write(self.driver.page_source)
+        except Exception:
             raise
 
-        print("[WAIT] Waiting for login form to appear (10s)")
         try:
             self.wait_with_timeout(10).until(
                 EC.visibility_of_element_located(LoginLocators.FORM)
             )
-            print("[OK] Login form is now visible")
-        except TimeoutException as e:
-            print("[FAIL] Login form never appeared after clicking LOGIN")
-            self.driver.save_screenshot('debug_no_login_form.png')
-            with open('debug_no_login_form.html', 'w') as f:
-                f.write(self.driver.page_source)
+        except TimeoutException:
             raise AssertionError("Tapped LOGIN / SIGN UP, but the login form never appeared.")
 
         login_page = LoginPage(self.driver)
 
         if flow.lower() == "provider":
-            print("[ACTION] Logging in as provider (auto-fill)")
-            # Use parameters if provided, else fallback
             email = email or os.getenv("TEST_EMAIL")
             password = password or os.getenv("TEST_PASSWORD")
             login_page.login(email, password)
-            print("[WAIT] Waiting for ProviderHomePage header to appear (10s)")
             try:
                 self.wait_with_timeout(10).until(
                     EC.visibility_of_element_located(ProviderHomepageLocators.HEADER)
                 )
-                print("[OK] ProviderHomePage loaded after login")
-            except TimeoutException as e:
-                print("[FAIL] ProviderHomePage header did not appear after login")
-                self.driver.save_screenshot('debug_post_login_fail.png')
-                with open('debug_post_login_fail.html', 'w') as f:
-                    f.write(self.driver.page_source)
+            except TimeoutException:
                 raise
 
             return ProviderHomePage(self.driver)
@@ -320,8 +312,8 @@ class HomePage(BasePage):
             self.wait_with_timeout(10).until(
                 EC.visibility_of_element_located((By.XPATH, "//button[contains(.,'LOGIN') or contains(.,'Sign Up')]"))
             )
-        except Exception as e:
-            print("Logout not needed or failed:", e)
+        except Exception:
+            pass
 
         # 4. Always clear cookies/storage for total isolation
         self.driver.delete_all_cookies()

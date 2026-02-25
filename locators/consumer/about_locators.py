@@ -7,7 +7,7 @@ class AboutLocators:
     """XPaths for elements on the About Us page."""
 
     # The main heading in the About section
-    HEADING = (By.XPATH, "//main//span[contains(., 'About') or preceding::h1[contains(., 'About')]] | //main//h1[contains(., 'About')]")
+    HEADING = (By.XPATH, "//main//*[self::h1 or self::h2 or self::span][contains(., 'About CivicDataSpace')]")
 
     # A representative paragraph under the heading
-    PARAGRAPH = (By.XPATH, "//main//span[2] | //main//p[contains(@class, 'description') or contains(@class, 'about')]")
+    PARAGRAPH = (By.XPATH, "//main//div[contains(@class, 'container')]//span[contains(., 'CivicDataSpace is')]")

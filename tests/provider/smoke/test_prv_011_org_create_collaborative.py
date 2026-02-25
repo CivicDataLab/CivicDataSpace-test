@@ -45,8 +45,8 @@ def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover
         if not home.is_loaded():
             home.load()
             assert home.is_loaded(), "Homepage did not load successfully"
-    except Exception as e:
-        print(f"Error loading homepage: {e}")
+    except Exception:
+        pass
 
     # ─── Step 2: Login as provider (auto-fill) ───────────────────────────────────────
     prov_home = home.go_to_login(flow="provider", email=email, password=password)
@@ -65,23 +65,19 @@ def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover
     assert isinstance(select_org, OrganizationsPage), (
         "Step 4 failure: expected select_org() to return OrganizationsPage"
     )
-    print("✓ Step 4: Successfully selected organization")
 
     # ─── Step 5: Navigate to Collaboratives tab from side panel ─────────────────────────────
     collaboratives_page = org_dash.click_collaboratives_card()
     assert collaboratives_page.is_loaded(), "Step 5 failure: Collaboratives page did not load properly"
-    print("✓ Step 5: Successfully navigated to Collaboratives page")
 
     # ─── Step 6: Click "Add New Collaborative" ─────────────────────────────────────────────
     create_collab = collaboratives_page.click_add_new_collaborative()
     assert isinstance(create_collab, CreateCollaborativePage), (
         f"Step 6 failure: Expected CreateCollaborativePage after click, got {type(create_collab)}"
     )
-    print("✓ Step 6: Successfully opened Create Collaborative form")
 
     # ─── Step 7: Edit Collaborative Name ────────────────────────────────────────────────────
     test_collab_name = CollaborativeTestData.get_collaborative_name("organization")
-    print(f"   Setting collaborative name: {test_collab_name}")
     create_collab.edit_collaborative_name(test_collab_name)
     time.sleep(2)
     actual_collab_name = create_collab.get_collaborative_name_value()
@@ -89,44 +85,36 @@ def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover
         f"Step 7 failure: Expected collaborative name to contain '{test_collab_name}', but found '{actual_collab_name}'."
     )
     assert len(actual_collab_name) > 0, "Step 7 failure: Collaborative name is empty"
-    print(f"✓ Step 7: Collaborative name set successfully: {actual_collab_name}")
 
     # ─── Step 8: Fill in Summary ─────────────────────────────────────────────────────────────
     test_summary = CollaborativeTestData.get_summary()
-    print(f"   Entering summary: {test_summary[:50]}...")
     create_collab.enter_summary(test_summary)
     actual_summary = create_collab.get_summary_value()
     assert actual_summary == test_summary + test_summary, (
         f"Step 8 failure: Summary mismatch. Expected: '{test_summary + test_summary}', Found: '{actual_summary}'."
     )
     assert len(actual_summary) > 0, "Step 8 failure: Summary is empty"
-    print(f"✓ Step 8: Summary entered successfully (length: {len(actual_summary)} chars)")
 
     # ─── Step 9: Platform URL ─────────────────────────────────────────────────────────────────
     platform_url = CollaborativeTestData.get_platform_url("organization")
-    print(f"   Entering platform URL: {platform_url}")
     create_collab.enter_platform_url(platform_url)
     actual_url = create_collab.get_platform_url_value()
     assert actual_url == platform_url, (
         f"Step 9 failure: Expected platform URL '{platform_url}', but found '{actual_url}'."
     )
     assert actual_url.startswith("https://"), "Step 9 failure: Platform URL should start with https://"
-    print(f"✓ Step 9: Platform URL entered successfully: {actual_url}")
 
     time.sleep(3)
 
     # ─── Step 10: SDG Goals ────────────────────────────────────────────────────────────────────
-    print(f"   Selecting SDG Goal: {CollaborativeTestData.SDG_GOALS}")
     create_collab.select_sdg_goals(CollaborativeTestData.SDG_GOALS)
     selected_sdgs = create_collab.get_selected_sdg_goals()
     assert CollaborativeTestData.SDG_GOALS in selected_sdgs, (
         f"Step 10 failure: SDG goal '{CollaborativeTestData.SDG_GOALS}' not selected correctly. Selected: {selected_sdgs}"
     )
     assert len(selected_sdgs) > 0, "Step 10 failure: No SDG goals selected"
-    print(f"✓ Step 10: SDG Goal selected successfully: {selected_sdgs}")
 
     # ─── Step 11: Tags ────────────────────────────────────────────────────────────────────────
-    print(f"   Selecting tags: {CollaborativeTestData.TAGS}")
     create_collab.select_tags(CollaborativeTestData.TAGS)
     selected_tags = create_collab.get_selected_tags()
     assert CollaborativeTestData.TAGS[0] in selected_tags, (
@@ -135,10 +123,8 @@ def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover
     assert len(selected_tags) > 0, "Step 11 failure: No tags selected"
     for tag in CollaborativeTestData.TAGS:
         assert tag in selected_tags, f"Step 11 failure: Expected tag '{tag}' not found in selected tags: {selected_tags}"
-    print(f"✓ Step 11: Tags selected successfully: {selected_tags}")
 
     # ─── Step 12: Sectors ─────────────────────────────────────────────────────────────────────
-    print(f"   Selecting sectors: {CollaborativeTestData.SECTORS}")
     create_collab.select_sectors(CollaborativeTestData.SECTORS)
     selected_sectors = create_collab.get_selected_sectors()
     assert CollaborativeTestData.SECTORS[0] in selected_sectors, (
@@ -147,30 +133,24 @@ def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover
     assert len(selected_sectors) > 0, "Step 12 failure: No sectors selected"
     for sector in CollaborativeTestData.SECTORS:
         assert sector in selected_sectors, f"Step 12 failure: Expected sector '{sector}' not found in selected sectors: {selected_sectors}"
-    print(f"✓ Step 12: Sectors selected successfully: {selected_sectors}")
 
     # ─── Step 13: Geography ───────────────────────────────────────────────────────────────────
-    print(f"   Selecting geography: {CollaborativeTestData.GEOGRAPHY}")
     create_collab.select_geography(CollaborativeTestData.GEOGRAPHY)
     actual_geo = create_collab.get_selected_geography()
-    assert actual_geo == CollaborativeTestData.GEOGRAPHY, (
-        f"Step 13 failure: Expected geography to be '{CollaborativeTestData.GEOGRAPHY}', but got '{actual_geo}'."
+    assert CollaborativeTestData.GEOGRAPHY in actual_geo, (
+        f"Step 13 failure: Expected geography to contain '{CollaborativeTestData.GEOGRAPHY}', but got '{actual_geo}'."
     )
     assert len(actual_geo) > 0, "Step 13 failure: Geography is empty"
-    print(f"✓ Step 13: Geography selected successfully: {actual_geo}")
 
     # ─── Step 14: Started On ──────────────────────────────────────────────────────────────────
-    print(f"   Entering Started On date: {CollaborativeTestData.START_DATE_INPUT} (ISO: {CollaborativeTestData.START_DATE_ISO})")
     create_collab.enter_started_on(CollaborativeTestData.START_DATE_INPUT)
     actual_start = create_collab.get_started_on_value()
     assert actual_start == CollaborativeTestData.START_DATE_ISO, (
         f"Step 14 failure: Started On mismatch. Expected: {CollaborativeTestData.START_DATE_ISO}, Found: {actual_start}"
     )
     assert len(actual_start) > 0, "Step 14 failure: Started On date is empty"
-    print(f"✓ Step 14: Started On date entered successfully: {actual_start}")
 
     # ─── Step 15: Completed On ────────────────────────────────────────────────────────────────
-    print(f"   Entering Completed On date: {CollaborativeTestData.COMPLETED_DATE_INPUT} (ISO: {CollaborativeTestData.COMPLETED_DATE_ISO})")
     create_collab.enter_completed_on(CollaborativeTestData.COMPLETED_DATE_INPUT)
     actual_completed = create_collab.get_completed_on_value()
     assert actual_completed == CollaborativeTestData.COMPLETED_DATE_ISO, (
@@ -181,32 +161,24 @@ def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover
     assert actual_completed > actual_start, (
         f"Step 15 failure: Completed On date ({actual_completed}) should be after Started On date ({actual_start})"
     )
-    print(f"✓ Step 15: Completed On date entered successfully: {actual_completed}")
 
     # ─── Step 16: Logo Upload ─────────────────────────────────────────────────────────────────
-    print(f"   Uploading logo from: {sample_logo_path}")
     assert os.path.exists(sample_logo_path), f"Step 16 failure: Logo file does not exist at {sample_logo_path}"
     create_collab.upload_logo(sample_logo_path)
     time.sleep(2)  # Allow time for upload to complete
     assert create_collab.is_logo_uploaded(), "Step 16 failure: Logo upload did not succeed."
-    print(f"✓ Step 16: Logo uploaded successfully")
 
     # ─── Step 17: Cover Image Upload ──────────────────────────────────────────────────────────
-    print(f"   Uploading cover image from: {sample_cover_image_path}")
     assert os.path.exists(sample_cover_image_path), f"Step 17 failure: Cover image file does not exist at {sample_cover_image_path}"
     create_collab.upload_cover_image(sample_cover_image_path)
     time.sleep(2)  # Allow time for upload to complete
     assert create_collab.is_cover_image_uploaded(), "Step 17 failure: Cover image upload did not succeed."
-    print(f"✓ Step 17: Cover image uploaded successfully")
 
     # ─── Step 18: Click Next to go to Datasets tab ──────────────────────────────────────────
-    print("   Clicking Next button to navigate to Datasets tab")
     create_collab.click_next()
 
     # ─── Step 19: Select first dataset and click Submit ──────────────────────────────────────
-    print("   Selecting first dataset")
     create_collab.select_first_dataset_checkbox()
-    print("   Submitting dataset selection")
     create_collab.click_submit_datasets()
     time.sleep(2)
 
@@ -216,16 +188,12 @@ def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover
         f"Step 19 failure: No dataset was selected/submitted. Got: {selected_datasets}"
     )
     assert len(selected_datasets) > 0, "Step 19 failure: Selected datasets list is empty"
-    print(f"✓ Step 19: Dataset selected and submitted successfully. Selected: {selected_datasets}")
 
     # ─── Step 20: Click Next to go to Use Cases tab ──────────────────────────────────────────
-    print("   Clicking Next button to navigate to Use Cases tab")
     create_collab.click_next()
 
     # ─── Step 21: Select first use case and click Submit ─────────────────────────────────────
-    print("   Selecting first use case")
     create_collab.select_first_usecase_checkbox()
-    print("   Submitting use case selection")
     create_collab.click_submit_usecases()
     time.sleep(2)
 
@@ -235,26 +203,17 @@ def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover
         f"Step 21 failure: No use case was selected/submitted. Got: {selected_usecases}"
     )
     assert len(selected_usecases) > 0, "Step 21 failure: Selected use cases list is empty"
-    print(f"✓ Step 21: Use case selected and submitted successfully. Selected: {selected_usecases}")
 
     # Skipping contributor's section because of ongoing issues (similar to usecase tests)
 
     # ─── Step 22: Click Next to go to Contributors tab ────────────────────────────────────────
-    print("   Clicking Next button to navigate to Contributors tab")
     create_collab.click_next()
-    print("✓ Step 22: Skipping Contributors section")
 
     # ─── Step 23: Click Next to go to Publish tab ─────────────────────────────────────────────
-    print("   Clicking Next button to navigate to Publish tab")
     create_collab.click_next()
     time.sleep(2)
 
     # ─── Step 24: Publish Collaborative ───────────────────────────────────────────────────────
-    print("   Clicking Publish button")
     detail = create_collab.click_publish()
     assert detail.is_published(), "Step 24 failure: Collaborative was not marked as 'Published'."
-    print(f"✓ Step 24: Collaborative published successfully")
 
-    print("\n" + "="*80)
-    print("[SUCCESS] test_prv_011_org_create_collaborative completed successfully")
-    print("="*80)

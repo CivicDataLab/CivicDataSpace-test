@@ -2,4 +2,5 @@
 from selenium.webdriver.common.by import By
 
 class CollaborativesListPageLocators:
-    ADD_NEW_COLLABORATIVE_BUTTON = (By.XPATH, "//div[@class='flex items-center gap-3']//span[@class='Button-module_removeUnderline__dq0ct'][normalize-space()='Add New Collaborative']")
+    # Broad locator used only for page-load detection (not for clicking)
+    ADD_NEW_COLLABORATIVE_BUTTON = (By.XPATH, "//*[contains(normalize-space(), 'Add New Collaborative')]")

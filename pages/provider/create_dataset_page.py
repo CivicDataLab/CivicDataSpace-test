@@ -57,7 +57,9 @@ class CreateDatasetPage(BasePage):
     # ---- Metadata entry ----
     def enter_description(self, text: str):
         fld = self.find((By.XPATH, CreateDatasetLocators.DESCRIPTION))
-        fld.clear()
+        fld.click()
+        fld.send_keys(Keys.CONTROL + 'a')
+        fld.send_keys(Keys.DELETE)
         fld.send_keys(text)
         return self
 
@@ -65,8 +67,11 @@ class CreateDatasetPage(BasePage):
         """Select multiple sectors using BasePage utility to eliminate duplication"""
         for val in items:
             self.select_combobox_option((By.XPATH, CreateDatasetLocators.SECTOR_INPUT), val)
-        # Wait for any toast notifications to disappear after selections
-        self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=5)
+        # Wait for any toast notifications to disappear, but don't fail if they persist
+        try:
+            self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=5)
+        except TimeoutException:
+            pass  # Continue anyway - toasts don't block interaction
         return self
 
     def select_tags(self, items: list[str]):
@@ -83,15 +88,14 @@ class CreateDatasetPage(BasePage):
         ))
         toggle.click()
 
-        # Give dropdown time to appear
-        time.sleep(1)
+        # Type the value to filter the dropdown options
+        toggle.send_keys(value)
+        time.sleep(2)
 
-        opt = self.wait_with_timeout(15).until(EC.element_to_be_clickable(
-            (By.XPATH, CreateDatasetLocators.GEO_OPTION.format(value=value))
-        ))
-        opt.click()
-
-        # Give time for selection to register
+        # Use keyboard to select the first filtered option
+        toggle.send_keys(Keys.ARROW_DOWN)
+        time.sleep(0.5)
+        toggle.send_keys(Keys.ENTER)
         time.sleep(0.5)
 
         ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
@@ -134,14 +138,12 @@ class CreateDatasetPage(BasePage):
         inp = self.wait.until(EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.DATAFILES_INPUT)))
 
         # send the absolute file-path to it (this triggers the upload)
-        print(f"[DEBUG] Uploading file: {path}")
         inp.send_keys(path)
 
         # Wait for back button to be present (indicates upload initiated)
         btn = self.wait_with_timeout(10).until(
             EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.BACK_BUTTON))
         )
-        print("[DEBUG] Back button found, clicking...")
         btn.click()
 
         # Wait a moment for navigation to complete
@@ -150,13 +152,10 @@ class CreateDatasetPage(BasePage):
 
         # After clicking back, the page navigates to metadata
         # We need to explicitly go back to the Data Files tab
-        print("[DEBUG] Navigating back to Data Files tab after upload...")
         self.go_to_datafiles_tab()
 
         # Wait for the uploaded file to appear in the resource list
         time.sleep(2)
-
-        print(f"[DEBUG] Current URL after upload: {self.driver.current_url}")
 
         return self
 
@@ -171,7 +170,7 @@ class CreateDatasetPage(BasePage):
         elt = self.wait.until(
             EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.DESCRIPTION))
         )
-        return elt.get_attribute("value").strip()
+        return elt.text.strip()
 
     def get_selected_sectors(self) -> list[str]:
         # Assuming each selected‐tag appears as a “pill” with text inside
@@ -238,9 +237,7 @@ class CreateDatasetPage(BasePage):
                 ))
 
         # strip() in case there's extra whitespace
-        result = [el.text.strip() for el in els if el.text.strip()]
-        print(f"[DEBUG] Found uploaded resources: {result}")
-        return result
+        return [el.text.strip() for el in els if el.text.strip()]
 
     # ─── Publish‐tab getters ─────────────────────────────────────────────────────────────────
     def is_publish_tab_visible(self) -> bool:

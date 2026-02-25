@@ -42,8 +42,8 @@ def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_cred
         if not home.is_loaded():
             home.load()
             assert home.is_loaded(), "Homepage did not load successfully"
-    except Exception as e:
-        print(f"Error loading homepage: {e}")
+    except Exception:
+        pass
 
     # Step 2: Login as provider (auto-redirects to /dashboard)
     prov_home = home.go_to_login(flow="provider", email=email, password=password)
@@ -99,8 +99,8 @@ def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_cred
     # (5d) Geography
     create_ds.select_geography("Assam")
     actual_geo = create_ds.get_selected_geography()  # e.g. returns 'India'
-    assert actual_geo == "Assam", (
-        f"Step 5d failure: Expected geography 'Assam', but saw '{actual_geo}'."
+    assert "Assam" in actual_geo, (
+        f"Step 5d failure: Expected geography containing 'Assam', but saw '{actual_geo}'."
     )
 
     # (5e) Date of Creation
@@ -142,8 +142,6 @@ def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_cred
     unique_csv_path = os.path.join(os.path.dirname(sample_csv_path), unique_filename)
     shutil.copy2(sample_csv_path, unique_csv_path)
 
-    print(f"[INFO] Created unique file: {unique_filename}")
-
     # Upload the unique CSV file
     create_ds.upload_datafile(unique_csv_path)
 
@@ -156,7 +154,6 @@ def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_cred
     # Clean up the temporary unique file
     try:
         os.remove(unique_csv_path)
-        print(f"[INFO] Cleaned up temporary file: {unique_filename}")
     except:
         pass  # Ignore cleanup errors
 

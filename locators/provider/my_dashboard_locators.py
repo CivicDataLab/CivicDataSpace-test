@@ -13,7 +13,7 @@ class MyDashboardLocators:
     # (2) Sidebar navigation links
     SIDEBAR_DATASETS = (By.XPATH, '//span[normalize-space()="Datasets"]')
     USECASES_NAV_LINK = (By.XPATH, '//span[normalize-space()="UseCases"]')
-    COLLABORATIVES_NAV_LINK = (By.XPATH, '//span[normalize-space()="Collaboratives"]')
+    COLLABORATIVES_NAV_LINK = (By.XPATH, "//a[contains(@href,'/dashboard/') and contains(@href,'collaboratives')]")
     PROFILE_NAV_LINK = (By.XPATH, '//span[normalize-space()="Profile"]')
 
     # (3) Inside the "Datasets" panel, the "Drafts" tab is visible by default.

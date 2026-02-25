@@ -46,17 +46,17 @@ class CreateCollaborativeLocators:
 
     # Geography
     GEOGRAPHY_CONTAINER = (By.XPATH, "//label[normalize-space()='Geographies']/following::input[1]")
-    GEO_OPTION = "//div[@role='option' and normalize-space(.)='{value}']"
+    GEO_OPTION = "//div[@role='option' and starts-with(normalize-space(.), '{value}')]"
 
     # Dates
     STARTED_ON_INPUT = (By.XPATH, "//input[@type='date' and @name='startedOn']")
     COMPLETED_ON_INPUT = (By.XPATH, "//input[@type='date' and @name='completedOn']")
 
     # Logo Upload
-    LOGO_UPLOAD_INPUT = (By.XPATH, "//label[normalize-space()='Logo *']//following::div[@class='FileUpload-module_Action__Hg0nE'][1]")
+    LOGO_UPLOAD_INPUT = (By.XPATH, "//label[normalize-space()='Logo *']/following::div[contains(@class,'FileUpload-module_Action')][1]")
 
     # Cover Image Upload
-    COVER_IMAGE_UPLOAD_INPUT = (By.XPATH, "//label[normalize-space()='Cover Image']//following::div[@class='FileUpload-module_Action__Hg0nE'][1]")
+    COVER_IMAGE_UPLOAD_INPUT = (By.XPATH, "//label[normalize-space()='Cover Image']/following::div[contains(@class,'FileUpload-module_Action')][1]")
 
     # ─── Fields Used for Value Retrieval / Assertions ──────────────────────────
     SUMMARY_INPUT = (By.XPATH, "//div[contains(@class, 'ql-editor') and @contenteditable='true']")
@@ -74,8 +74,8 @@ class CreateCollaborativeLocators:
     COVER_IMAGE_PREVIEW = (By.CSS_SELECTOR, ".uploaded-cover-preview")
 
     # ─── Navigation Buttons ─────────────────────────────────────────────────────────────
-    NEXT_BUTTON = (By.XPATH, "//button[contains(text(),'Next')]")
-    PREVIOUS_BUTTON = (By.XPATH, "//button[contains(text(),'Previous')]")
+    NEXT_BUTTON = (By.XPATH, "//button[normalize-space()='Next']")
+    PREVIOUS_BUTTON = (By.XPATH, "//button[normalize-space()='Previous']")
 
     # ─── "Datasets" Tab (if applicable) ────────────────────────────────────────────────────────
     DATASETS_TAB = (By.XPATH, "//button[normalize-space()='Datasets']")
