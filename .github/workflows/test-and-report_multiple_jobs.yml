@@ -7,7 +7,7 @@ on:
 
 jobs:
   collect-test-files:
-    if: false  # Workflow paused - set to true to re-enable
+    if: true  # Workflow paused - set to true to re-enable
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
