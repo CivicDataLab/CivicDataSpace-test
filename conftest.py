@@ -70,10 +70,20 @@ def driver(request):
 
     # Common Chrome flags
     opts = webdriver.ChromeOptions()
+
+    is_headed = request.config.getoption("--headed", default=False)
+
+    if not is_headed:
+        opts.add_argument("--headless=new")
+    else:
+        opts.add_argument("--start-maximized")
+
     for flag in (
-        # "--headless=new", "--no-sandbox", "--disable-gpu",
-        # "--disable-dev-shm-usage", "--disable-extensions",
-        "--window-size=1920,1080", "--start-maximized"
+        "--no-sandbox",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--disable-extensions",
+        "--window-size=1920,1080",
     ):
         opts.add_argument(flag)
 
