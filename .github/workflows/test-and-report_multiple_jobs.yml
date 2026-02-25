@@ -18,7 +18,7 @@ jobs:
       - id: set-matrix
         name: Find all smoke test files and build matrix
         run: |
-          readarray -t files < <(find tests -type f -path "*consumer/smoke/test_*.py")
+          readarray -t files < <(find tests -type f -path "*/smoke/test_*.py")
           includes=(); i=0
           for file in "${files[@]}"; do
             flow=$(echo "$file" | awk -F'/' '{print $2}')
@@ -84,7 +84,7 @@ jobs:
             export TEST_EMAIL="$TEST_EMAIL_2"
             export TEST_PASSWORD="$TEST_PASSWORD_2"
           fi
-          pytest -n auto "${{ matrix.test_file }}" -v --json-report
+          pytest -n 2 "${{ matrix.test_file }}" -v --json-report
 
       - name: List screenshots
         if: always()
