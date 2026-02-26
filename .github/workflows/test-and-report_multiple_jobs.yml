@@ -84,7 +84,7 @@ jobs:
             export TEST_EMAIL="$TEST_EMAIL_2"
             export TEST_PASSWORD="$TEST_PASSWORD_2"
           fi
-          pytest -n 2 "${{ matrix.test_file }}" -v --json-report
+          pytest "${{ matrix.test_file }}" -v --json-report
 
       - name: List screenshots
         if: always()
