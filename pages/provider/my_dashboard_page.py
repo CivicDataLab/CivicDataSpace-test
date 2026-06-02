@@ -27,15 +27,9 @@ class MyDashboardPage(BasePage):
         self.visit(self.base_url + "/dashboard")
 
     def is_loaded(self, timeout: int = 10) -> bool:
-        """
-        Verify that at least the "My Dashboard" card is visible (this is the first screen you see
-        after login). We do *not* yet assume we are inside the Datasets panel.
-        Tests should call `is_loaded()` right after obtaining a MyDashboardPage
-        to ensure that the login redirect finished.
-        """
         self.wait_with_timeout(timeout).until(
-            EC.visibility_of_element_located(MyDashboardLocators.CARD_MY_DASHBOARD),
-            message="Timed out waiting for the 'My Dashboard' card to appear on the Provider landing page"
+            EC.visibility_of_element_located(MyDashboardLocators.ADD_NEW_DATASET_BTN),
+            message="Timed out waiting for the 'Add New Dataset' button to appear on My Dashboard"
         )
         return True
 
@@ -62,74 +56,46 @@ class MyDashboardPage(BasePage):
         return self
 
     def click_add_new_dataset(self) -> CreateDatasetPage:
-        """
-        1) Ensure "My Dashboard" card (role=button) is visible & clicked,
-           as well as selecting "Datasets" in the sidebar.
-        2) Wait until "Drafts" tab label is visible (meaning the Datasets panel fully loaded).
-        3) Then wait for the "Add New Dataset" button to become clickable.
-        4) Click it to open the dataset type selection modal.
-        5) Select "Data Dataset" option in the modal.
-        6) Click "Create Dataset" button to proceed.
-        7) Return CreateDatasetPage once the metadata form loads.
-
-        Usage in test:
-            my_dash = prov_home.goto_my_dashboard().click_datasets_sidebar()
-            create_ds = my_dash.click_add_new_dataset()
-        """
         from locators.provider.create_dataset_locators import CreateDatasetLocators
 
-        try:
-            # If "My Dashboard" card is still visible, click it once.
-            self.wait_with_timeout(3).until(
-                EC.element_to_be_clickable(MyDashboardLocators.CARD_MY_DASHBOARD)
-            ).click()
-        except TimeoutException:
-            # If it's not there, maybe they already clicked it. Either way—proceed.
-            pass
-
-        # Step C: Wait for the "Drafts" tab to appear. This ensures the Datasets panel is fully rendered.
-        self.wait_with_timeout(10).until(
-            EC.visibility_of_element_located(MyDashboardLocators.DRAFTS_TAB),
-            message="Timed out waiting for the 'Drafts' tab to appear"
+        # Wait for navigation to the dataset page to complete
+        self.wait_with_timeout(15).until(
+            lambda d: '/dataset' in d.current_url
         )
 
-        # Step D: Now wait for "Add New Dataset" button to be clickable:
-        btn = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable(MyDashboardLocators.ADD_NEW_DATASET_BTN),
-            message="Timed out waiting for the 'Add New Dataset' button to become clickable"
+        # Locate the button and JS-click it (avoids element_to_be_clickable overlay issues)
+        btn = self.wait_with_timeout(15).until(
+            EC.presence_of_element_located(MyDashboardLocators.ADD_NEW_DATASET_BTN)
         )
-
-        # Step E: Scroll that button into view (just in case) and click
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
-        ActionChains(self.driver).move_to_element(btn).click().perform()
+        self.driver.execute_script("arguments[0].click();", btn)
 
-        # Step F: Wait for the "Create New Dataset" modal to appear
+        # Wait for the "Create New Dataset" type-selection modal
         self.wait_with_timeout(10).until(
             EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.MODAL_TITLE)),
             message="Timed out waiting for 'Create New Dataset' modal to appear"
         )
 
-        # Step G: Click the "Data Dataset" card option
+        # Select "Data Dataset"
         data_dataset_card = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.DATA_DATASET_CARD)),
             message="Timed out waiting for 'Data Dataset' option to be clickable"
         )
         data_dataset_card.click()
 
-        # Step H: Click the "Create Dataset" button to proceed
+        # Confirm with "Create Dataset"
         create_btn = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.CREATE_DATASET_BUTTON)),
             message="Timed out waiting for 'Create Dataset' button to be clickable"
         )
         create_btn.click()
 
-        # Step I: Wait for the metadata tab to appear (confirms we're in the dataset creation form)
+        # Wait for the metadata tab to confirm we're inside the creation form
         self.wait_with_timeout(10).until(
             EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
             message="Timed out waiting for Metadata tab to appear after creating dataset"
         )
 
-        # Step J: Return a CreateDatasetPage so tests can continue:
         return CreateDatasetPage(self.driver)
 
     def click_usecases_card(self):
@@ -141,17 +107,17 @@ class MyDashboardPage(BasePage):
             EC.element_to_be_clickable(MyDashboardLocators.USECASES_NAV_LINK),
             message="Timed out waiting for the 'Usecases' card to be clickable"
         )
-
-        # Scroll into view and click
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", usecases_link)
-        usecases_link.click()
+        self.driver.execute_script("arguments[0].click();", usecases_link)
 
-        # Give the page time to navigate
-        time.sleep(2)
-
-        # Wait for the UseCases page to load by checking for the "Add New UseCase" button
+        # Wait for navigation to usecases page
         self.wait_with_timeout(15).until(
-            EC.visibility_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON),
+            lambda d: '/usecases' in d.current_url
+        )
+
+        # Wait for the "Add New UseCase" button using presence + JS approach
+        btn = self.wait_with_timeout(15).until(
+            EC.presence_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON),
             message="Timed out waiting for UseCases page to load"
         )
 

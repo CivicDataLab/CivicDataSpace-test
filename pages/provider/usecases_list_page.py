@@ -15,29 +15,23 @@ class UseCasesListPage(BasePage):
 
     def is_loaded(self):
         return self.wait_with_timeout(10).until(
-            EC.visibility_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON)
+            EC.presence_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON)
         )
 
     def click_add_new_usecase(self):
-        """
-        Click the "Add New UseCase" button and wait for the create usecase form to load.
-
-        Returns:
-            CreateUsecasePage instance after the form has loaded
-        """
         import time
 
-        # Wait for the button to be clickable before clicking
-        button = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON),
-            message="Timed out waiting for 'Add New UseCase' button to be clickable"
+        # Locate the button and JS-click (avoids hidden-tab duplicate issues)
+        btn = self.wait_with_timeout(10).until(
+            EC.presence_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON),
+            message="Timed out waiting for 'Add New UseCase' button"
         )
-        button.click()
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
+        self.driver.execute_script("arguments[0].click();", btn)
 
-        # Give the modal/form time to appear
-        time.sleep(2)
+        time.sleep(1)
 
-        # Wait for the UseCase creation form to load by checking for the summary textarea
+        # Wait for the UseCase creation form
         self.wait_with_timeout(15).until(
             EC.visibility_of_element_located(CreateUsecaseLocators.USECASE_SUMMARY_INPUT),
             message="Timed out waiting for UseCase creation form to load"

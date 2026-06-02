@@ -17,7 +17,7 @@ class CreateDatasetLocators:
     SECTOR_INPUT        = "//label[normalize-space()='Sectors *']/following::input[@role='combobox'][1]"
     SECTOR_DROPDOWN_ITEM = "//div[@role='option'][normalize-space(.)='{value}']"
 
-    TAGS_INPUT           = "//label[normalize-space()='Tags *']/following::input[@role='combobox'][1]"
+    TAGS_INPUT           = "//label[normalize-space()='Tags' or normalize-space()='Tags *']/following::input[@role='combobox'][1]"
     TAG_DROPDOWN_ITEM    = "//div[@role='option' and normalize-space(.)='{value}']"
 
     GEOGRAPHY_CONTAINER = "//label[normalize-space()='Geographies']/following::input[1]"

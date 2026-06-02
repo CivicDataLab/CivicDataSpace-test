@@ -21,7 +21,7 @@ class CreateUsecaseLocators:
     TAGS_INPUT = (By.XPATH,"//label[normalize-space()='Tags']/following::input[@role='combobox'][1]")
     TAG_DROPDOWN_ITEM = "//div[@role='option' and normalize-space(.)='{value}']"
 
-    SECTOR_INPUT = (By.XPATH,"//label[normalize-space()='Sectors *']/following::input[@role='combobox'][1]")
+    SECTOR_INPUT = (By.XPATH,"//label[normalize-space()='Sectors' or normalize-space()='Sectors *']/following::input[@role='combobox'][1]")
     SECTOR_DROPDOWN_ITEM = "//div[@role='option' and normalize-space(.)='{value}']"
 
     GEOGRAPHY_CONTAINER = (By.XPATH,"//label[normalize-space()='Geographies' or normalize-space()='Geography *' or normalize-space()='Geography']/following::input[1]")

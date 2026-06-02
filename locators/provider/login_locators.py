@@ -11,6 +11,6 @@ class LoginLocators:
     FORM = (By.XPATH, "//div[@id='kc-form-wrapper']")
     LOGIN_BUTTON = (By.XPATH, "//button[normalize-space(.)='LOGIN / SIGN UP']")
     # wait for this to know the login form is fully present:
-    SIGNIN_BUTTON = (By.XPATH, "//input[@id='kc-login' or @type='submit']")
+    SIGNIN_BUTTON = (By.XPATH, "//button[normalize-space()='Sign In'] | //input[@id='kc-login' or @type='submit']")
     EMAIL_INPUT = (By.XPATH, "//input[@id='username' or @name='username']")
     PASSWORD_INPUT = (By.XPATH, "//input[@id='password' or @name='password']")

@@ -20,4 +20,4 @@ class MyDashboardLocators:
     DRAFTS_TAB = (By.XPATH, "//span[normalize-space(.)='Drafts']")
 
     # (4) The orange "Add New Dataset" button lives inside the "Drafts" tab panel.
-    ADD_NEW_DATASET_BTN = (By.XPATH, "(//button[normalize-space(.)='Add New Dataset'])[2]")
+    ADD_NEW_DATASET_BTN = (By.XPATH, "//button[normalize-space(.)='Add New Dataset']")
