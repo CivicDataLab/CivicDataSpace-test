@@ -42,63 +42,43 @@ class OrganizationsPage(BasePage):
         return self
 
     def click_add_new_dataset(self):
-        """
-        Click the "Add New Dataset" button in the organization dashboard,
-        handle the dataset type selection modal, and proceed to dataset creation.
-
-        Since select_org() already loads the datasets page, this button
-        should be immediately visible.
-
-        Flow:
-        1. Click "Add New Dataset" button
-        2. Wait for modal to appear
-        3. Select "Data Dataset" option
-        4. Click "Create Dataset" to proceed
-        5. Return CreateDatasetPage instance
-
-        Returns a CreateDatasetPage instance.
-        """
         from pages.provider.create_dataset_page import CreateDatasetPage
         from locators.provider.create_dataset_locators import CreateDatasetLocators
 
-        # The Drafts tab should already be visible from select_org()
-        # But we double-check to ensure the page is fully loaded
-        self.wait_with_timeout(10).until(
-            EC.visibility_of_element_located(OrgLocators.DRAFTS_TAB),
-            message="Timed out waiting for the 'Drafts' tab to appear"
+        # Wait for navigation to the dataset page
+        self.wait_with_timeout(15).until(
+            lambda d: '/dataset' in d.current_url
         )
 
-        # Wait for "Add New Dataset" button to be clickable
-        btn = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable(OrgLocators.ADD_NEW_DATASET_BTN),
-            message="Timed out waiting for the 'Add New Dataset' button to become clickable"
+        # Locate and JS-click the button
+        btn = self.wait_with_timeout(15).until(
+            EC.presence_of_element_located(OrgLocators.ADD_NEW_DATASET_BTN),
+            message="Timed out waiting for the 'Add New Dataset' button"
         )
-
-        # Scroll into view and click
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
-        ActionChains(self.driver).move_to_element(btn).click().perform()
+        self.driver.execute_script("arguments[0].click();", btn)
 
-        # Wait for the "Create New Dataset" modal to appear
+        # Wait for the type-selection modal
         self.wait_with_timeout(10).until(
             EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.MODAL_TITLE)),
             message="Timed out waiting for 'Create New Dataset' modal to appear"
         )
 
-        # Click the "Data Dataset" card option
+        # Select "Data Dataset"
         data_dataset_card = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.DATA_DATASET_CARD)),
             message="Timed out waiting for 'Data Dataset' option to be clickable"
         )
         data_dataset_card.click()
 
-        # Click the "Create Dataset" button to proceed
+        # Confirm with "Create Dataset"
         create_btn = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.CREATE_DATASET_BUTTON)),
             message="Timed out waiting for 'Create Dataset' button to be clickable"
         )
         create_btn.click()
 
-        # Wait for the metadata tab to appear (confirms we're in the dataset creation form)
+        # Wait for metadata tab
         self.wait_with_timeout(10).until(
             EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
             message="Timed out waiting for Metadata tab to appear after creating dataset"
@@ -119,22 +99,21 @@ class OrganizationsPage(BasePage):
         from locators.provider.usecases_list_page_locators import UseCaseListPageLocators
         import time
 
-        # Wait for and click the UseCases navigation link
+        # Wait for and JS-click the UseCases navigation link
         usecases_link = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(OrgLocators.USECASES_NAV_LINK),
             message="Timed out waiting for the 'UseCases' link to be clickable"
         )
-
-        # Scroll into view and click
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", usecases_link)
-        usecases_link.click()
+        self.driver.execute_script("arguments[0].click();", usecases_link)
 
-        # Give the page time to navigate
-        time.sleep(2)
-
-        # Wait for the UseCases page to load by checking for the "Add New UseCase" button
+        # Wait for navigation to usecases URL
         self.wait_with_timeout(15).until(
-            EC.visibility_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON),
+            lambda d: '/usecases' in d.current_url
+        )
+
+        self.wait_with_timeout(15).until(
+            EC.presence_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON),
             message="Timed out waiting for UseCases page to load"
         )
 

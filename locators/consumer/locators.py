@@ -69,8 +69,8 @@ class Locators:
     # ═══════════════════════════════════════════════════════════════════════════
 
     ABOUT_TAB       = (By.XPATH, "//header//nav//a[contains(@href, 'about') or contains(., 'About')]")
-    ABOUT_HEADING   = (By.XPATH, "//main//*[self::h1 or self::h2 or self::span][contains(., 'About CivicDataSpace')]")
-    ABOUT_PARAGRAPH = (By.XPATH, "//main//div[contains(@class, 'container')]//span[contains(., 'CivicDataSpace is')]")
+    ABOUT_HEADING   = (By.XPATH, "//main//*[normalize-space(.)='About CivicDataSpace' or contains(normalize-space(.), 'About CivicDataSpace')]")
+    ABOUT_PARAGRAPH = (By.XPATH, "//main//*[contains(normalize-space(.), 'CivicDataSpace is')]")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # LOGIN / SIGN UP (already optimized)

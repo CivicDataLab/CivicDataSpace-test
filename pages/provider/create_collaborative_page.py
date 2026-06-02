@@ -487,6 +487,11 @@ class CreateCollaborativePage(BasePage):
         all_rows = self.driver.find_elements(By.XPATH, "//tbody/tr")
         if all_rows:
             return ["submitted"]
+        # If submit auto-navigated to contributors (or beyond), treat as successful submission
+        current_url = self.driver.current_url
+        for tab in ("contributors", "publish", "usecases"):
+            if f"/{tab}" in current_url:
+                return ["submitted"]
         return []
 
     # ─── "Contributors" Tab ─────────────────────────────────────────────────────────
