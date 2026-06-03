@@ -4,7 +4,6 @@ from selenium.webdriver.common.by import By
 class UpdateProfilePageLocators:
 
     My_Profile_HEADING = (By.XPATH, '//span[normalize-space()="My Profile"]')
-    # Support both individual profiles (firstName/lastName/bio) and organization profiles (name/description)
     FIRST_NAME_INPUT = (By.XPATH, '//input[@name="firstName" or @name="name"]')
     LAST_NAME_INPUT = (By.XPATH, '//input[@name="lastName"] | //textarea[@name="description"]')
     BIO_TEXT_INPUT = (By.XPATH, '//textarea[@name="bio"] | //textarea[@name="description"]')

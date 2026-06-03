@@ -31,7 +31,6 @@ class LoginPage(BasePage):
             print("[OK] Email input found")
         except Exception as e:
             print("[FAIL] Email input not found:", e)
-            self.driver.save_screenshot('login_step_email_NOT_found.png')
             raise
 
         try:
@@ -43,7 +42,6 @@ class LoginPage(BasePage):
             print("[OK] Filled email and password")
         except Exception as e:
             print("[FAIL] Could not fill credentials:", e)
-            self.driver.save_screenshot('login_step_fill_credentials_FAIL.png')
             raise
 
         try:
@@ -52,7 +50,6 @@ class LoginPage(BasePage):
             print("[OK] SIGN IN clicked")
         except Exception as e:
             print("[FAIL] Could not click sign-in button:", e)
-            self.driver.save_screenshot('login_step_signin_click_FAIL.png')
             raise
 
         try:
@@ -63,7 +60,6 @@ class LoginPage(BasePage):
             print("[OK] ProviderHomePage loaded after login")
         except Exception as e:
             print("[FAIL] ProviderHomePage header did not appear after login:", e)
-            self.driver.save_screenshot('login_step_provider_homepage_header_FAIL.png')
             raise
 
         return ProviderHomePage(self.driver)
