@@ -1,8 +1,10 @@
 # pages/base_page.py
+import platform
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
-from selenium.webdriver import Keys
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 
 class BasePage:
     def __init__(self, driver, timeout=15):
@@ -25,25 +27,56 @@ class BasePage:
 
     # ── Text Input Utilities ──────────────────────────────────────────────────
 
-    def clear_and_type(self, locator, text):
-        """
-        Clear field and type text using triple-click selection for React forms.
-        Triple-click selects all text, then typing replaces the selection.
-        """
-        import time
-        from selenium.webdriver.common.action_chains import ActionChains
+    def clear_and_type(self, locator, text, timeout=10, retries=2, slow=False):
+        """Robustly set input value; handles React/Angular controlled inputs."""
+        for _ in range(retries + 1):
+            el = self.wait.until(EC.element_to_be_clickable(locator))
+            self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+            el.click()
 
-        element = self.wait.until(EC.visibility_of_element_located(locator))
+            # 1) Triple-click + Ctrl/Cmd+A + Delete + native clear
+            ActionChains(self.driver).double_click(el).perform()
+            for mod in (Keys.CONTROL, Keys.COMMAND):
+                try:
+                    el.send_keys(mod, "a")
+                except Exception:
+                    pass
+            el.send_keys(Keys.DELETE)
+            try:
+                el.clear()
+            except Exception:
+                pass
 
-        # Triple-click to select all text (more reliable than Ctrl+A for React)
-        actions = ActionChains(self.driver)
-        actions.move_to_element(element).click().click().click().perform()
-        time.sleep(0.1)
+            # 2) If still has text, backspace its length
+            val = (el.get_attribute("value") or "")
+            if val:
+                el.send_keys(Keys.END)
+                for _ in range(len(val)):
+                    el.send_keys(Keys.BACKSPACE)
 
-        # Type the new text (replaces the selection)
-        element.send_keys(text)
+            # 3) If STILL not empty, use React-safe native setter + events
+            if (el.get_attribute("value") or "").strip():
+                self.driver.execute_script("""
+                    const e = arguments[0];
+                    const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+                    if (desc && desc.set) desc.set.call(e, '');
+                    else e.value = '';
+                    e.dispatchEvent(new Event('input', {bubbles:true}));
+                    e.dispatchEvent(new Event('change', {bubbles:true}));
+                """, el)
 
-        return element
+            # Type and verify
+            if slow:
+                for ch in text:
+                    el.send_keys(ch)
+            else:
+                el.send_keys(text)
+
+            self.driver.execute_script("arguments[0].blur();", el)
+            if (el.get_attribute("value") or "").strip() == text:
+                return el
+
+        raise AssertionError(f"Could not set value to '{text}'.")
 
     def type_text(self, locator, text):
         """Type text without clearing"""
@@ -72,8 +105,6 @@ class BasePage:
         Works with React/custom dropdowns that aren't native <select> elements.
         """
         from selenium.webdriver.common.by import By
-        from selenium.webdriver.common.keys import Keys
-        from selenium.webdriver.common.action_chains import ActionChains
         from selenium.common.exceptions import ElementClickInterceptedException
 
         combo = self.wait.until(EC.element_to_be_clickable(input_locator))
@@ -88,14 +119,11 @@ class BasePage:
         try:
             opt.click()
         except ElementClickInterceptedException:
-            # Fallback to JavaScript click if regular click is intercepted
             self.driver.execute_script("arguments[0].click();", opt)
 
-        # Wait briefly for React state to update before closing dropdown
         import time
         time.sleep(0.5)
 
-        # Close dropdown with Escape key
         ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
         return self
 
@@ -156,7 +184,7 @@ class BasePage:
         with open(abs_path, "rb") as f:
             file_b64 = base64.b64encode(f.read()).decode()
 
-        result = self.driver.execute_script("""
+        self.driver.execute_script("""
             var b64 = arguments[0], name = arguments[1], mime = arguments[2], input = arguments[3];
             try {
                 var bytes = atob(b64);
@@ -219,3 +247,48 @@ class BasePage:
         element = self.wait.until(EC.presence_of_element_located(locator))
         self.driver.execute_script("arguments[0].click();", element)
         return element
+
+    # ── Autosave Utility ───────────────────────────────────────────────────────
+
+    def wait_for_autosave(self, trigger_blur=True, timeout=15):
+        """
+        Wait for the editor autosave cycle to commit pending changes.
+
+        Blurs the currently focused element via JavaScript to fire its onBlur
+        handler (body.click() does not reliably blur inputs in Chrome), then
+        waits for the 'Saving...' indicator to appear and resolve.
+        Falls back to a generous sleep if the indicator is too fast to catch.
+        """
+        import time as _time
+        from selenium.webdriver.common.by import By
+
+        if trigger_blur:
+            try:
+                # JS blur reliably triggers React's onBlur; body.click() does not
+                # move focus away from focusable elements in Chrome.
+                self.driver.execute_script(
+                    "var el = document.activeElement;"
+                    "if (el && el.tagName !== 'BODY') { el.blur(); }"
+                )
+            except Exception:
+                pass
+
+        saving_locator = (By.XPATH, "//*[normalize-space(text())='Saving...']")
+
+        try:
+            # Poll at 100ms to catch brief Saving... indicator (default is 500ms)
+            WebDriverWait(self.driver, 5, poll_frequency=0.1).until(
+                EC.presence_of_element_located(saving_locator)
+            )
+            # Save in progress — wait until it finishes
+            WebDriverWait(self.driver, timeout).until(
+                EC.invisibility_of_element_located(saving_locator)
+            )
+            _time.sleep(0.3)
+        except TimeoutException:
+            # Saving... didn't appear — either already saved or save was too fast
+            # to catch. Add a generous margin to ensure the network round-trip
+            # completes before navigating away.
+            _time.sleep(4)
+
+        return self
