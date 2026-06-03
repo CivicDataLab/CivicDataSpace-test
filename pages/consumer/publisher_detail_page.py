@@ -19,16 +19,16 @@ class PublisherDetailPage(BasePage):
         """
         try:
             # wait for the grid
-            WebDriverWait(self.driver, timeout).until(
-                EC.presence_of_element_located((By.XPATH, PublisherDetailLocators.USECASE_GRID))
+            self.wait_with_timeout(timeout).until(
+                EC.presence_of_element_located(PublisherDetailLocators.USECASE_GRID)
             )
             # wait for the grid
-            WebDriverWait(self.driver, timeout).until(
-                EC.presence_of_element_located((By.XPATH, PublisherDetailLocators.USECASE_CARD))
+            self.wait_with_timeout(timeout).until(
+                EC.presence_of_element_located(PublisherDetailLocators.USECASE_CARD)
             )
         except TimeoutException:
             return []
-        return self.finds((By.XPATH, PublisherDetailLocators.USECASE_CARD))
+        return self.finds(PublisherDetailLocators.USECASE_CARD)
 
     def open_usecase_by_index(self, index: int = 0):
         """

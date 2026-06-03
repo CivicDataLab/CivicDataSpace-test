@@ -10,8 +10,8 @@ class AboutPage(BasePage):
 
     def is_heading_visible(self) -> bool:
         """Wait for the About Us heading to be visible."""
-        return self.find((By.XPATH, AboutLocators.HEADING)).is_displayed()
+        return self.find(AboutLocators.HEADING).is_displayed()
 
     def is_paragraph_visible(self) -> bool:
         """Wait for the About Us paragraph to be visible."""
-        return self.find((By.XPATH, AboutLocators.PARAGRAPH)).is_displayed()
+        return self.find(AboutLocators.PARAGRAPH).is_displayed()

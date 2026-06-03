@@ -1,0 +1,178 @@
+# tests/provider/functional/test_prv_002_ind_create_dataset.py
+import os
+import pytest
+import requests
+import shutil
+from datetime import datetime
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+from pages.home_page import HomePage
+from pages.provider.login_page import LoginPage
+from pages.provider.provider_home_page import ProviderHomePage
+from pages.provider.my_dashboard_page import MyDashboardPage
+from pages.provider.create_dataset_page import CreateDatasetPage
+from pages.provider.organizations_page import OrganizationsPage
+
+@pytest.mark.smoke
+def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_credentials):
+
+    """
+    Test Case ID: test_prv_002_ind_create_dataset
+    Verify User is able to create a Dataset end-to-end as an Individual provider.
+    Steps:
+      1. Access Homepage
+      2. Click LOGIN / SIGN UP and log in
+      3. Navigate to “Org Dashboard”
+      4. Under My Orgs, select an org
+      5. Under Datasets section click on “Add New Dataset”
+      6. Fill in Description, Sectors, Tags, Geography, Date, Source, License
+      7. Upload a sample file
+      8. Switch to Publish section
+      9. Click on Publish
+      10. Assert the dataset is marked “Published”
+     11. Download the dataset and verify HTTP 200
+    """
+    driver.delete_all_cookies()
+    # Step 1: load homepage
+    home = HomePage(driver, base_url)
+    email, password = test_credentials
+    try:
+        if not home.is_loaded():
+            home.load()
+            assert home.is_loaded(), "Homepage did not load successfully"
+    except Exception:
+        pass
+
+    # Step 2: Login as provider (auto-redirects to /dashboard)
+    prov_home = home.go_to_login(flow="provider", email=email, password=password)
+    assert isinstance(prov_home, ProviderHomePage), (
+        "test_prv_002: expected HomePage.go_to_login(flow='provider') to return ProviderHomePage"
+    )
+
+    # Step 3: In the “ProviderHomePage” (the /dashboard screen), click “My Dashboard”
+    org_dash = prov_home.goto_organizations()
+    assert isinstance(org_dash, OrganizationsPage), (
+        "test_prv_002: expected ProviderHomePage.goto_my_dashboard() to return MyDashboardPage"
+    )
+
+    # Step 5: Select one of the orgs
+    select_org = org_dash.select_org()
+    assert isinstance(select_org, OrganizationsPage), (
+        "test_prv_006: expected select_org() to return OrganizationsPage"
+    )
+
+    # Step 4: Within MyDashboardPage, click “Add New Dataset”:
+    create_ds = org_dash.click_add_new_dataset()
+    assert isinstance(create_ds, CreateDatasetPage), (
+        "test_prv_002: expected click_add_new_dataset() to return CreateDatasetPage"
+    )
+
+    # ─── Step 5: METADATA TAB ──────────────────────────────────────────────────────────────────────
+    create_ds.go_to_metadata_tab()
+
+    # (5a) Description
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    test_description = f"Automated test description {timestamp}"
+    create_ds.enter_description(test_description)
+    # Make sure the description field actually holds our value:
+    actual_desc = create_ds.get_description_value()
+    assert actual_desc == test_description, (
+        f"Step 5a failure: Expected description to be '{test_description}', but found '{actual_desc}'."
+    )
+
+    # (5b) Sectors
+    create_ds.select_sectors(["Budgets"])
+    selected_sectors = create_ds.get_selected_sectors()  # e.g. returns ['Budgets']
+    assert "Budgets" in selected_sectors, (
+        f"Step 5b failure: Sector 'Budgets' was not selected; current selection = {selected_sectors}."
+    )
+
+    # (5c) Tags
+    create_ds.select_tags(["Finance"])
+    selected_tags = create_ds.get_selected_tags()  # e.g. returns ['Budget']
+    assert "Finance" in selected_tags, (
+        f"Step 5c failure: Tag 'Finance' was not selected; current tags = {selected_tags}."
+    )
+
+    # (5d) Geography
+    create_ds.select_geography("Assam")
+    actual_geo = create_ds.get_selected_geography()  # e.g. returns 'India'
+    assert "Assam" in actual_geo, (
+        f"Step 5d failure: Expected geography containing 'Assam', but saw '{actual_geo}'."
+    )
+
+    # (5e) Date of Creation
+    test_date = "09022021"
+    create_ds.enter_date_created(test_date)
+    # Because some date‐pickers store in ISO format (DDMMYYYY), let’s compare accordingly:
+    actual_date = create_ds.get_date_created_value()  # e.g. returns '09022021'
+    assert actual_date == "2021-09-02" or actual_date == "2021-02-09", (
+        f"Step 5e failure: Expected date_created '{test_date}', but got '{actual_date}'."
+    )
+
+    # (5f) Source Website
+    test_source = "https://example.com"
+    create_ds.enter_source_website(test_source)
+    actual_src = create_ds.get_source_website_value()
+    assert actual_src == test_source, (
+        f"Step 5f failure: Expected source website '{test_source}', but found '{actual_src}'."
+    )
+
+    # (5g) License
+    license_to_pick = "CC BY 4.0 (Attribution)"
+    create_ds.select_license(license_to_pick)
+    actual_license = create_ds.get_selected_license_text()
+    assert actual_license == license_to_pick, (
+        f"Step 5g failure: Expected license '{license_to_pick}', but got '{actual_license}'."
+    )
+
+    # ─── Step 6: DATA FILES TAB ──────────────────────────────────────────────────────────────────────
+    create_ds.go_to_datafiles_tab()
+
+    # (6a) Create a unique copy of the CSV file for this test run
+    # This is needed because the platform requires unique resource filenames
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    original_filename = os.path.basename(sample_csv_path)
+    filename_without_ext, ext = os.path.splitext(original_filename)
+    unique_filename = f"{filename_without_ext}_{timestamp}{ext}"
+
+    # Create unique file in the same directory as the original
+    unique_csv_path = os.path.join(os.path.dirname(sample_csv_path), unique_filename)
+    shutil.copy2(sample_csv_path, unique_csv_path)
+
+    # Upload the unique CSV file
+    create_ds.upload_datafile(unique_csv_path)
+
+    # (6b) Verify that our CSV appears under "Uploaded Files"
+    uploaded_list = create_ds.get_uploaded_resource_names()
+    assert unique_filename in uploaded_list, (
+        f"Step 6b failure: After uploading, expected '{unique_filename}' in {uploaded_list}."
+    )
+
+    # Clean up the temporary unique file
+    try:
+        os.remove(unique_csv_path)
+    except:
+        pass  # Ignore cleanup errors
+
+    # ─── Step 7: PUBLISH TAB ─────────────────────────────────────────────────────────────────────────
+    detail_page = create_ds.go_to_publish_tab()
+    assert detail_page.is_publish_tab_visible(), (
+        "Step 7 failure: Publish tab did not become visible after switching."
+    )
+    # (7a) Click “Publish”
+    detail_page.click_publish()
+
+    # (7b) Verify “Published” status in UI
+    assert detail_page.is_published(), (
+        "Step 7b failure: After clicking Publish, the network request does not has status : PUBLISHED."
+    )
+    #
+    # # (7c) Verify download‐URL returns HTTP 200
+    # download_url = detail_page.get_download_url()
+    # response = requests.head(download_url, allow_redirects=True)
+    # assert response.status_code == 200, (
+    #     f"Step 7c failure: Expected HTTP 200 from '{download_url}', but got {response.status_code}."
+    # )

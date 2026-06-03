@@ -2,4 +2,4 @@
 from selenium.webdriver.common.by import By
 
 class UseCaseListPageLocators:
-    ADD_NEW_USECASE_BUTTON = (By.XPATH, "//div[@class='flex items-center gap-3']//span[@class='Button-module_removeUnderline__dq0ct'][normalize-space()='Add New UseCase']")
+    ADD_NEW_USECASE_BUTTON = (By.XPATH, "//button[normalize-space(.)='Add New UseCase']")

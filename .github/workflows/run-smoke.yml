@@ -20,6 +20,7 @@ on:
 
 jobs:
   collect-test-files:
+    if: true  # Workflow paused - set to true to re-enable
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -54,7 +55,7 @@ jobs:
       matrix: ${{ fromJson(needs.collect-test-files.outputs.matrix) }}
 
     env:
-      BASE_URL:         ${{ secrets.BASE_URL }}      # <— now available
+      BASE_URL:         ${{ secrets.BASE_URL }}
       HOME_URL_DEV:     ${{ secrets.HOME_URL_DEV }}
       TEST_EMAIL_1:     ${{ secrets.TEST_EMAIL_1 }}
       TEST_PASSWORD_1:  ${{ secrets.TEST_PASSWORD_1 }}

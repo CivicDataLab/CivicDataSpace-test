@@ -11,12 +11,12 @@ class DatasetPage(BasePage):
 
     def is_loaded(self) -> bool:
         """Wait for at least one dataset card to be visible."""
-        self.wait.until(EC.visibility_of_element_located((By.XPATH, DatasetLocators.CARD)))
+        self.wait.until(EC.visibility_of_element_located(DatasetLocators.CARD))
         return True
 
     def list_cards(self):
         """Wait for dataset cards to be present, then return them."""
-        return self.finds((By.XPATH, DatasetLocators.CARD))
+        return self.finds(DatasetLocators.CARD)
 
     def download_dataset(self, index: int = 0):
         """
@@ -25,18 +25,16 @@ class DatasetPage(BasePage):
         """
         # wait for card container
         card = self.wait.until(
-            EC.element_to_be_clickable((By.XPATH, DatasetLocators.FIRST_CARD))
+            EC.element_to_be_clickable(DatasetLocators.FIRST_CARD)
         )
         card.click()
 
-        # wait for dataset page load
-        dataset_page = self.wait.until(
-            EC.element_to_be_clickable((By.XPATH, DatasetLocators.DOWNLOAD_LINK))
+        # wait for download link to be clickable
+        download_link = self.wait.until(
+            EC.element_to_be_clickable(DatasetLocators.DOWNLOAD_LINK)
         )
 
-        # find and click download
-        link = dataset_page.find_element(By.XPATH, DatasetLocators.DOWNLOAD_LINK)
-        href = link.get_attribute("href")
+        href = download_link.get_attribute("href")
         if not href:
             raise AssertionError("Download link has no href")
 
