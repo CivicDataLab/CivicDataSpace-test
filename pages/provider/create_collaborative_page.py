@@ -196,6 +196,12 @@ class CreateCollaborativePage(BasePage):
         """Enter started on date."""
         fld = self.wait.until(EC.presence_of_element_located(CreateCollaborativeLocators.STARTED_ON_INPUT))
         fld.send_keys(iso_date)
+        import time as _t
+        _t.sleep(0.3)
+        try:
+            self.driver.execute_script("arguments[0].blur();", fld)
+        except Exception:
+            pass
         return self
 
     def enter_completed_on(self, iso_date: str):

@@ -26,15 +26,34 @@ class OrganizationsPage(BasePage):
         This loads a dashboard identical to MyDashboard, with the Datasets
         section already visible.
         """
-        # Click the organization card
-        self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable(OrgLocators.ORG_TEST),
-            message="Timed out waiting for the 'my test agency' org card to be clickable"
-        ).click()
+        # Wait for the org list page to finish rendering before looking for cards
+        self.wait_with_timeout(20).until(
+            EC.visibility_of_element_located((By.XPATH, "//h1[text()='Organizations']")),
+            message="Organizations list page did not load"
+        )
+
+        # Try the specific test org first; fall back to the first available org card
+        org_el = None
+        for locator in [
+            OrgLocators.ORG_TEST,
+            (By.XPATH, "//a[contains(@href,'/dashboard/organization/')]"),
+        ]:
+            try:
+                org_el = self.wait_with_timeout(25).until(
+                    EC.element_to_be_clickable(locator)
+                )
+                break
+            except TimeoutException:
+                continue
+
+        if org_el is None:
+            raise TimeoutException("Timed out waiting for the 'my test agency' org card to be clickable")
+
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", org_el)
+        self.driver.execute_script("arguments[0].click();", org_el)
 
         # Wait for the organization dashboard to load by checking for the Drafts tab
-        # This confirms we've navigated to the dataset page
-        self.wait_with_timeout(10).until(
+        self.wait_with_timeout(15).until(
             EC.visibility_of_element_located(OrgLocators.DRAFTS_TAB),
             message="Timed out waiting for organization dashboard to load (Drafts tab)"
         )

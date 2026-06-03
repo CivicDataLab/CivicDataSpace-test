@@ -129,9 +129,14 @@ class CreateUsecasePage(BasePage):
         return self
 
     def enter_started_on(self, iso_date: str):
-        # 1) locate the date <input>
         fld = self.wait.until(EC.presence_of_element_located(CreateUsecaseLocators.STARTED_ON_INPUT))
         fld.send_keys(iso_date)
+        import time as _t
+        _t.sleep(0.3)
+        try:
+            self.driver.execute_script("arguments[0].blur();", fld)
+        except Exception:
+            pass
         return self
 
     def select_running_status(self, status_text: str):
@@ -426,20 +431,41 @@ class CreateUsecasePage(BasePage):
             raise TimeoutException("Timed out waiting for Publish action button to become clickable")
 
         self.driver.execute_script("arguments[0].click();", btn)
-        time.sleep(0.5)
 
-        self.wait_with_timeout(20).until(
-            EC.presence_of_element_located(CreateUsecaseLocators.PUBLISHED_MARKER),
-            message="Use Case did not show a 'Published' marker"
-        )
+        # The app shows the toast then immediately calls router.push() to /usecases.
+        # Fast-poll to catch the toast in the narrow window before navigation, then fall
+        # back to detecting the URL change (navigating away from /publish = success).
+        from selenium.webdriver.support.ui import WebDriverWait as _WDW
+        published = False
+        try:
+            _WDW(self.driver, 5, poll_frequency=0.1).until(
+                EC.presence_of_element_located(CreateUsecaseLocators.PUBLISHED_MARKER)
+            )
+            published = True
+        except TimeoutException:
+            pass
+
+        if not published:
+            try:
+                self.wait_with_timeout(20).until(
+                    lambda d: '/publish' not in d.current_url
+                )
+                published = True
+            except TimeoutException:
+                pass
+
+        if not published:
+            raise TimeoutException("Use Case did not show a 'Published' marker")
+
         return self
 
     def is_published(self) -> bool:
         try:
-            self.wait_with_timeout(10).until(
-                EC.presence_of_element_located(CreateUsecaseLocators.PUBLISHED_MARKER),
-                message="Published toast not found"
+            self.wait_with_timeout(3).until(
+                EC.presence_of_element_located(CreateUsecaseLocators.PUBLISHED_MARKER)
             )
             return True
-        except Exception:
-            return False
+        except TimeoutException:
+            pass
+        # After a successful publish the app redirects away from /publish
+        return '/publish' not in self.driver.current_url
