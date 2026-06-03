@@ -1,20 +1,23 @@
 # locators/provider/my_dashboard_locators.py
 
+from selenium.webdriver.common.by import By
+
 class MyDashboardLocators:
     """
-    XPaths for the “Provider → My Dashboard” flow.
+    XPaths for the "Provider → My Dashboard" flow.
     """
 
     # (1) The two big landing cards on /dashboard when you first log in
-    CARD_MY_DASHBOARD = "//a[contains(@href,'/dashboard') and .//span[normalize-space()='My Dashboard']]"
+    CARD_MY_DASHBOARD = (By.XPATH, "//a[contains(@href,'/dashboard') and .//span[normalize-space()='My Dashboard']]")
 
-    # (3) Inside the “Datasets” panel, the “Drafts” tab is visible by default.
-    DRAFTS_TAB = "//span[normalize-space(.)='Drafts']"
+    # (2) Sidebar navigation links
+    SIDEBAR_DATASETS = (By.XPATH, '//span[normalize-space()="Datasets"]')
+    USECASES_NAV_LINK = (By.XPATH, '//span[normalize-space()="UseCases"]')
+    COLLABORATIVES_NAV_LINK = (By.XPATH, "//a[contains(@href,'/dashboard/') and contains(@href,'collaboratives')]")
+    PROFILE_NAV_LINK = (By.XPATH, '//span[normalize-space()="Profile"]')
 
-    # (4) The orange “Add New Dataset” button lives inside the “Drafts” tab panel.
-    ADD_NEW_DATASET_BTN = "(//button[normalize-space(.)='Add New Dataset'])[2]"
+    # (3) Inside the "Datasets" panel, the "Drafts" tab is visible by default.
+    DRAFTS_TAB = (By.XPATH, "//span[normalize-space(.)='Drafts']")
 
-    USECASES_NAV_LINK = '//span[normalize-space()="UseCases"]'
-
-    #Profile tab locators
-    PROFILE_NAV_LINK = '//span[normalize-space()="Profile"]'
+    # (4) The orange "Add New Dataset" button lives inside the "Drafts" tab panel.
+    ADD_NEW_DATASET_BTN = (By.XPATH, "//button[normalize-space(.)='Add New Dataset']")

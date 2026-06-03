@@ -1,20 +1,27 @@
 class CreateDatasetLocators:
+    # ---- Dataset Type Selection Modal (appears when clicking "Add New Dataset") ----
+    MODAL_TITLE = "//h2[contains(., 'Create New Dataset')] | //div[contains(., 'Select the type of dataset')]"
+    DATA_DATASET_CARD = "//div[contains(., 'Data Dataset')] | //div[.//span[contains(., 'Data Dataset')]]"
+    PROMPT_DATASET_CARD = "//div[contains(., 'Prompt Dataset')] | //div[.//span[contains(., 'Prompt Dataset')]]"
+    CREATE_DATASET_BUTTON = "//button[normalize-space()='Create Dataset']"
+    MODAL_CANCEL_BUTTON = "//button[normalize-space()='Cancel']"
+
     # ---- Tabs ----
     TAB_METADATA        = "//button[normalize-space()='Metadata']"
     TAB_DATAFILES       = "//button[normalize-space()='Data Files']"
     TAB_PUBLISH         = "//button[normalize-space()='Publish']"
 
     # ---- Metadata fields ----
-    DESCRIPTION         = "//textarea[@name='description']"
+    DESCRIPTION         = "//div[contains(@class, 'ql-editor') and @contenteditable='true']"
 
     SECTOR_INPUT        = "//label[normalize-space()='Sectors *']/following::input[@role='combobox'][1]"
     SECTOR_DROPDOWN_ITEM = "//div[@role='option'][normalize-space(.)='{value}']"
 
-    TAGS_INPUT           = "//label[normalize-space()='Tags *']/following::input[@role='combobox'][1]"
+    TAGS_INPUT           = "//label[normalize-space()='Tags' or normalize-space()='Tags *']/following::input[@role='combobox'][1]"
     TAG_DROPDOWN_ITEM    = "//div[@role='option' and normalize-space(.)='{value}']"
 
-    GEOGRAPHY_CONTAINER = "//label[normalize-space()='Geography']/following::input[1]"
-    GEO_OPTION          = "//div[@role='option' and normalize-space(.)='{value}']"
+    GEOGRAPHY_CONTAINER = "//label[normalize-space()='Geographies']/following::input[1]"
+    GEO_OPTION          = "//div[@role='option' and starts-with(normalize-space(.), '{value}')]"
 
     DATE_CREATED_INPUT = "//label[normalize-space(.)='Date of Creation of Dataset']"\
                          "/following::input[@type='date'][1]"
@@ -47,7 +54,7 @@ class CreateDatasetLocators:
     )
     # 5d) Selected geography appears as a single “pill” or dropdown value
     GEOGRAPHY_SELECTED_PILL = (
-        "//label[normalize-space(text())='Geography']"
+        "//label[normalize-space(text())='Geographies']"
         "/following::div[contains(@class,'Input-module_tags')][1]"
         "//span[contains(@class,'Tag-module_TagText')]"
     )
