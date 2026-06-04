@@ -24,6 +24,7 @@ TEST_REPORT.md
 TEST_REPORT.pdf
 
 # Local/scratch files
+tasks/
 conftest_local.py
 create_flow_diagram.py
 debug.py
