@@ -25,6 +25,8 @@ TEST_REPORT.pdf
 
 # Local/scratch files
 tasks/
+todo.md
+todo*.md
 conftest_local.py
 create_flow_diagram.py
 debug.py
