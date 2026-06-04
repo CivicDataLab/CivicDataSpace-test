@@ -64,10 +64,10 @@ class CreateCollaborativeLocators:
     COMPLETED_ON_VALUE_INPUT = (By.XPATH, "//input[@type='date' and @name='completedOn']")
 
     # ─── Tags / Sectors / SDG Goals / Geography Chips (Assertions) ─────────────────────────
-    SELECTED_TAGS = "//div[contains(@class,'Input-module_tags')]//span[contains(@class,'Tag-module_TagText')]"
-    SELECTED_SECTORS = "//div[contains(@class,'Input-module_tags')]//span[contains(@class,'Tag-module_TagText')]"
+    SELECTED_TAGS = "//label[normalize-space()='Tags']/following::div[contains(@class,'Input-module_tags')][1]//span[contains(@class,'Tag-module_TagText')]"
+    SELECTED_SECTORS = "//label[normalize-space()='Sectors' or normalize-space()='Sectors *']/following::div[contains(@class,'Input-module_tags')][1]//span[contains(@class,'Tag-module_TagText')]"
     SELECTED_GEOGRAPHY = "//label[normalize-space(text())='Geographies']/following::div[contains(@class,'Input-module_tags')][1]//span[contains(@class,'Tag-module_TagText')]"
-    SELECTED_SDG_GOALS = "//div[contains(@class,'Input-module_tags')]//span[contains(@class,'Tag-module_TagText')]"
+    SELECTED_SDG_GOALS = "//label[normalize-space()='SDG Goals *' or normalize-space()='SDG Goal *' or contains(normalize-space(),'SDG')]/following::div[contains(@class,'Input-module_tags')][1]//span[contains(@class,'Tag-module_TagText')]"
 
     # ─── Logo & Cover Image Preview (Post-upload Check) ──────────────────────────────────────
     LOGO_PREVIEW = (By.CSS_SELECTOR, ".uploaded-logo-preview")
