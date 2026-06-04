@@ -128,15 +128,19 @@ class CreateUsecasePage(BasePage):
         ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
         return self
 
-    def enter_started_on(self, iso_date: str):
-        fld = self.wait.until(EC.presence_of_element_located(CreateUsecaseLocators.STARTED_ON_INPUT))
-        fld.send_keys(iso_date)
-        import time as _t
-        _t.sleep(0.3)
-        try:
-            self.driver.execute_script("arguments[0].blur();", fld)
-        except Exception:
-            pass
+    def enter_started_on(self, date_ddmmyyyy: str):
+        # Autosave is a whole-form, last-writer-wins save: a prior field's save dispatched
+        # just before this one (carrying an empty startedOn) can complete *after* the date's
+        # save and overwrite it. So first drain any in-flight save, then set the date with a
+        # real send_keys + body-click focusout (the proven enter_platform_url pattern; JS
+        # .blur() does not fire the blur autosave in headless Chrome), then wait for the
+        # date's own save to commit before moving on.
+        self.wait_for_autosave()
+        fld = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.STARTED_ON_INPUT))
+        fld.click()
+        fld.send_keys(date_ddmmyyyy)
+        self.driver.find_element(By.TAG_NAME, "body").click()
+        self.wait_for_autosave(trigger_blur=False)
         return self
 
     def select_running_status(self, status_text: str):
@@ -148,14 +152,11 @@ class CreateUsecasePage(BasePage):
         except TimeoutException:
             pass  # Continue anyway
 
-        select_el = self.wait.until(
-            EC.presence_of_element_located(CreateUsecaseLocators.RUNNING_STATUS_INPUT),
-            message="Could not find Running Status <select>"
-        )
-
-        from selenium.webdriver.support.ui import Select
-        select = Select(select_el)
-        select.select_by_visible_text(status_text)
+        # Native <select> autosaves on a React-tracked change; Select.select_by_visible_text
+        # fires a DOM change that React's tracked setter ignores, so the choice shows in the
+        # DOM but never persists. Set it the React-safe way so autosave commits it.
+        self.set_react_select_by_text(CreateUsecaseLocators.RUNNING_STATUS_INPUT, status_text)
+        self.wait_for_autosave(trigger_blur=False)
         return self
 
     def enter_completed_on(self, iso_date: str):
@@ -266,16 +267,13 @@ class CreateUsecasePage(BasePage):
     # ─── "Datasets" Tab ─────────────────────────────────────────────────────────────────────────────────────
 
     def go_to_datasets_tab(self):
-        # 1) wait until the tab is clickable
-        tab = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.DATASETS_TAB))
+        self.wait_for_autosave()
 
-        # 2) scroll it into view (centered)
+        tab = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.DATASETS_TAB))
         self.driver.execute_script(
             "arguments[0].scrollIntoView({behavior: 'auto', block: 'center'});",
             tab
         )
-
-        # 3) click and return self for chaining
         tab.click()
         return self
 
@@ -407,10 +405,36 @@ class CreateUsecasePage(BasePage):
                     pass
                 break
 
+        # The Publish tab validator reads a React Query cache populated when the
+        # usecase was first created (empty). Wizard navigation never refetches, so
+        # the "fields missing" error sticks even though autosave persisted the data
+        # server-side. Reload once on /publish to force a fresh fetch and clear it.
+        if '/publish' in self.driver.current_url:
+            self.driver.refresh()
+            try:
+                self.wait_with_timeout(15).until(
+                    EC.element_to_be_clickable(CreateUsecaseLocators.PUBLISH_BUTTON)
+                )
+            except TimeoutException:
+                time.sleep(3)
+
         return self
 
     def click_publish(self):
         import time
+
+        # The opub-ui Button uses CSS-only disabled state (no HTML disabled attr), so
+        # element_to_be_clickable always finds it. Wait for the validation error to clear
+        # (which means the React Query has loaded the correct data from the server and all
+        # required fields are present) before clicking.
+        validation_error_locator = (By.XPATH,
+            "//*[contains(text(),'is missing. Please add to continue')]")
+        try:
+            self.wait_with_timeout(20).until(
+                EC.invisibility_of_element_located(validation_error_locator)
+            )
+        except TimeoutException:
+            pass  # Proceed anyway; will fail at assertion if data still missing
 
         # On the /publish page the action button has a Button-module class.
         # Try most-specific locators first to avoid accidentally clicking the tab nav button.

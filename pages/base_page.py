@@ -127,6 +127,39 @@ class BasePage:
         ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
         return self
 
+    def set_react_select_by_text(self, locator, text):
+        """Select a native <select> option by visible text the React-safe way.
+
+        Select.select_by_visible_text updates the DOM but bypasses React's tracked setter, so
+        the debounced (blur-driven) autosave never persists it. Set the value via the native
+        setter + change event, then dispatch a bubbling focusout to trigger the blur autosave.
+        """
+        # The native <select> is visually hidden behind a custom-styled component, so it is
+        # not "clickable" and cannot be real-clicked. Use presence and drive it via JS,
+        # dispatching a bubbling focusout (React's onBlur listens at the root, so the event
+        # need not come from a truly focused element) to trigger the blur autosave.
+        el = self.wait.until(EC.presence_of_element_located(locator))
+        matched = self.driver.execute_script(
+            """
+            const sel = arguments[0], text = arguments[1];
+            const opt = Array.from(sel.options).find(
+                o => o.textContent.trim() === text);
+            if (!opt) return false;
+            const setter = Object.getOwnPropertyDescriptor(
+                HTMLSelectElement.prototype, 'value').set;
+            setter.call(sel, opt.value);
+            sel.dispatchEvent(new Event('input', {bubbles: true}));
+            sel.dispatchEvent(new Event('change', {bubbles: true}));
+            sel.dispatchEvent(new Event('blur', {bubbles: false}));
+            sel.dispatchEvent(new Event('focusout', {bubbles: true}));
+            return true;
+            """,
+            el, text
+        )
+        if not matched:
+            raise AssertionError(f"No <select> option with text '{text}'")
+        return el
+
     # ── Wait Utilities ─────────────────────────────────────────────────────────
 
     def wait_for_invisibility(self, locator, timeout=None):
@@ -146,11 +179,16 @@ class BasePage:
 
     # ── File Upload Utility ────────────────────────────────────────────────────
 
-    def upload_file_to_dropzone(self, path_to_file, dropzone_class="DropZone-module_DropZone__xD9-6"):
+    def upload_file_to_dropzone(self, path_to_file, dropzone_class="DropZone-module_DropZone__xD9-6",
+                                input_index=0):
         """
         Standard file upload to React DropZone component.
         Primary: send_keys after removing display:none (triggers real browser/React events + server upload).
         Fallback: JavaScript DataTransfer (updates client-side state only).
+
+        input_index selects which file <input> to target when a form has several (e.g. the
+        collaborative has separate logo (0) and cover image (1) dropzones); defaulting to the
+        first preserves single-upload behaviour.
         """
         import os, time, base64
         from selenium.webdriver.common.by import By
@@ -163,7 +201,14 @@ class BasePage:
                     "gif": "image/gif", "webp": "image/webp", "svg": "image/svg+xml"}
         mime_type = mime_map.get(ext, "application/octet-stream")
 
-        input_el = self.driver.find_element(By.XPATH, "//input[@type='file']")
+        inputs = self.wait.until(
+            lambda d: d.find_elements(By.XPATH, "//input[@type='file']") or False
+        )
+        if input_index >= len(inputs):
+            raise AssertionError(
+                f"Wanted file input #{input_index} but only {len(inputs)} present"
+            )
+        input_el = inputs[input_index]
 
         # Remove display:none so ChromeDriver can interact with the file input.
         # ChromeDriver uses CDP DOM.setFileInputFiles which triggers real browser events

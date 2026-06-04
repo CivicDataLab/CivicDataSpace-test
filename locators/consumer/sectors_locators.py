@@ -21,8 +21,5 @@ class SectorsLocators:
     # First dataset card under a sector page - clickable link
     SEC_DATASET_FIRST_CARD = (By.XPATH, "//main//a[@href[contains(., '/datasets/')]]")
 
-    # Download link of the first dataset resource.
-    # Scoped to /download/resource/ so it targets the actual dataset file —
-    # NOT the chart-image link (/download/chart/), which appears first in DOM
-    # order and is a separate (currently failing) endpoint.
-    DOWNLOAD_LINK = (By.XPATH, "//a[contains(@href, '/download/resource/')]")
+    # Download link of the first dataset
+    DOWNLOAD_LINK = (By.XPATH, "//a[contains(., 'Download')] | //a[contains(@href, 'download')] | //button[contains(., 'Download')] | //a[contains(@class, 'flex') and contains(@class, 'justify-center')]")

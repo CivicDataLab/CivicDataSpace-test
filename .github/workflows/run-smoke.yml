@@ -1,5 +1,5 @@
 # CivicDataSpace-test/.github/workflows/run-smoke.yml
-name: Consumer Smoke Tests
+name: Smoke Tests
 
 on:
   push:
@@ -11,6 +11,14 @@ on:
     secrets:
       HOME_URL_DEV:
         required: true
+      TEST_EMAIL_1:
+        required: true
+      TEST_PASSWORD_1:
+        required: true
+      TEST_EMAIL_2:
+        required: false
+      TEST_PASSWORD_2:
+        required: false
 
 jobs:
   consumer-smoke:
@@ -63,7 +71,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: screenshots
+          name: consumer-screenshots
           path: screenshots/
           if-no-files-found: ignore
 
@@ -71,7 +79,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-report
+          name: consumer-report
           path: |
             report.json
             TEST_REPORT.md
@@ -83,6 +91,95 @@ jobs:
         shell: bash
         run: |
           echo "### Consumer Smoke Summary" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f report.json ]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          s = json.load(open("report.json")).get("summary", {})
+          for k in ("total", "passed", "failed", "skipped", "error"):
+              if k in s:
+                  print(f"- **{k}**: {s[k]}")
+          PY
+          else
+            echo "- report.json not found" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  provider-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      HOME_URL_DEV:    ${{ secrets.HOME_URL_DEV }}
+      TEST_EMAIL_1:    ${{ secrets.TEST_EMAIL_1 }}
+      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+      TEST_EMAIL_2:    ${{ secrets.TEST_EMAIL_2 }}
+      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: CivicDataLab/CivicDataSpace-test
+          ref: CI
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Set up Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          install-chromedriver: true
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Sanity check
+        run: |
+          echo "HOME_URL_DEV set? $([ -n "$HOME_URL_DEV" ] && echo yes || echo no)"
+          echo "TEST_EMAIL_1 set? $([ -n "$TEST_EMAIL_1" ] && echo yes || echo no)"
+          google-chrome --version || true
+          chromedriver --version || true
+
+      - name: Run provider smoke tests
+        env:
+          TEST_USER_INDEX: "1"
+        run: |
+          pytest tests/provider/smoke -m smoke -v --json-report
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: provider-screenshots
+          path: screenshots/
+          if-no-files-found: ignore
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: provider-report
+          path: |
+            report.json
+            TEST_REPORT.md
+            TEST_REPORT.pdf
+          if-no-files-found: ignore
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          echo "### Provider Smoke Summary" >> "$GITHUB_STEP_SUMMARY"
           if [ -f report.json ]; then
             python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json

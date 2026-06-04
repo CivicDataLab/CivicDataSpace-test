@@ -15,12 +15,8 @@ class UseCaseLocators:
     # First UseCase - clickable link
     UC_FIRST_CARD = (By.XPATH, "//a[@href[contains(., '/usecases/')]]")
 
-    # First Dataset under Usecase.
-    # NOT scoped to a 'datasets_List' container — that CSS-module class no longer
-    # exists in the rendered DOM, which made the download test silently skip.
-    UC_DATASET_FIRST_CARD = (By.XPATH, "//main//a[@href[contains(., '/datasets/')]]")
+    # First Dataset under Usecase - using actual class
+    UC_DATASET_FIRST_CARD = (By.XPATH, "//div[contains(@class, 'datasets_List')]//a[@href[contains(., '/datasets/')]]")
 
-    # Download link for the dataset resource under a use case.
-    # Scoped to /download/resource/ so it targets the dataset file, not the
-    # chart-image link (/download/chart/), which is a separate failing endpoint.
-    DOWNLOAD_LINK = (By.XPATH, "//a[contains(@href, '/download/resource/')]")
+    # Download link for dataset under use case
+    DOWNLOAD_LINK = (By.XPATH, "//a[contains(@class, 'flex') and contains(@class, 'justify-center')] | //a[contains(., 'Download')]")
