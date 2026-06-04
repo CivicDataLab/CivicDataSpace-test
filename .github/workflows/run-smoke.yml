@@ -26,6 +26,9 @@ jobs:
           repository: CivicDataLab/CivicDataSpace-test
           ref: CI
 
+      - name: Debug working directory
+        run: ls -la
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
