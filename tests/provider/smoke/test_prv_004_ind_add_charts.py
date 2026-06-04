@@ -124,7 +124,7 @@ def test_prv_004_ind_add_charts(driver, sample_logo_path, base_url,test_credenti
     )
 
     # (6i) Started On
-    start_date = "01012023"
+    start_date = "2023-01-01"
     create_uc.enter_started_on(start_date)
     actual_start = create_uc.get_started_on_value()
     assert actual_start == "2023-01-01", (
