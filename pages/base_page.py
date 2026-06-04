@@ -177,6 +177,30 @@ class BasePage:
         """Create a one-off wait with custom timeout"""
         return WebDriverWait(self.driver, timeout)
 
+    def enter_date(self, locator, iso_date: str):
+        """Set a <input type=date> to iso_date (YYYY-MM-DD) via the native JS setter.
+
+        send_keys interprets keystrokes according to the OS locale (MM/DD/YYYY on Linux,
+        DD/MM/YYYY on macOS), so the same keystroke string produces different dates on
+        different platforms. Using the native setter bypasses locale entirely.
+        The body.click() fires the real focusout that triggers the React blur-autosave.
+        """
+        self.wait_for_autosave()
+        el = self.wait.until(EC.element_to_be_clickable(locator))
+        self.driver.execute_script(
+            """
+            const el = arguments[0], val = arguments[1];
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            setter.call(el, val);
+            el.dispatchEvent(new Event('input', {bubbles: true}));
+            el.dispatchEvent(new Event('change', {bubbles: true}));
+            """,
+            el, iso_date
+        )
+        self.driver.find_element(By.TAG_NAME, "body").click()
+        self.wait_for_autosave(trigger_blur=False)
+        return self
+
     # ── File Upload Utility ────────────────────────────────────────────────────
 
     def upload_file_to_dropzone(self, path_to_file, dropzone_class="DropZone-module_DropZone__xD9-6",

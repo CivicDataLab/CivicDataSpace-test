@@ -192,28 +192,11 @@ class CreateCollaborativePage(BasePage):
         ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
         return self
 
-    def enter_started_on(self, date_ddmmyyyy: str):
-        """Enter started on date. Drain any in-flight save first (whole-form last-writer-wins
-        autosave can otherwise clobber this field), then real send_keys + body-click focusout
-        fires the blur autosave (mirrors enter_platform_url), then wait for it to commit."""
-        self.wait_for_autosave()
-        fld = self.wait.until(EC.element_to_be_clickable(CreateCollaborativeLocators.STARTED_ON_INPUT))
-        fld.click()
-        fld.send_keys(date_ddmmyyyy)
-        self.driver.find_element(By.TAG_NAME, "body").click()
-        self.wait_for_autosave(trigger_blur=False)
-        return self
+    def enter_started_on(self, iso_date: str):
+        return self.enter_date(CreateCollaborativeLocators.STARTED_ON_INPUT, iso_date)
 
-    def enter_completed_on(self, date_ddmmyyyy: str):
-        """Enter completed on date. Drain any in-flight save first, then real send_keys +
-        body-click focusout fires the blur autosave, then wait for it to commit."""
-        self.wait_for_autosave()
-        fld = self.wait.until(EC.element_to_be_clickable(CreateCollaborativeLocators.COMPLETED_ON_INPUT))
-        fld.click()
-        fld.send_keys(date_ddmmyyyy)
-        self.driver.find_element(By.TAG_NAME, "body").click()
-        self.wait_for_autosave(trigger_blur=False)
-        return self
+    def enter_completed_on(self, iso_date: str):
+        return self.enter_date(CreateCollaborativeLocators.COMPLETED_ON_INPUT, iso_date)
 
     def upload_logo(self, path_to_file: str):
         """
@@ -339,17 +322,13 @@ class CreateCollaborativePage(BasePage):
 
     def get_selected_sdg_goals(self) -> str:
         """Get selected SDG goals."""
-        # Use a targeted locator near the SDG Goals label
-        sdg_locator = "//label[contains(text(),'SDG')]/following::div[contains(@class,'Input-module_tags')][1]//span[contains(@class,'Tag-module_TagText')]"
         try:
             elements = self.wait.until(
-                EC.presence_of_all_elements_located((By.XPATH, sdg_locator))
+                EC.presence_of_all_elements_located((By.XPATH, CreateCollaborativeLocators.SELECTED_SDG_GOALS))
             )
-            return elements[-1].text.strip() if elements else ""
+            return elements[0].text.strip() if elements else ""
         except TimeoutException:
-            # Fallback: try generic chips
-            elements = self.driver.find_elements(By.XPATH, CreateCollaborativeLocators.SELECTED_SDG_GOALS)
-            return elements[-1].text.strip() if elements else ""
+            return ""
 
     def get_started_on_value(self) -> str:
         """Get started on date value."""

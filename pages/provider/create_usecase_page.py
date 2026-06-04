@@ -128,20 +128,8 @@ class CreateUsecasePage(BasePage):
         ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
         return self
 
-    def enter_started_on(self, date_ddmmyyyy: str):
-        # Autosave is a whole-form, last-writer-wins save: a prior field's save dispatched
-        # just before this one (carrying an empty startedOn) can complete *after* the date's
-        # save and overwrite it. So first drain any in-flight save, then set the date with a
-        # real send_keys + body-click focusout (the proven enter_platform_url pattern; JS
-        # .blur() does not fire the blur autosave in headless Chrome), then wait for the
-        # date's own save to commit before moving on.
-        self.wait_for_autosave()
-        fld = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.STARTED_ON_INPUT))
-        fld.click()
-        fld.send_keys(date_ddmmyyyy)
-        self.driver.find_element(By.TAG_NAME, "body").click()
-        self.wait_for_autosave(trigger_blur=False)
-        return self
+    def enter_started_on(self, iso_date: str):
+        return self.enter_date(CreateUsecaseLocators.STARTED_ON_INPUT, iso_date)
 
     def select_running_status(self, status_text: str):
         # Try to wait for toasts to disappear, but don't fail if they persist
@@ -160,14 +148,7 @@ class CreateUsecasePage(BasePage):
         return self
 
     def enter_completed_on(self, iso_date: str):
-        fld = self.wait.until(
-            EC.visibility_of_element_located(CreateUsecaseLocators.COMPLETED_ON_INPUT),
-            message="Could not find 'Completed On' date input"
-        )
-        fld.clear()
-        fld.send_keys(iso_date)
-        self.wait.until(lambda d: fld.get_attribute("value") and iso_date in fld.get_attribute("value"))
-        return self
+        return self.enter_date(CreateUsecaseLocators.COMPLETED_ON_INPUT, iso_date)
 
     def upload_logo(self, path_to_file: str):
         """
@@ -188,9 +169,8 @@ class CreateUsecasePage(BasePage):
         return self.driver.find_element(*CreateUsecaseLocators.PLATFORM_URL_INPUT).get_attribute("value")
 
     def get_selected_tags(self) -> list[str]:
-        # time.sleep(2)
         elements = self.driver.find_elements(By.XPATH, CreateUsecaseLocators.SELECTED_TAGS)
-        return [el.text.strip() for el in elements]
+        return [el.text.strip() for el in elements if el.text.strip()]
 
     def get_selected_sectors(self) -> list[str]:
         # Assuming each selected‐tag appears as a "pill" with text inside
@@ -206,16 +186,13 @@ class CreateUsecasePage(BasePage):
         return elt.text.strip()
 
     def get_selected_sdg_goals(self) -> str:
-        # Use a targeted locator near the SDG Goals label
-        sdg_locator = "//label[contains(text(),'SDG')]/following::div[contains(@class,'Input-module_tags')][1]//span[contains(@class,'Tag-module_TagText')]"
         try:
             elements = self.wait.until(
-                EC.presence_of_all_elements_located((By.XPATH, sdg_locator))
+                EC.presence_of_all_elements_located((By.XPATH, CreateUsecaseLocators.SELECTED_SDG_GOALS))
             )
-            return elements[-1].text.strip() if elements else ""
+            return elements[0].text.strip() if elements else ""
         except TimeoutException:
-            elements = self.driver.find_elements(By.XPATH, CreateUsecaseLocators.SELECTED_SDG_GOALS)
-            return elements[-1].text.strip() if elements else ""
+            return ""
 
     def get_started_on_value(self) -> str:
         # Wait for started_on input to be visible
