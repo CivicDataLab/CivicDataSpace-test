@@ -129,39 +129,30 @@ class MyDashboardPage(BasePage):
     def click_collaboratives_card(self):
         from locators.provider.collaboratives_list_page_locators import CollaborativesListPageLocators
         from pages.provider.collaboratives_list_page import CollaborativesListPage
-        import time
 
-        # Wait for and click the Collaboratives navigation link (same pattern as click_usecases_card)
         collaboratives_link = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(MyDashboardLocators.COLLABORATIVES_NAV_LINK),
             message="Timed out waiting for the 'Collaboratives' card to be clickable"
         )
-
-        # Scroll into view and click
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", collaboratives_link)
-        collaboratives_link.click()
+        self.driver.execute_script("arguments[0].click();", collaboratives_link)
 
-        # Give the page time to navigate
-        time.sleep(2)
+        # Same retry pattern as click_usecases_card: JS click occasionally doesn't trigger
+        # React's router on CI runners. The broad text-based fallbacks that were here before
+        # matched sidebar nav items already on screen, causing a false-positive early return.
+        try:
+            self.wait_with_timeout(8).until(lambda d: 'collaboratives' in d.current_url)
+        except TimeoutException:
+            collaboratives_link.click()
+            self.wait_with_timeout(15).until(
+                lambda d: 'collaboratives' in d.current_url,
+                message="Timed out waiting for Collaboratives page URL after retry click"
+            )
 
-        # Wait for the Collaboratives page to load — try multiple indicators for resilience
-        from selenium.common.exceptions import TimeoutException
-        from selenium.webdriver.common.by import By
-        loaded = False
-        for locator in [
-            CollaborativesListPageLocators.ADD_NEW_COLLABORATIVE_BUTTON,
-            (By.XPATH, "//span[contains(normalize-space(),'Collaborative')]"),
-            (By.XPATH, "//*[contains(normalize-space(),'Collaborative')]"),
-        ]:
-            try:
-                self.wait_with_timeout(20).until(EC.visibility_of_element_located(locator))
-                loaded = True
-                break
-            except TimeoutException:
-                continue
-
-        if not loaded:
-            raise TimeoutException("Timed out waiting for Collaboratives page to load")
+        self.wait_with_timeout(20).until(
+            EC.visibility_of_element_located(CollaborativesListPageLocators.ADD_NEW_COLLABORATIVE_BUTTON),
+            message="Timed out waiting for 'Add New Collaborative' button"
+        )
 
         return CollaborativesListPage(self.driver)
 
