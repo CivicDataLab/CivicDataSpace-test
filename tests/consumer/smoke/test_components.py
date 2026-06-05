@@ -48,6 +48,7 @@ def wait_and_capture(driver, tc_id, by, locator, condition=EC.visibility_of_elem
 
 # ─── SMOKE TESTS ────────────────────────────────────────────────────────────────
 
+@pytest.mark.smoke
 def test_TC_HOM_01_icon_visible(driver):
     """Verify homepage icon is visible on page load"""
     load_homepage(driver)
@@ -204,18 +205,22 @@ def sectors_page(driver):
     tab.click()
     return driver
 
+@pytest.mark.smoke
 def test_TC_SEC_01_header_text(sectors_page):
     hdr = wait_and_capture(sectors_page, "TC_SEC_01", *Locators.SECTOR_HEADER)
     assert hdr.is_displayed()
 
+@pytest.mark.smoke
 def test_TC_SEC_02_search_bar(sectors_page):
     bar = wait_and_capture(sectors_page, "TC_SEC_02", *Locators.SECTOR_SEARCH_BAR)
     assert bar.is_displayed()
 
+@pytest.mark.smoke
 def test_TC_SEC_03_sort_dropdown(sectors_page):
     dd = wait_and_capture(sectors_page, "TC_SEC_03", *Locators.SECTOR_SORT_DROPDOWN)
     assert dd.is_displayed()
 
+@pytest.mark.smoke
 def test_TC_SEC_04_sector_cards(sectors_page):
     """TC_SEC_04: Sector cards are rendered on the Sectors tab"""
     # wait up to 10s for *all* cards to be present in the DOM
@@ -276,10 +281,12 @@ def usecases_page(driver):
     tab.click()
     return driver
 
+@pytest.mark.smoke
 def test_TC_UC_01_header_text(usecases_page):
     hdr = wait_and_capture(usecases_page, "TC_UC_01", *Locators.USE_CASES_HEADER)
     assert hdr.is_displayed()
 
+@pytest.mark.smoke
 def test_TC_UC_02_usecase_cards(usecases_page):
     """TC_UC_02: UseCase cards are rendered on the UseCase tab"""
     # wait up to 10s for *all* cards to be present in the DOM
@@ -322,14 +329,17 @@ def about_page(driver):
         driver.execute_script("arguments[0].click();", tab)
     return driver
 
+@pytest.mark.smoke
 def test_TC_ABOUT_01_heading(about_page):
     h = wait_and_capture(about_page, "TC_ABOUT_01", *Locators.ABOUT_HEADING)
     assert h.is_displayed()
 
+@pytest.mark.smoke
 def test_TC_ABOUT_02_paragraph(about_page):
     p = wait_and_capture(about_page, "TC_ABOUT_02", *Locators.ABOUT_PARAGRAPH)
     assert p.is_displayed()
 
+@pytest.mark.smoke
 def test_TC_ABOUT_03_mobile_layout(about_page):
     about_page.set_window_size(375, 812)
     try:

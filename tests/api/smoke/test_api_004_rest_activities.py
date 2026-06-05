@@ -7,7 +7,7 @@ import pytest
 
 
 @pytest.mark.api
-@pytest.mark.smoke
+@pytest.mark.regression
 @pytest.mark.xfail(reason="/api/activities/global/ currently requires auth on dev (should be public)")
 def test_global_activities_returns_200(anon_api_client):
     """GET /api/activities/global/ should return 200 without authentication."""
@@ -18,7 +18,7 @@ def test_global_activities_returns_200(anon_api_client):
 
 
 @pytest.mark.api
-@pytest.mark.smoke
+@pytest.mark.regression
 @pytest.mark.xfail(reason="/api/activities/global/ currently requires auth on dev (should be public)")
 def test_global_activities_response_is_list_or_dict(anon_api_client):
     """Global activities response should be a JSON list or dict."""
@@ -31,7 +31,7 @@ def test_global_activities_response_is_list_or_dict(anon_api_client):
 
 
 @pytest.mark.api
-@pytest.mark.smoke
+@pytest.mark.regression
 def test_user_activities_requires_auth(anon_api_client):
     """GET /api/activities/user/ without a token must return 401 or 403."""
     resp = anon_api_client.get("/api/activities/user/")

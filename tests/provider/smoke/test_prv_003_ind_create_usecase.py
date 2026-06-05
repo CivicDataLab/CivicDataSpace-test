@@ -15,7 +15,7 @@ from pages.provider.provider_home_page import ProviderHomePage
 from pages.provider.my_dashboard_page import MyDashboardPage
 from pages.provider.create_usecase_page import CreateUsecasePage
 
-@pytest.mark.smoke
+@pytest.mark.functional
 def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url,test_credentials):
     """
     Test Case ID: test_prv_003_ind_create_usecase

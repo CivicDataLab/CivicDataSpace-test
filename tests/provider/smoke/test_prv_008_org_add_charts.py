@@ -16,7 +16,7 @@ from pages.provider.my_dashboard_page import MyDashboardPage
 from pages.provider.create_usecase_page import CreateUsecasePage
 from pages.provider.organizations_page import OrganizationsPage
 
-@pytest.mark.smoke
+@pytest.mark.functional
 def test_prv_008_org_add_charts(driver, sample_logo_path, base_url, test_credentials):
     """
     Test Case ID: test_prv_008_org_add_charts

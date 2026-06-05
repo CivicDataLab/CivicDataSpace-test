@@ -9,7 +9,7 @@ from pages.provider.update_profile_page import UpdateProfilePage
 
 
 
-@pytest.mark.smoke
+@pytest.mark.functional
 def test_prv_005_ind_edit_profile(driver, sample_profile_image_path, base_url, test_credentials):
     """
         Test Case ID: test_prv_005_ind_edit_profile

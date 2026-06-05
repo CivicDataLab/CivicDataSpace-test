@@ -17,7 +17,7 @@ from pages.provider.create_collaborative_page import CreateCollaborativePage
 from pages.provider.organizations_page import OrganizationsPage
 from tests.data.test_data import CollaborativeTestData
 
-@pytest.mark.smoke
+@pytest.mark.functional
 def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover_image_path, base_url, test_credentials):
     """
     Test Case ID: test_prv_011_org_create_collaborative

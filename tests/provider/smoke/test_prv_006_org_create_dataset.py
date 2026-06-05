@@ -15,7 +15,7 @@ from pages.provider.my_dashboard_page import MyDashboardPage
 from pages.provider.create_dataset_page import CreateDatasetPage
 from pages.provider.organizations_page import OrganizationsPage
 
-@pytest.mark.smoke
+@pytest.mark.functional
 def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_credentials):
 
     """
