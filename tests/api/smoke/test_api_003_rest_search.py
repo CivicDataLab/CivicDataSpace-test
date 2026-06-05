@@ -29,7 +29,7 @@ def test_search_datasets_response_structure(anon_api_client):
 
 
 @pytest.mark.api
-@pytest.mark.smoke
+@pytest.mark.functional
 def test_search_datasets_with_query_param(anon_api_client):
     """Dataset search with a ?q= query param should still return 200."""
     resp = anon_api_client.get("/api/search/dataset/", params={"q": "test"})
@@ -49,7 +49,7 @@ def test_search_usecases_returns_200(anon_api_client):
 
 
 @pytest.mark.api
-@pytest.mark.smoke
+@pytest.mark.regression
 @pytest.mark.xfail(reason="Backend Elasticsearch InnerDoc serialization error on /api/search/aimodel/ (500)")
 def test_search_aimodels_returns_200(anon_api_client):
     """GET /api/search/aimodel/ should return 200."""

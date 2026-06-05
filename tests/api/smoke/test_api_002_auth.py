@@ -9,7 +9,7 @@ import pytest
 
 
 @pytest.mark.api
-@pytest.mark.smoke
+@pytest.mark.functional
 def test_auth_token_has_required_fields(auth_token, api_base_url, keycloak_config, test_credentials):
     """
     The Keycloak → Django JWT exchange must return 'access', 'refresh',
@@ -41,7 +41,7 @@ def test_auth_token_has_required_fields(auth_token, api_base_url, keycloak_confi
 
 
 @pytest.mark.api
-@pytest.mark.smoke
+@pytest.mark.regression
 def test_auth_login_rejects_missing_token(anon_api_client):
     """POST /api/auth/keycloak/login/ without a token must return 400."""
     resp = anon_api_client.post("/api/auth/keycloak/login/", json={})
@@ -51,7 +51,7 @@ def test_auth_login_rejects_missing_token(anon_api_client):
 
 
 @pytest.mark.api
-@pytest.mark.smoke
+@pytest.mark.regression
 def test_auth_login_rejects_invalid_token(anon_api_client):
     """POST /api/auth/keycloak/login/ with a bogus token must return 401."""
     resp = anon_api_client.post(
@@ -64,7 +64,7 @@ def test_auth_login_rejects_invalid_token(anon_api_client):
 
 
 @pytest.mark.api
-@pytest.mark.smoke
+@pytest.mark.functional
 def test_token_refresh_returns_new_access_token(api_base_url, refresh_token):
     """POST /api/auth/token/refresh/ must return a new 'access' token."""
     import requests
@@ -95,7 +95,7 @@ def test_user_info_returns_current_user(api_client):
 
 
 @pytest.mark.api
-@pytest.mark.smoke
+@pytest.mark.regression
 @pytest.mark.xfail(reason="Backend returns 500 instead of 401 for unauthenticated /api/auth/user/info/")
 def test_user_info_requires_auth(anon_api_client):
     """GET /api/auth/user/info/ without a token must return 401 or 403."""

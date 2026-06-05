@@ -8,7 +8,7 @@ from pages.provider.my_dashboard_page import MyDashboardPage
 from pages.provider.charts_list_page import ChartsListPage
 
 
-@pytest.mark.smoke
+@pytest.mark.functional
 def test_prv_004_ind_add_charts(driver, base_url, test_credentials):
     """
     Test Case ID: test_prv_004_ind_add_charts

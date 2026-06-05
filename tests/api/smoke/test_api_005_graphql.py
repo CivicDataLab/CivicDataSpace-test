@@ -47,7 +47,7 @@ def test_graphql_datasets_query_returns_list(graphql_client):
 
 
 @pytest.mark.api
-@pytest.mark.smoke
+@pytest.mark.regression
 def test_graphql_datasets_items_have_required_fields(graphql_client):
     """Each dataset item must have id, title, and status fields."""
     data = graphql_client.query(DATASETS_QUERY)
@@ -84,7 +84,7 @@ def test_graphql_usecases_query_returns_list(graphql_client):
 
 
 @pytest.mark.api
-@pytest.mark.smoke
+@pytest.mark.regression
 def test_graphql_usecases_items_have_required_fields(graphql_client):
     """Each use case must have id, title, and status fields."""
     data = graphql_client.query(USE_CASES_QUERY)
@@ -123,7 +123,7 @@ def test_graphql_all_organizations_query_returns_list(graphql_client):
 
 
 @pytest.mark.api
-@pytest.mark.smoke
+@pytest.mark.regression
 def test_graphql_organizations_items_have_required_fields(graphql_client):
     """Each organization must have id, name, and slug fields."""
     data = graphql_client.query(ALL_ORGANIZATIONS_QUERY)
@@ -149,7 +149,7 @@ query {
 """
 
 @pytest.mark.api
-@pytest.mark.smoke
+@pytest.mark.functional
 def test_graphql_published_usecases_query(graphql_client):
     """publishedUseCases query should return a list of published use cases."""
     data = graphql_client.query(PUBLISHED_USE_CASES_QUERY)
