@@ -10,7 +10,6 @@
 #
 # These tests run against real data — they create and delete actual records.
 
-import uuid
 from datetime import datetime
 
 import pytest
@@ -18,12 +17,17 @@ import pytest
 
 # ─── Mutations ───────────────────────────────────────────────────────────────────
 
+# addDataset / addUpdateDatasetMetadata return TypeDatasetMutationResponse
+# { success, errors { ... }, data { ... } }
 CREATE_DATASET_MUTATION = """
-mutation CreateDataset($datasetType: DatasetTypeENUM) {
+mutation CreateDataset($datasetType: DatasetType) {
   addDataset(createInput: { datasetType: $datasetType }) {
-    id
-    status
-    datasetType
+    success
+    data {
+      id
+      status
+      datasetType
+    }
   }
 }
 """
@@ -31,11 +35,10 @@ mutation CreateDataset($datasetType: DatasetTypeENUM) {
 UPDATE_METADATA_MUTATION = """
 mutation UpdateMetadata(
   $dataset: UUID!
-  $title: String
   $description: String
-  $tags: [String]
-  $accessType: DatasetAccessTypeENUM
-  $license: DatasetLicenseENUM
+  $tags: [String!]
+  $accessType: DatasetAccessType
+  $license: DatasetLicense
 ) {
   addUpdateDatasetMetadata(updateMetadataInput: {
     dataset: $dataset
@@ -45,21 +48,26 @@ mutation UpdateMetadata(
     accessType: $accessType
     license: $license
   }) {
-    id
-    title
-    description
-    status
+    success
+    data {
+      id
+      title
+      description
+      status
+    }
   }
 }
 """
 
+# updateDataset / publishDataset / unPublishDataset return a union
+# (TypeDataset | OperationInfo) — use inline fragments
 UPDATE_DATASET_MUTATION = """
 mutation UpdateDataset(
   $dataset: UUID!
   $title: String
   $description: String
-  $tags: [String]
-  $accessType: DatasetAccessTypeENUM
+  $tags: [String!]
+  $accessType: DatasetAccessType
 ) {
   updateDataset(updateDatasetInput: {
     dataset: $dataset
@@ -68,10 +76,15 @@ mutation UpdateDataset(
     tags: $tags
     accessType: $accessType
   }) {
-    id
-    title
-    description
-    status
+    ... on TypeDataset {
+      id
+      title
+      description
+      status
+    }
+    ... on OperationInfo {
+      messages { message }
+    }
   }
 }
 """
@@ -79,8 +92,13 @@ mutation UpdateDataset(
 PUBLISH_DATASET_MUTATION = """
 mutation PublishDataset($datasetId: UUID!) {
   publishDataset(datasetId: $datasetId) {
-    id
-    status
+    ... on TypeDataset {
+      id
+      status
+    }
+    ... on OperationInfo {
+      messages { message }
+    }
   }
 }
 """
@@ -88,17 +106,21 @@ mutation PublishDataset($datasetId: UUID!) {
 UNPUBLISH_DATASET_MUTATION = """
 mutation UnpublishDataset($datasetId: UUID!) {
   unPublishDataset(datasetId: $datasetId) {
-    id
-    status
+    ... on TypeDataset {
+      id
+      status
+    }
+    ... on OperationInfo {
+      messages { message }
+    }
   }
 }
 """
 
+# deleteDataset returns Boolean — no selection set
 DELETE_DATASET_MUTATION = """
 mutation DeleteDataset($datasetId: UUID!) {
-  deleteDataset(datasetId: $datasetId) {
-    id
-  }
+  deleteDataset(datasetId: $datasetId)
 }
 """
 
@@ -144,7 +166,9 @@ def test_create_dataset_returns_id_and_draft_status(graphql_client):
     """
     data = graphql_client.query(CREATE_DATASET_MUTATION, {"datasetType": "DATA"})
     assert "addDataset" in data, f"Expected 'addDataset' in response: {data}"
-    dataset = data["addDataset"]
+    result = data["addDataset"]
+    assert result.get("success"), f"addDataset returned success=False: {result}"
+    dataset = result["data"]
 
     try:
         assert dataset.get("id"), "Created dataset has no id"
@@ -152,12 +176,8 @@ def test_create_dataset_returns_id_and_draft_status(graphql_client):
             f"Expected DRAFT status, got: {dataset.get('status')}"
         )
     finally:
-        # Cleanup
         if dataset.get("id"):
-            graphql_client.query(
-                DELETE_DATASET_MUTATION,
-                {"datasetId": dataset["id"]},
-            )
+            graphql_client.query(DELETE_DATASET_MUTATION, {"datasetId": dataset["id"]})
 
 
 @pytest.mark.api
@@ -167,10 +187,9 @@ def test_dataset_full_lifecycle(graphql_client):
     Full lifecycle: create → update title → publish → verify status → unpublish → delete.
     """
     # 1. Create
-    create_data = graphql_client.query(
-        CREATE_DATASET_MUTATION, {"datasetType": "DATA"}
-    )
-    dataset_id = create_data["addDataset"]["id"]
+    create_data = graphql_client.query(CREATE_DATASET_MUTATION, {"datasetType": "DATA"})
+    assert create_data["addDataset"]["success"], f"Create failed: {create_data}"
+    dataset_id = create_data["addDataset"]["data"]["id"]
     assert dataset_id, "Dataset creation returned no id"
 
     try:
@@ -198,30 +217,23 @@ def test_dataset_full_lifecycle(graphql_client):
         )
 
         # 4. Publish
-        publish_data = graphql_client.query(
-            PUBLISH_DATASET_MUTATION, {"datasetId": dataset_id}
-        )
+        publish_data = graphql_client.query(PUBLISH_DATASET_MUTATION, {"datasetId": dataset_id})
         published = publish_data.get("publishDataset", {})
         assert published.get("status") == "PUBLISHED", (
             f"Expected PUBLISHED status after publish, got: {published.get('status')}"
         )
 
         # 5. Verify published via getDataset
-        get_data = graphql_client.query(
-            GET_DATASET_QUERY, {"datasetId": dataset_id}
-        )
+        get_data = graphql_client.query(GET_DATASET_QUERY, {"datasetId": dataset_id})
         fetched = get_data.get("getDataset", {})
         assert fetched.get("status") == "PUBLISHED", (
             f"getDataset shows status {fetched.get('status')} instead of PUBLISHED"
         )
 
         # 6. Unpublish before deletion
-        graphql_client.query(
-            UNPUBLISH_DATASET_MUTATION, {"datasetId": dataset_id}
-        )
+        graphql_client.query(UNPUBLISH_DATASET_MUTATION, {"datasetId": dataset_id})
 
     finally:
-        # Always clean up
         graphql_client.query(DELETE_DATASET_MUTATION, {"datasetId": dataset_id})
 
 
@@ -232,15 +244,12 @@ def test_get_dataset_returns_correct_fields(graphql_client):
     getDataset query must return a dataset with the expected fields.
     Creates a temporary dataset for this test.
     """
-    create_data = graphql_client.query(
-        CREATE_DATASET_MUTATION, {"datasetType": "DATA"}
-    )
-    dataset_id = create_data["addDataset"]["id"]
+    create_data = graphql_client.query(CREATE_DATASET_MUTATION, {"datasetType": "DATA"})
+    assert create_data["addDataset"]["success"]
+    dataset_id = create_data["addDataset"]["data"]["id"]
 
     try:
-        get_data = graphql_client.query(
-            GET_DATASET_QUERY, {"datasetId": dataset_id}
-        )
+        get_data = graphql_client.query(GET_DATASET_QUERY, {"datasetId": dataset_id})
         dataset = get_data.get("getDataset", {})
         assert dataset.get("id") == dataset_id, "getDataset returned wrong id"
         assert "status" in dataset, "getDataset missing 'status' field"
@@ -254,10 +263,9 @@ def test_delete_dataset_removes_from_list(graphql_client):
     """
     After deleteDataset, the dataset must no longer appear in the datasets list.
     """
-    create_data = graphql_client.query(
-        CREATE_DATASET_MUTATION, {"datasetType": "DATA"}
-    )
-    dataset_id = create_data["addDataset"]["id"]
+    create_data = graphql_client.query(CREATE_DATASET_MUTATION, {"datasetType": "DATA"})
+    assert create_data["addDataset"]["success"]
+    dataset_id = create_data["addDataset"]["data"]["id"]
 
     # Delete it
     graphql_client.query(DELETE_DATASET_MUTATION, {"datasetId": dataset_id})

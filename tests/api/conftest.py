@@ -4,14 +4,17 @@
 # Handles Keycloak authentication and provides ready-to-use API/GraphQL clients.
 #
 # Required .env variables:
-#   API_BASE_URL      - Backend base URL, e.g. http://localhost:8000
-#   KEYCLOAK_URL      - Keycloak server URL, e.g. http://localhost:8080
-#   KEYCLOAK_REALM    - Keycloak realm name
-#   KEYCLOAK_CLIENT_ID - Keycloak client ID
-#   TEST_EMAIL_1      - Test user email (shared with UI tests)
-#   TEST_PASSWORD_1   - Test user password (shared with UI tests)
+#   API_BASE_URL           - Backend base URL, e.g. https://your-api-host
+#   KEYCLOAK_URL           - Keycloak server base URL, e.g. https://your-keycloak-host/auth
+#   KEYCLOAK_REALM         - Keycloak realm name, e.g. MyRealm
+#   KEYCLOAK_CLIENT_ID     - Keycloak client ID (same as frontend KEYCLOAK_CLIENT_ID)
+#   KEYCLOAK_CLIENT_SECRET - Keycloak client secret (same as frontend KEYCLOAK_CLIENT_SECRET)
+#   TEST_EMAIL_1           - Test user email (shared with UI tests)
+#   TEST_PASSWORD_1        - Test user password (shared with UI tests)
 
 import os
+from typing import Optional
+
 import pytest
 import requests
 
@@ -19,24 +22,29 @@ from tests.api.client import APIClient, GraphQLClient
 
 
 def _get_keycloak_token(keycloak_url: str, realm: str, client_id: str,
-                         email: str, password: str) -> str:
+                         email: str, password: str,
+                         client_secret: Optional[str] = None) -> str:
     """
     Obtain a Keycloak access token via Resource Owner Password Credentials grant.
+    Confidential clients (those with a client_secret) must pass it here.
     """
     token_url = (
         f"{keycloak_url.rstrip('/')}/realms/{realm}"
         f"/protocol/openid-connect/token"
     )
-    resp = requests.post(token_url, data={
+    payload = {
         "grant_type": "password",
         "client_id": client_id,
         "username": email,
         "password": password,
-    })
+    }
+    if client_secret:
+        payload["client_secret"] = client_secret
+    resp = requests.post(token_url, data=payload)
     if resp.status_code == 401:
         pytest.skip(
-            "Keycloak Direct Access Grants not enabled for this client — "
-            "enable it in the Keycloak admin console to run authenticated API tests"
+            "Keycloak ROPC token request returned 401 — check that Direct Access Grants "
+            "is enabled and KEYCLOAK_CLIENT_SECRET is correct"
         )
     assert resp.status_code == 200, (
         f"Keycloak token request failed ({resp.status_code}): {resp.text}"
@@ -55,16 +63,17 @@ def api_base_url():
 
 @pytest.fixture(scope="session")
 def keycloak_config():
-    """Keycloak connection settings from env vars. Skips if any are missing."""
+    """Keycloak connection settings from env vars. Skips if required vars are missing."""
     kc_url = os.getenv("KEYCLOAK_URL")
     realm = os.getenv("KEYCLOAK_REALM")
     client_id = os.getenv("KEYCLOAK_CLIENT_ID")
+    client_secret = os.getenv("KEYCLOAK_CLIENT_SECRET")  # required for confidential clients
     if not all([kc_url, realm, client_id]):
         pytest.skip(
             "KEYCLOAK_URL / KEYCLOAK_REALM / KEYCLOAK_CLIENT_ID not set — "
             "skipping authenticated API tests"
         )
-    return {"url": kc_url, "realm": realm, "client_id": client_id}
+    return {"url": kc_url, "realm": realm, "client_id": client_id, "client_secret": client_secret}
 
 
 @pytest.fixture(scope="session")
@@ -82,6 +91,7 @@ def auth_token(api_base_url, keycloak_config, test_credentials):
         keycloak_config["client_id"],
         email,
         password,
+        client_secret=keycloak_config.get("client_secret"),
     )
     resp = requests.post(
         f"{api_base_url}/api/auth/keycloak/login/",
@@ -106,6 +116,7 @@ def refresh_token(api_base_url, keycloak_config, test_credentials):
         keycloak_config["client_id"],
         email,
         password,
+        client_secret=keycloak_config.get("client_secret"),
     )
     resp = requests.post(
         f"{api_base_url}/api/auth/keycloak/login/",
