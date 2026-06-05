@@ -156,6 +156,32 @@ class MyDashboardPage(BasePage):
 
         return CollaborativesListPage(self.driver)
 
+    def click_charts_card(self):
+        from locators.provider.charts_locators import ChartsLocators
+        from pages.provider.charts_list_page import ChartsListPage
+
+        charts_link = self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable(MyDashboardLocators.CHARTS_NAV_LINK),
+            message="Timed out waiting for 'Add & Manage Charts' link to be clickable"
+        )
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", charts_link)
+        self.driver.execute_script("arguments[0].click();", charts_link)
+
+        try:
+            self.wait_with_timeout(8).until(lambda d: '/charts' in d.current_url)
+        except TimeoutException:
+            charts_link.click()
+            self.wait_with_timeout(15).until(
+                lambda d: '/charts' in d.current_url,
+                message="Timed out waiting for Charts page URL after retry click"
+            )
+
+        self.wait_with_timeout(15).until(
+            EC.visibility_of_element_located(ChartsLocators.ADD_CHART_BTN),
+            message="Timed out waiting for 'Add Chart' button on Charts page"
+        )
+        return ChartsListPage(self.driver)
+
     def click_profile_card(self):
         from locators.provider.update_profile_locators import UpdateProfilePageLocators
         import time
