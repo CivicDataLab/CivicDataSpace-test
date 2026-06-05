@@ -184,13 +184,25 @@ class BasePage:
         send_keys interprets keystrokes according to the OS locale (MM/DD/YYYY on Linux,
         DD/MM/YYYY on macOS), so the same keystroke string produces different dates on
         different platforms. Using the native setter bypasses locale entirely.
-        The body.click() fires the real focusout that triggers the React blur-autosave.
+
+        The date field saves ONLY on blur, and its onBlur handler reads formData from the
+        render closure: onBlur={() => handleSave(formData)}. If we blur immediately after
+        dispatching change, React hasn't flushed the onChange state update yet, so the
+        onBlur closure still holds the pre-change formData and persists startedOn: null —
+        the input shows the date but the server never receives it. So we wait for React to
+        re-render (input.value reflects the new date and a fresh onBlur closure is bound)
+        BEFORE blurring, guaranteeing handleSave runs with the updated formData.
         """
+        import time as _time
         self.wait_for_autosave()
         el = self.wait.until(EC.element_to_be_clickable(locator))
+        # Focus first: the field saves only on blur, and blur() is a no-op unless the
+        # element is the active element. Then set the value via the native setter and
+        # dispatch input/change so React's onChange updates formData.startedOn.
         self.driver.execute_script(
             """
             const el = arguments[0], val = arguments[1];
+            el.focus();
             const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
             setter.call(el, val);
             el.dispatchEvent(new Event('input', {bubbles: true}));
@@ -198,7 +210,25 @@ class BasePage:
             """,
             el, iso_date
         )
-        self.driver.find_element(By.TAG_NAME, "body").click()
+        # Wait for React to commit the onChange state update before blurring, so the
+        # fresh onBlur closure captures the new date instead of stale formData.
+        try:
+            WebDriverWait(self.driver, 5).until(
+                lambda d: el.get_attribute("value") == iso_date
+            )
+        except TimeoutException:
+            pass
+        _time.sleep(0.5)  # let React flush the re-render and rebind onBlur
+        # Now fire a real blur (element is focused) plus a bubbling focusout so React's
+        # onBlur runs handleSave with the updated formData and persists startedOn.
+        self.driver.execute_script(
+            """
+            const el = arguments[0];
+            el.blur();
+            el.dispatchEvent(new Event('focusout', {bubbles: true}));
+            """,
+            el
+        )
         self.wait_for_autosave(trigger_blur=False)
         return self
 
