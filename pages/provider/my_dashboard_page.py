@@ -100,9 +100,7 @@ class MyDashboardPage(BasePage):
 
     def click_usecases_card(self):
         from locators.provider.usecases_list_page_locators import UseCaseListPageLocators
-        import time
 
-        # Wait for and click the UseCases navigation link
         usecases_link = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(MyDashboardLocators.USECASES_NAV_LINK),
             message="Timed out waiting for the 'Usecases' card to be clickable"
@@ -110,13 +108,18 @@ class MyDashboardPage(BasePage):
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", usecases_link)
         self.driver.execute_script("arguments[0].click();", usecases_link)
 
-        # Wait for navigation to usecases page
-        self.wait_with_timeout(15).until(
-            lambda d: '/usecases' in d.current_url
-        )
+        # JS click occasionally doesn't trigger React's router (e.g. under server load right
+        # after the previous test finishes). Retry once with a real click if URL hasn't changed.
+        try:
+            self.wait_with_timeout(8).until(lambda d: '/usecases' in d.current_url)
+        except TimeoutException:
+            usecases_link.click()
+            self.wait_with_timeout(15).until(
+                lambda d: '/usecases' in d.current_url,
+                message="Timed out waiting for UseCases page URL after retry click"
+            )
 
-        # Wait for the "Add New UseCase" button using presence + JS approach
-        btn = self.wait_with_timeout(15).until(
+        self.wait_with_timeout(15).until(
             EC.presence_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON),
             message="Timed out waiting for UseCases page to load"
         )

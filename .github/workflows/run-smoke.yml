@@ -154,7 +154,7 @@ jobs:
         env:
           TEST_USER_INDEX: "1"
         run: |
-          pytest tests/provider/smoke -m smoke -v --json-report
+          pytest tests/provider/smoke -m smoke -v --json-report -n 2
 
       - name: Upload screenshots
         if: always()
