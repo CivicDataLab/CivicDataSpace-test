@@ -103,6 +103,76 @@ jobs:
             echo "- report.json not found" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+  api-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
+      TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
+      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: CivicDataLab/CivicDataSpace-test
+          ref: CI
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Sanity check
+        run: |
+          echo "HOME_URL_DEV set? $([ -n "$HOME_URL_DEV" ] && echo yes || echo no)"
+          echo "TEST_EMAIL_1 set? $([ -n "$TEST_EMAIL_1" ] && echo yes || echo no)"
+
+      - name: Run API smoke tests
+        run: |
+          pytest tests/api/smoke -m smoke -v --json-report -n 2
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-report
+          path: |
+            report.json
+            TEST_REPORT.md
+            TEST_REPORT.pdf
+          if-no-files-found: ignore
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          echo "### API Smoke Summary" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f report.json ]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          s = json.load(open("report.json")).get("summary", {})
+          for k in ("total", "passed", "failed", "skipped", "error"):
+              if k in s:
+                  print(f"- **{k}**: {s[k]}")
+          PY
+          else
+            echo "- report.json not found" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   provider-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 30
