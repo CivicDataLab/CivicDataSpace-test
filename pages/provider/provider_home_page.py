@@ -38,17 +38,34 @@ class ProviderHomePage(BasePage):
             # No Joyride tour present, or couldn't find skip button - continue anyway
             pass
 
-        # Click the 'My Dashboard' card
-        card = self.wait.until(
+        # Wait for the loading spinner to clear before looking for the card
+        try:
+            self.wait_with_timeout(30).until(
+                EC.invisibility_of_element_located((By.XPATH, "//*[normalize-space(text())='Loading']"))
+            )
+        except TimeoutException:
+            pass
+
+        card = self.wait_with_timeout(30).until(
             EC.element_to_be_clickable(ProviderHomepageLocators.CARD_MY_DASH)
         )
-        # Use JavaScript click to bypass any remaining overlays
         self.driver.execute_script("arguments[0].click();", card)
         return MyDashboardPage(self.driver)
 
     def goto_organizations(self) -> "OrganizationsPage":
         """Click the 'Organizations' card."""
-        self.wait.until(
+        from selenium.common.exceptions import TimeoutException
+
+        # Wait for the loading spinner to clear before looking for the card
+        try:
+            self.wait_with_timeout(30).until(
+                EC.invisibility_of_element_located((By.XPATH, "//*[normalize-space(text())='Loading']"))
+            )
+        except TimeoutException:
+            pass
+
+        card = self.wait_with_timeout(30).until(
             EC.element_to_be_clickable(ProviderHomepageLocators.CARD_ORGANIZATIONS)
-        ).click()
+        )
+        self.driver.execute_script("arguments[0].click();", card)
         return OrganizationsPage(self.driver)

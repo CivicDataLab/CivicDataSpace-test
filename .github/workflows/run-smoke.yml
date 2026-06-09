@@ -65,7 +65,7 @@ jobs:
 
       - name: Run consumer smoke tests
         run: |
-          pytest tests/consumer/smoke -m smoke -v --json-report
+          pytest tests/consumer/smoke -m "smoke or functional" -v --json-report
 
       - name: Upload screenshots
         if: always()
@@ -143,7 +143,7 @@ jobs:
 
       - name: Run API smoke tests
         run: |
-          pytest tests/api/smoke -m smoke -v --json-report -n 2
+          pytest tests/api/smoke -m "smoke or functional" -v --json-report -n 2
 
       - name: Upload reports
         if: always()
@@ -175,7 +175,7 @@ jobs:
 
   provider-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     env:
       HOME_URL_DEV:    ${{ secrets.HOME_URL_DEV }}
@@ -224,7 +224,7 @@ jobs:
         env:
           TEST_USER_INDEX: "1"
         run: |
-          pytest tests/provider/smoke -m smoke -v --json-report -n 2
+          pytest tests/provider/smoke -m "smoke or functional" -v --json-report -n 2
 
       - name: Upload screenshots
         if: always()
