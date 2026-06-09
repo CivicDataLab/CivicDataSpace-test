@@ -32,18 +32,24 @@ class CreateDatasetPage(BasePage):
         return self
 
     def go_to_datafiles_tab(self):
-        # 1) wait until the tab is clickable
         tab = self.wait.until(EC.element_to_be_clickable(
             (By.XPATH, CreateDatasetLocators.TAB_DATAFILES)
         ))
-
-        # 2) scroll it into view (centered)
         self.driver.execute_script(
             "arguments[0].scrollIntoView({behavior: 'auto', block: 'center'});",
             tab
         )
+        tab.click()
+        return self
 
-        # 3) click and return self for chaining
+    def go_to_prompt_files_tab(self):
+        tab = self.wait.until(EC.element_to_be_clickable(
+            (By.XPATH, CreateDatasetLocators.TAB_PROMPT_FILES)
+        ))
+        self.driver.execute_script(
+            "arguments[0].scrollIntoView({behavior: 'auto', block: 'center'});",
+            tab
+        )
         tab.click()
         return self
 
@@ -131,6 +137,54 @@ class CreateDatasetPage(BasePage):
 
         return self
 
+    # ---- Prompt Dataset Metadata fields ----
+    def _scroll_to_locator(self, locator):
+        el = self.wait.until(EC.presence_of_element_located(locator))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+        return el
+
+    def select_task_type(self, value: str):
+        loc = (By.XPATH, CreateDatasetLocators.TASK_TYPE_INPUT)
+        self._scroll_to_locator(loc)
+        self.select_combobox_option(loc, value)
+        return self
+
+    def select_domain(self, value: str):
+        loc = (By.XPATH, CreateDatasetLocators.DOMAIN_INPUT)
+        self._scroll_to_locator(loc)
+        self.select_combobox_option(loc, value)
+        return self
+
+    def select_target_languages(self, items: list[str]):
+        loc = (By.XPATH, CreateDatasetLocators.TARGET_LANGUAGES_INPUT)
+        self._scroll_to_locator(loc)
+        for val in items:
+            self.select_combobox_option(loc, val)
+        return self
+
+    def select_target_model_types(self, items: list[str]):
+        loc = (By.XPATH, CreateDatasetLocators.TARGET_MODEL_TYPES_INPUT)
+        self._scroll_to_locator(loc)
+        for val in items:
+            self.select_combobox_option(loc, val)
+        return self
+
+    def get_selected_task_type(self) -> list[str]:
+        els = self.driver.find_elements(By.XPATH, CreateDatasetLocators.TASK_TYPE_SELECTED_PILL)
+        return [el.text.strip() for el in els]
+
+    def get_selected_domain(self) -> list[str]:
+        els = self.driver.find_elements(By.XPATH, CreateDatasetLocators.DOMAIN_SELECTED_PILL)
+        return [el.text.strip() for el in els]
+
+    def get_selected_target_languages(self) -> list[str]:
+        els = self.driver.find_elements(By.XPATH, CreateDatasetLocators.TARGET_LANGUAGES_SELECTED_PILL)
+        return [el.text.strip() for el in els]
+
+    def get_selected_target_model_types(self) -> list[str]:
+        els = self.driver.find_elements(By.XPATH, CreateDatasetLocators.TARGET_MODEL_TYPES_SELECTED_PILL)
+        return [el.text.strip() for el in els]
+
     # ---- File upload ----
     def upload_datafile(self, path: str):
 
@@ -157,6 +211,22 @@ class CreateDatasetPage(BasePage):
         # Wait for the uploaded file to appear in the resource list
         time.sleep(2)
 
+        return self
+
+    def upload_prompt_file(self, path: str):
+        inp = self.wait.until(EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.DATAFILES_INPUT)))
+        inp.send_keys(path)
+
+        btn = self.wait_with_timeout(10).until(
+            EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.BACK_BUTTON))
+        )
+        btn.click()
+
+        import time
+        time.sleep(2)
+
+        self.go_to_prompt_files_tab()
+        time.sleep(2)
         return self
 
     # ---- Final publish ----

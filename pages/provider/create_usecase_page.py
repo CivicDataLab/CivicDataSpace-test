@@ -129,15 +129,7 @@ class CreateUsecasePage(BasePage):
         return self
 
     def enter_started_on(self, iso_date: str):
-        fld = self.wait.until(EC.presence_of_element_located(CreateUsecaseLocators.STARTED_ON_INPUT))
-        fld.send_keys(iso_date)
-        import time as _t
-        _t.sleep(0.3)
-        try:
-            self.driver.execute_script("arguments[0].blur();", fld)
-        except Exception:
-            pass
-        return self
+        return self.enter_date(CreateUsecaseLocators.STARTED_ON_INPUT, iso_date)
 
     def select_running_status(self, status_text: str):
         # Try to wait for toasts to disappear, but don't fail if they persist
@@ -148,25 +140,15 @@ class CreateUsecasePage(BasePage):
         except TimeoutException:
             pass  # Continue anyway
 
-        select_el = self.wait.until(
-            EC.presence_of_element_located(CreateUsecaseLocators.RUNNING_STATUS_INPUT),
-            message="Could not find Running Status <select>"
-        )
-
-        from selenium.webdriver.support.ui import Select
-        select = Select(select_el)
-        select.select_by_visible_text(status_text)
+        # Native <select> autosaves on a React-tracked change; Select.select_by_visible_text
+        # fires a DOM change that React's tracked setter ignores, so the choice shows in the
+        # DOM but never persists. Set it the React-safe way so autosave commits it.
+        self.set_react_select_by_text(CreateUsecaseLocators.RUNNING_STATUS_INPUT, status_text)
+        self.wait_for_autosave(trigger_blur=False)
         return self
 
     def enter_completed_on(self, iso_date: str):
-        fld = self.wait.until(
-            EC.visibility_of_element_located(CreateUsecaseLocators.COMPLETED_ON_INPUT),
-            message="Could not find 'Completed On' date input"
-        )
-        fld.clear()
-        fld.send_keys(iso_date)
-        self.wait.until(lambda d: fld.get_attribute("value") and iso_date in fld.get_attribute("value"))
-        return self
+        return self.enter_date(CreateUsecaseLocators.COMPLETED_ON_INPUT, iso_date)
 
     def upload_logo(self, path_to_file: str):
         """
@@ -187,9 +169,8 @@ class CreateUsecasePage(BasePage):
         return self.driver.find_element(*CreateUsecaseLocators.PLATFORM_URL_INPUT).get_attribute("value")
 
     def get_selected_tags(self) -> list[str]:
-        # time.sleep(2)
         elements = self.driver.find_elements(By.XPATH, CreateUsecaseLocators.SELECTED_TAGS)
-        return [el.text.strip() for el in elements]
+        return [el.text.strip() for el in elements if el.text.strip()]
 
     def get_selected_sectors(self) -> list[str]:
         # Assuming each selected‐tag appears as a "pill" with text inside
@@ -205,16 +186,13 @@ class CreateUsecasePage(BasePage):
         return elt.text.strip()
 
     def get_selected_sdg_goals(self) -> str:
-        # Use a targeted locator near the SDG Goals label
-        sdg_locator = "//label[contains(text(),'SDG')]/following::div[contains(@class,'Input-module_tags')][1]//span[contains(@class,'Tag-module_TagText')]"
         try:
             elements = self.wait.until(
-                EC.presence_of_all_elements_located((By.XPATH, sdg_locator))
+                EC.presence_of_all_elements_located((By.XPATH, CreateUsecaseLocators.SELECTED_SDG_GOALS))
             )
-            return elements[-1].text.strip() if elements else ""
+            return elements[0].text.strip() if elements else ""
         except TimeoutException:
-            elements = self.driver.find_elements(By.XPATH, CreateUsecaseLocators.SELECTED_SDG_GOALS)
-            return elements[-1].text.strip() if elements else ""
+            return ""
 
     def get_started_on_value(self) -> str:
         # Wait for started_on input to be visible
@@ -266,16 +244,13 @@ class CreateUsecasePage(BasePage):
     # ─── "Datasets" Tab ─────────────────────────────────────────────────────────────────────────────────────
 
     def go_to_datasets_tab(self):
-        # 1) wait until the tab is clickable
-        tab = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.DATASETS_TAB))
+        self.wait_for_autosave()
 
-        # 2) scroll it into view (centered)
+        tab = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.DATASETS_TAB))
         self.driver.execute_script(
             "arguments[0].scrollIntoView({behavior: 'auto', block: 'center'});",
             tab
         )
-
-        # 3) click and return self for chaining
         tab.click()
         return self
 
@@ -407,10 +382,36 @@ class CreateUsecasePage(BasePage):
                     pass
                 break
 
+        # The Publish tab validator reads a React Query cache populated when the
+        # usecase was first created (empty). Wizard navigation never refetches, so
+        # the "fields missing" error sticks even though autosave persisted the data
+        # server-side. Reload once on /publish to force a fresh fetch and clear it.
+        if '/publish' in self.driver.current_url:
+            self.driver.refresh()
+            try:
+                self.wait_with_timeout(15).until(
+                    EC.element_to_be_clickable(CreateUsecaseLocators.PUBLISH_BUTTON)
+                )
+            except TimeoutException:
+                time.sleep(3)
+
         return self
 
     def click_publish(self):
         import time
+
+        # The opub-ui Button uses CSS-only disabled state (no HTML disabled attr), so
+        # element_to_be_clickable always finds it. Wait for the validation error to clear
+        # (which means the React Query has loaded the correct data from the server and all
+        # required fields are present) before clicking.
+        validation_error_locator = (By.XPATH,
+            "//*[contains(text(),'is missing. Please add to continue')]")
+        try:
+            self.wait_with_timeout(20).until(
+                EC.invisibility_of_element_located(validation_error_locator)
+            )
+        except TimeoutException:
+            pass  # Proceed anyway; will fail at assertion if data still missing
 
         # On the /publish page the action button has a Button-module class.
         # Try most-specific locators first to avoid accidentally clicking the tab nav button.

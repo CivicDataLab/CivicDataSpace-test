@@ -1,5 +1,6 @@
 # pages/base_page.py
 import platform
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
@@ -127,6 +128,39 @@ class BasePage:
         ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
         return self
 
+    def set_react_select_by_text(self, locator, text):
+        """Select a native <select> option by visible text the React-safe way.
+
+        Select.select_by_visible_text updates the DOM but bypasses React's tracked setter, so
+        the debounced (blur-driven) autosave never persists it. Set the value via the native
+        setter + change event, then dispatch a bubbling focusout to trigger the blur autosave.
+        """
+        # The native <select> is visually hidden behind a custom-styled component, so it is
+        # not "clickable" and cannot be real-clicked. Use presence and drive it via JS,
+        # dispatching a bubbling focusout (React's onBlur listens at the root, so the event
+        # need not come from a truly focused element) to trigger the blur autosave.
+        el = self.wait.until(EC.presence_of_element_located(locator))
+        matched = self.driver.execute_script(
+            """
+            const sel = arguments[0], text = arguments[1];
+            const opt = Array.from(sel.options).find(
+                o => o.textContent.trim() === text);
+            if (!opt) return false;
+            const setter = Object.getOwnPropertyDescriptor(
+                HTMLSelectElement.prototype, 'value').set;
+            setter.call(sel, opt.value);
+            sel.dispatchEvent(new Event('input', {bubbles: true}));
+            sel.dispatchEvent(new Event('change', {bubbles: true}));
+            sel.dispatchEvent(new Event('blur', {bubbles: false}));
+            sel.dispatchEvent(new Event('focusout', {bubbles: true}));
+            return true;
+            """,
+            el, text
+        )
+        if not matched:
+            raise AssertionError(f"No <select> option with text '{text}'")
+        return el
+
     # ── Wait Utilities ─────────────────────────────────────────────────────────
 
     def wait_for_invisibility(self, locator, timeout=None):
@@ -144,13 +178,72 @@ class BasePage:
         """Create a one-off wait with custom timeout"""
         return WebDriverWait(self.driver, timeout)
 
+    def enter_date(self, locator, iso_date: str):
+        """Set a <input type=date> to iso_date (YYYY-MM-DD) via the native JS setter.
+
+        send_keys interprets keystrokes according to the OS locale (MM/DD/YYYY on Linux,
+        DD/MM/YYYY on macOS), so the same keystroke string produces different dates on
+        different platforms. Using the native setter bypasses locale entirely.
+
+        The date field saves ONLY on blur, and its onBlur handler reads formData from the
+        render closure: onBlur={() => handleSave(formData)}. If we blur immediately after
+        dispatching change, React hasn't flushed the onChange state update yet, so the
+        onBlur closure still holds the pre-change formData and persists startedOn: null —
+        the input shows the date but the server never receives it. So we wait for React to
+        re-render (input.value reflects the new date and a fresh onBlur closure is bound)
+        BEFORE blurring, guaranteeing handleSave runs with the updated formData.
+        """
+        import time as _time
+        self.wait_for_autosave()
+        el = self.wait.until(EC.element_to_be_clickable(locator))
+        # Focus first: the field saves only on blur, and blur() is a no-op unless the
+        # element is the active element. Then set the value via the native setter and
+        # dispatch input/change so React's onChange updates formData.startedOn.
+        self.driver.execute_script(
+            """
+            const el = arguments[0], val = arguments[1];
+            el.focus();
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            setter.call(el, val);
+            el.dispatchEvent(new Event('input', {bubbles: true}));
+            el.dispatchEvent(new Event('change', {bubbles: true}));
+            """,
+            el, iso_date
+        )
+        # Wait for React to commit the onChange state update before blurring, so the
+        # fresh onBlur closure captures the new date instead of stale formData.
+        try:
+            WebDriverWait(self.driver, 5).until(
+                lambda d: el.get_attribute("value") == iso_date
+            )
+        except TimeoutException:
+            pass
+        _time.sleep(0.5)  # let React flush the re-render and rebind onBlur
+        # Now fire a real blur (element is focused) plus a bubbling focusout so React's
+        # onBlur runs handleSave with the updated formData and persists startedOn.
+        self.driver.execute_script(
+            """
+            const el = arguments[0];
+            el.blur();
+            el.dispatchEvent(new Event('focusout', {bubbles: true}));
+            """,
+            el
+        )
+        self.wait_for_autosave(trigger_blur=False)
+        return self
+
     # ── File Upload Utility ────────────────────────────────────────────────────
 
-    def upload_file_to_dropzone(self, path_to_file, dropzone_class="DropZone-module_DropZone__xD9-6"):
+    def upload_file_to_dropzone(self, path_to_file, dropzone_class="DropZone-module_DropZone__xD9-6",
+                                input_index=0):
         """
         Standard file upload to React DropZone component.
         Primary: send_keys after removing display:none (triggers real browser/React events + server upload).
         Fallback: JavaScript DataTransfer (updates client-side state only).
+
+        input_index selects which file <input> to target when a form has several (e.g. the
+        collaborative has separate logo (0) and cover image (1) dropzones); defaulting to the
+        first preserves single-upload behaviour.
         """
         import os, time, base64
         from selenium.webdriver.common.by import By
@@ -163,7 +256,14 @@ class BasePage:
                     "gif": "image/gif", "webp": "image/webp", "svg": "image/svg+xml"}
         mime_type = mime_map.get(ext, "application/octet-stream")
 
-        input_el = self.driver.find_element(By.XPATH, "//input[@type='file']")
+        inputs = self.wait.until(
+            lambda d: d.find_elements(By.XPATH, "//input[@type='file']") or False
+        )
+        if input_index >= len(inputs):
+            raise AssertionError(
+                f"Wanted file input #{input_index} but only {len(inputs)} present"
+            )
+        input_el = inputs[input_index]
 
         # Remove display:none so ChromeDriver can interact with the file input.
         # ChromeDriver uses CDP DOM.setFileInputFiles which triggers real browser events

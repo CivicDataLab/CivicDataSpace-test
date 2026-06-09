@@ -202,13 +202,28 @@ def sample_cover_image_path():
 @pytest.fixture(scope="session")
 def test_credentials():
     """
-        Reads TEST_USER_INDEX (1 or 2) from the environment,
-        then returns (email, password) pulled from TEST_EMAIL_1/2 and TEST_PASSWORD_1/2.
-        """
-    idx = int(os.getenv("TEST_USER_INDEX", "1"))
+    Returns (email, password) for this worker.
+
+    Under pytest-xdist each worker sets PYTEST_XDIST_WORKER to gw0, gw1, …
+    gw0 → TEST_EMAIL_1 / TEST_PASSWORD_1
+    gw1 → TEST_EMAIL_2 / TEST_PASSWORD_2
+    Falls back to TEST_USER_INDEX (or 1) when not running under xdist.
+    """
+    worker = os.getenv("PYTEST_XDIST_WORKER", "")
+    if worker.startswith("gw"):
+        idx = int(worker[2:]) + 1          # gw0→1, gw1→2, gw2→3 …
+    else:
+        idx = int(os.getenv("TEST_USER_INDEX", "1"))
+
     email = os.getenv(f"TEST_EMAIL_{idx}")
     password = os.getenv(f"TEST_PASSWORD_{idx}")
-    assert email and password, f"Credentials for user index {idx} not set!"
+
+    # fall back to user 1 if the derived slot has no credentials configured
+    if not (email and password):
+        email = os.getenv("TEST_EMAIL_1")
+        password = os.getenv("TEST_PASSWORD_1")
+
+    assert email and password, f"No credentials found for worker slot {idx}"
     return email, password
 
 #  ─────────────────────── Login Fixtures (Phase 12) ─────────────────────────────

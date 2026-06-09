@@ -1,14 +1,15 @@
 class CreateDatasetLocators:
     # ---- Dataset Type Selection Modal (appears when clicking "Add New Dataset") ----
     MODAL_TITLE = "//h2[contains(., 'Create New Dataset')] | //div[contains(., 'Select the type of dataset')]"
-    DATA_DATASET_CARD = "//div[contains(., 'Data Dataset')] | //div[.//span[contains(., 'Data Dataset')]]"
-    PROMPT_DATASET_CARD = "//div[contains(., 'Prompt Dataset')] | //div[.//span[contains(., 'Prompt Dataset')]]"
+    DATA_DATASET_CARD = "//button[.//h3[normalize-space()='Data Dataset']]"
+    PROMPT_DATASET_CARD = "//button[.//h3[normalize-space()='Prompt Dataset']]"
     CREATE_DATASET_BUTTON = "//button[normalize-space()='Create Dataset']"
     MODAL_CANCEL_BUTTON = "//button[normalize-space()='Cancel']"
 
     # ---- Tabs ----
     TAB_METADATA        = "//button[normalize-space()='Metadata']"
     TAB_DATAFILES       = "//button[normalize-space()='Data Files']"
+    TAB_PROMPT_FILES    = "//button[normalize-space()='Prompt Files']"
     TAB_PUBLISH         = "//button[normalize-space()='Publish']"
 
     # ---- Metadata fields ----
@@ -97,3 +98,31 @@ class CreateDatasetLocators:
     # 7c) The download link (for the newly-published dataset)
     # e.g. <a id="download-dataset" href="...">Download</a>
     DOWNLOAD_LINK = "//a[@id='download-dataset']"
+
+    # ─── Prompt Dataset Metadata section ──────────────────────────────────────
+    # Anchored to each field's label div — works regardless of heading tag type.
+    TASK_TYPE_INPUT          = "//label[normalize-space()='Task Type']/following::input[@role='combobox'][1]"
+    DOMAIN_INPUT             = "//label[normalize-space()='Domain']/following::input[@role='combobox'][1]"
+    TARGET_LANGUAGES_INPUT   = "//label[normalize-space()='Target Languages']/following::input[@role='combobox'][1]"
+    TARGET_MODEL_TYPES_INPUT = "//label[normalize-space()='Target Model Types']/following::input[@role='combobox'][1]"
+
+    TASK_TYPE_SELECTED_PILL = (
+        "//div[./div[normalize-space(.)='Task Type']]"
+        "//div[contains(@class,'Input-module_tags')]"
+        "//span[contains(@class,'Tag-module_TagText')]"
+    )
+    DOMAIN_SELECTED_PILL = (
+        "//div[./div[normalize-space(.)='Domain']]"
+        "//div[contains(@class,'Input-module_tags')]"
+        "//span[contains(@class,'Tag-module_TagText')]"
+    )
+    TARGET_LANGUAGES_SELECTED_PILL = (
+        "//div[./div[normalize-space(.)='Target Languages']]"
+        "//div[contains(@class,'Input-module_tags')]"
+        "//span[contains(@class,'Tag-module_TagText')]"
+    )
+    TARGET_MODEL_TYPES_SELECTED_PILL = (
+        "//div[./div[normalize-space(.)='Target Model Types']]"
+        "//div[contains(@class,'Input-module_tags')]"
+        "//span[contains(@class,'Tag-module_TagText')]"
+    )
