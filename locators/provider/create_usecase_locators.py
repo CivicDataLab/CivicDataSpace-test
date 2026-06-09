@@ -47,10 +47,10 @@ class CreateUsecaseLocators:
     RUNNING_STATUS_SELECT = (By.XPATH, "//select[@name='runningStatus']")
 
     # ─── Tags / Sectors / SDG Goals Chips (Assertions) ─────────────────────────
-    SELECTED_TAGS = "//div[contains(@class,'Input-module_tags')]//span[contains(@class,'Tag-module_TagText')]"
-    SELECTED_SECTORS = "//div[contains(@class,'Input-module_tags')]//span[contains(@class,'Tag-module_TagText')]"
+    SELECTED_TAGS = "//label[normalize-space()='Tags']/following::div[contains(@class,'Input-module_tags')][1]//span[contains(@class,'Tag-module_TagText')]"
+    SELECTED_SECTORS = "//label[normalize-space()='Sectors' or normalize-space()='Sectors *']/following::div[contains(@class,'Input-module_tags')][1]//span[contains(@class,'Tag-module_TagText')]"
     SELECTED_GEOGRAPHY = "//label[normalize-space(text())='Geographies' or normalize-space(text())='Geography *' or normalize-space(text())='Geography']/following::div[contains(@class,'Input-module_tags')][1]//span[contains(@class,'Tag-module_TagText')]"
-    SELECTED_SDG_GOALS = "//div[contains(@class,'Input-module_tags')]//span[contains(@class,'Tag-module_TagText')]"
+    SELECTED_SDG_GOALS = "//label[normalize-space()='SDG Goals *' or normalize-space()='SDG Goal *' or contains(normalize-space(),'SDG')]/following::div[contains(@class,'Input-module_tags')][1]//span[contains(@class,'Tag-module_TagText')]"
 
     # ─── Logo Preview (Post-upload Check) ──────────────────────────────────────
     LOGO_PREVIEW = (By.CSS_SELECTOR, ".uploaded-logo-preview")

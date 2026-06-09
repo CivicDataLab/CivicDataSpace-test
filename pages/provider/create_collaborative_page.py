@@ -193,25 +193,10 @@ class CreateCollaborativePage(BasePage):
         return self
 
     def enter_started_on(self, iso_date: str):
-        """Enter started on date."""
-        fld = self.wait.until(EC.presence_of_element_located(CreateCollaborativeLocators.STARTED_ON_INPUT))
-        fld.send_keys(iso_date)
-        import time as _t
-        _t.sleep(0.3)
-        try:
-            self.driver.execute_script("arguments[0].blur();", fld)
-        except Exception:
-            pass
-        return self
+        return self.enter_date(CreateCollaborativeLocators.STARTED_ON_INPUT, iso_date)
 
     def enter_completed_on(self, iso_date: str):
-        """Enter completed on date."""
-        fld = self.wait.until(
-            EC.presence_of_element_located(CreateCollaborativeLocators.COMPLETED_ON_INPUT),
-            message="Could not find 'Completed On' date input"
-        )
-        fld.send_keys(iso_date)
-        return self
+        return self.enter_date(CreateCollaborativeLocators.COMPLETED_ON_INPUT, iso_date)
 
     def upload_logo(self, path_to_file: str):
         """
@@ -222,9 +207,11 @@ class CreateCollaborativePage(BasePage):
 
     def upload_cover_image(self, path_to_file: str):
         """
-        Triggers cover image upload by clicking visible DropZone and sending keys to hidden input.
+        Triggers cover image upload. The cover image is the SECOND file input on the form
+        (the first is the logo), so target input_index=1 — otherwise the logo input is
+        re-used and the cover image never gets set.
         """
-        return self.upload_file_to_dropzone(path_to_file)
+        return self.upload_file_to_dropzone(path_to_file, input_index=1)
 
     # Ordered wizard tab URL path segments
     _WIZARD_TABS = ['details', 'assign', 'usecases', 'contributors', 'publish']
@@ -252,6 +239,10 @@ class CreateCollaborativePage(BasePage):
         if actual_idx >= expected_next_idx:
             self._wizard_tab_idx = actual_idx
             return self
+
+        # Wait for autosave to commit before leaving the details tab
+        if '/details' in self.driver.current_url:
+            self.wait_for_autosave()
 
         btn = None
         try:
@@ -331,17 +322,13 @@ class CreateCollaborativePage(BasePage):
 
     def get_selected_sdg_goals(self) -> str:
         """Get selected SDG goals."""
-        # Use a targeted locator near the SDG Goals label
-        sdg_locator = "//label[contains(text(),'SDG')]/following::div[contains(@class,'Input-module_tags')][1]//span[contains(@class,'Tag-module_TagText')]"
         try:
             elements = self.wait.until(
-                EC.presence_of_all_elements_located((By.XPATH, sdg_locator))
+                EC.presence_of_all_elements_located((By.XPATH, CreateCollaborativeLocators.SELECTED_SDG_GOALS))
             )
-            return elements[-1].text.strip() if elements else ""
+            return elements[0].text.strip() if elements else ""
         except TimeoutException:
-            # Fallback: try generic chips
-            elements = self.driver.find_elements(By.XPATH, CreateCollaborativeLocators.SELECTED_SDG_GOALS)
-            return elements[-1].text.strip() if elements else ""
+            return ""
 
     def get_started_on_value(self) -> str:
         """Get started on date value."""
@@ -377,8 +364,9 @@ class CreateCollaborativePage(BasePage):
 
     def is_cover_image_uploaded(self):
         """Check if cover image was uploaded successfully (waits up to 15s)."""
-        # Default placeholder texts for logo and cover image
-        default_texts = {"Name of the logo", "Upload cover image", ""}
+        # Default placeholder texts for logo and cover image (the unset cover image shows
+        # "Name of the cover image" — must be treated as not-uploaded).
+        default_texts = {"Name of the logo", "Name of the cover image", "Upload cover image", ""}
 
         def _cover_confirmed(d):
             try:
@@ -579,27 +567,39 @@ class CreateCollaborativePage(BasePage):
         return self
 
     def click_publish(self):
-        """Click the Publish button."""
+        """Click the Publish button. JS-click bypasses transient toast/overlay intercepts;
+        success is the published toast OR navigation away from /publish (mirrors usecase)."""
         btn = self.wait.until(
-            EC.element_to_be_clickable(CreateCollaborativeLocators.PUBLISH_BUTTON),
-            message="Timed out waiting for Publish button to become clickable"
+            EC.presence_of_element_located(CreateCollaborativeLocators.PUBLISH_BUTTON),
+            message="Timed out waiting for Publish button"
         )
-        btn.click()
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
+        self.driver.execute_script("arguments[0].click();", btn)
 
-        # After clicking "Publish," wait for the published‐marker to appear:
-        self.wait.until(
-            EC.visibility_of_element_located(CreateCollaborativeLocators.PUBLISHED_MARKER),
-            message="Collaborative did not show a 'Published' marker"
+        # The app shows the toast then router.push()es to /collaboratives. Fast-poll for the
+        # toast, then fall back to detecting the URL change (away from /publish = success).
+        from selenium.webdriver.support.ui import WebDriverWait as _WDW
+        try:
+            _WDW(self.driver, 5, poll_frequency=0.1).until(
+                EC.presence_of_element_located(CreateCollaborativeLocators.PUBLISHED_MARKER)
+            )
+            return self
+        except TimeoutException:
+            pass
+        self.wait_with_timeout(20).until(
+            lambda d: '/publish' not in d.current_url,
+            message="Collaborative did not publish (still on /publish)"
         )
         return self
 
     def is_published(self) -> bool:
         """Check if the collaborative was published successfully."""
         try:
-            self.wait.until(
-                EC.presence_of_element_located(CreateCollaborativeLocators.PUBLISHED_MARKER),
-                message="Published toast not found"
+            self.wait_with_timeout(3).until(
+                EC.presence_of_element_located(CreateCollaborativeLocators.PUBLISHED_MARKER)
             )
             return True
-        except Exception:
-            return False
+        except TimeoutException:
+            pass
+        # After a successful publish the app redirects away from /publish.
+        return '/publish' not in self.driver.current_url

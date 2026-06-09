@@ -16,7 +16,7 @@ from pages.provider.my_dashboard_page import MyDashboardPage
 from pages.provider.create_usecase_page import CreateUsecasePage
 from pages.provider.organizations_page import OrganizationsPage
 
-@pytest.mark.smoke
+@pytest.mark.functional
 def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_credentials):
     """
     Test Case ID: test_prv_007_org_create_usecase
@@ -129,7 +129,7 @@ def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_cre
     )
 
     # (7h) Started On
-    start_date = "01012023"
+    start_date = "2023-01-01"
     create_uc.enter_started_on(start_date)
     actual_start = create_uc.get_started_on_value()
     assert actual_start == "2023-01-01", (

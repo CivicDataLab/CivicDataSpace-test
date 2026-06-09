@@ -98,11 +98,46 @@ class MyDashboardPage(BasePage):
 
         return CreateDatasetPage(self.driver)
 
+    def click_add_new_prompt_dataset(self) -> CreateDatasetPage:
+        from locators.provider.create_dataset_locators import CreateDatasetLocators
+
+        self.wait_with_timeout(15).until(
+            lambda d: '/dataset' in d.current_url
+        )
+
+        btn = self.wait_with_timeout(15).until(
+            EC.presence_of_element_located(MyDashboardLocators.ADD_NEW_DATASET_BTN)
+        )
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
+        self.driver.execute_script("arguments[0].click();", btn)
+
+        self.wait_with_timeout(10).until(
+            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.MODAL_TITLE)),
+            message="Timed out waiting for 'Create New Dataset' modal to appear"
+        )
+
+        prompt_card = self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.PROMPT_DATASET_CARD)),
+            message="Timed out waiting for 'Prompt Dataset' option to be clickable"
+        )
+        prompt_card.click()
+
+        create_btn = self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.CREATE_DATASET_BUTTON)),
+            message="Timed out waiting for 'Create Dataset' button to be clickable"
+        )
+        create_btn.click()
+
+        self.wait_with_timeout(10).until(
+            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
+            message="Timed out waiting for Metadata tab after creating prompt dataset"
+        )
+
+        return CreateDatasetPage(self.driver)
+
     def click_usecases_card(self):
         from locators.provider.usecases_list_page_locators import UseCaseListPageLocators
-        import time
 
-        # Wait for and click the UseCases navigation link
         usecases_link = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(MyDashboardLocators.USECASES_NAV_LINK),
             message="Timed out waiting for the 'Usecases' card to be clickable"
@@ -110,13 +145,18 @@ class MyDashboardPage(BasePage):
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", usecases_link)
         self.driver.execute_script("arguments[0].click();", usecases_link)
 
-        # Wait for navigation to usecases page
-        self.wait_with_timeout(15).until(
-            lambda d: '/usecases' in d.current_url
-        )
+        # JS click occasionally doesn't trigger React's router (e.g. under server load right
+        # after the previous test finishes). Retry once with a real click if URL hasn't changed.
+        try:
+            self.wait_with_timeout(8).until(lambda d: '/usecases' in d.current_url)
+        except TimeoutException:
+            usecases_link.click()
+            self.wait_with_timeout(15).until(
+                lambda d: '/usecases' in d.current_url,
+                message="Timed out waiting for UseCases page URL after retry click"
+            )
 
-        # Wait for the "Add New UseCase" button using presence + JS approach
-        btn = self.wait_with_timeout(15).until(
+        self.wait_with_timeout(15).until(
             EC.presence_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON),
             message="Timed out waiting for UseCases page to load"
         )
@@ -126,41 +166,58 @@ class MyDashboardPage(BasePage):
     def click_collaboratives_card(self):
         from locators.provider.collaboratives_list_page_locators import CollaborativesListPageLocators
         from pages.provider.collaboratives_list_page import CollaborativesListPage
-        import time
 
-        # Wait for and click the Collaboratives navigation link (same pattern as click_usecases_card)
         collaboratives_link = self.wait_with_timeout(10).until(
             EC.element_to_be_clickable(MyDashboardLocators.COLLABORATIVES_NAV_LINK),
             message="Timed out waiting for the 'Collaboratives' card to be clickable"
         )
-
-        # Scroll into view and click
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", collaboratives_link)
-        collaboratives_link.click()
+        self.driver.execute_script("arguments[0].click();", collaboratives_link)
 
-        # Give the page time to navigate
-        time.sleep(2)
+        # Same retry pattern as click_usecases_card: JS click occasionally doesn't trigger
+        # React's router on CI runners. The broad text-based fallbacks that were here before
+        # matched sidebar nav items already on screen, causing a false-positive early return.
+        try:
+            self.wait_with_timeout(8).until(lambda d: 'collaboratives' in d.current_url)
+        except TimeoutException:
+            collaboratives_link.click()
+            self.wait_with_timeout(15).until(
+                lambda d: 'collaboratives' in d.current_url,
+                message="Timed out waiting for Collaboratives page URL after retry click"
+            )
 
-        # Wait for the Collaboratives page to load — try multiple indicators for resilience
-        from selenium.common.exceptions import TimeoutException
-        from selenium.webdriver.common.by import By
-        loaded = False
-        for locator in [
-            CollaborativesListPageLocators.ADD_NEW_COLLABORATIVE_BUTTON,
-            (By.XPATH, "//span[contains(normalize-space(),'Collaborative')]"),
-            (By.XPATH, "//*[contains(normalize-space(),'Collaborative')]"),
-        ]:
-            try:
-                self.wait_with_timeout(20).until(EC.visibility_of_element_located(locator))
-                loaded = True
-                break
-            except TimeoutException:
-                continue
-
-        if not loaded:
-            raise TimeoutException("Timed out waiting for Collaboratives page to load")
+        self.wait_with_timeout(20).until(
+            EC.visibility_of_element_located(CollaborativesListPageLocators.ADD_NEW_COLLABORATIVE_BUTTON),
+            message="Timed out waiting for 'Add New Collaborative' button"
+        )
 
         return CollaborativesListPage(self.driver)
+
+    def click_charts_card(self):
+        from locators.provider.charts_locators import ChartsLocators
+        from pages.provider.charts_list_page import ChartsListPage
+
+        charts_link = self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable(MyDashboardLocators.CHARTS_NAV_LINK),
+            message="Timed out waiting for 'Add & Manage Charts' link to be clickable"
+        )
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", charts_link)
+        self.driver.execute_script("arguments[0].click();", charts_link)
+
+        try:
+            self.wait_with_timeout(8).until(lambda d: '/charts' in d.current_url)
+        except TimeoutException:
+            charts_link.click()
+            self.wait_with_timeout(15).until(
+                lambda d: '/charts' in d.current_url,
+                message="Timed out waiting for Charts page URL after retry click"
+            )
+
+        self.wait_with_timeout(15).until(
+            EC.visibility_of_element_located(ChartsLocators.ADD_CHART_BTN),
+            message="Timed out waiting for 'Add Chart' button on Charts page"
+        )
+        return ChartsListPage(self.driver)
 
     def click_profile_card(self):
         from locators.provider.update_profile_locators import UpdateProfilePageLocators

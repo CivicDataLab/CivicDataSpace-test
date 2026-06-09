@@ -16,7 +16,8 @@ from pages.provider.my_dashboard_page import MyDashboardPage
 from pages.provider.create_collaborative_page import CreateCollaborativePage
 from tests.data.test_data import CollaborativeTestData
 
-@pytest.mark.smoke
+@pytest.mark.functional
+@pytest.mark.timeout(360)
 def test_prv_010_ind_create_collaborative(driver, sample_logo_path, sample_cover_image_path, base_url, test_credentials):
     """
     Test Case ID: test_prv_010_ind_create_collaborative
@@ -135,7 +136,7 @@ def test_prv_010_ind_create_collaborative(driver, sample_logo_path, sample_cover
     assert len(actual_geo) > 0, "Step 12 failure: Geography is empty"
 
     # ─── Step 13: Started On ──────────────────────────────────────────────────────────────────
-    create_collab.enter_started_on(CollaborativeTestData.START_DATE_INPUT)
+    create_collab.enter_started_on(CollaborativeTestData.START_DATE_ISO)
     actual_start = create_collab.get_started_on_value()
     assert actual_start == CollaborativeTestData.START_DATE_ISO, (
         f"Step 13 failure: Started On mismatch. Expected: {CollaborativeTestData.START_DATE_ISO}, Found: {actual_start}"
@@ -143,7 +144,7 @@ def test_prv_010_ind_create_collaborative(driver, sample_logo_path, sample_cover
     assert len(actual_start) > 0, "Step 13 failure: Started On date is empty"
 
     # ─── Step 14: Completed On ────────────────────────────────────────────────────────────────
-    create_collab.enter_completed_on(CollaborativeTestData.COMPLETED_DATE_INPUT)
+    create_collab.enter_completed_on(CollaborativeTestData.COMPLETED_DATE_ISO)
     actual_completed = create_collab.get_completed_on_value()
     assert actual_completed == CollaborativeTestData.COMPLETED_DATE_ISO, (
         f"Step 14 failure: Completed On mismatch. Expected: {CollaborativeTestData.COMPLETED_DATE_ISO}, Found: {actual_completed}"
