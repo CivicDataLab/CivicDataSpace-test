@@ -4,6 +4,7 @@ import logging
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException
 import requests
 from pages.base_page import BasePage
 from locators.consumer.publishers_locators import PublishersLocators
@@ -13,15 +14,16 @@ logger = logging.getLogger(__name__)
 
 class PublishersPage(BasePage):
     def is_loaded(self) -> bool:
-        """Wait for ‘Our Publishers’ header to be visible."""
-        return self.find((By.XPATH, PublishersLocators.HEADER)).is_displayed()
+        """Wait for 'Our Publishers' header to be visible."""
+        return self.find(PublishersLocators.HEADER).is_displayed()
 
-    def _select_tab(self, xpath: str, timeout: int = 10) -> None:
+    def _select_tab(self, locator: tuple, timeout: int = 10) -> None:
         """
         Clicks the tab (if not already active) with overlap-safe logic.
+        Accepts a locator tuple like (By.XPATH, "xpath_string").
         """
-        tab = WebDriverWait(self.driver, timeout).until(
-            EC.presence_of_element_located((By.XPATH, xpath))
+        tab = self.wait_with_timeout(timeout).until(
+            EC.presence_of_element_located(locator)
         )
 
         # Already selected?
@@ -33,37 +35,37 @@ class PublishersPage(BasePage):
         # ----- safe-click with up to 3 attempts -----
         for attempt in range(3):
             try:
-                WebDriverWait(self.driver, timeout).until(
-                    EC.element_to_be_clickable((By.XPATH, xpath))
+                self.wait_with_timeout(timeout).until(
+                    EC.element_to_be_clickable(locator)
                 )
                 tab.click()
                 return
             except ElementClickInterceptedException:
                 # Wait a short moment for overlay/animation to clear, then retry
-                WebDriverWait(self.driver, 2).until(
+                self.wait_with_timeout(2).until(
                     lambda drv: drv.execute_script(
                         "return arguments[0].getBoundingClientRect().top >= 0 && "
                         "arguments[0].getBoundingClientRect().bottom <= (window.innerHeight || document.documentElement.clientHeight);",
                         tab,
                     )
                 )
-        # If we’re still here → fail fast so the test shows a clear error
-        raise TimeoutException(f"Could not click tab located by {xpath} after retries")
+        # If we're still here → fail fast so the test shows a clear error
+        raise TimeoutException(f"Could not click tab located by {locator} after retries")
 
     def list_all_publishers(self):
         """
-        Ensure the ‘All Publishers’ view is active (click the tab if needed),
+        Ensure the 'All Publishers' view is active (click the tab if needed),
         then return a list of all publisher‐card WebElements.
         """
-        # if there is an explicit “All Publishers” button/tab, click it:
+        # if there is an explicit "All Publishers" button/tab, click it:
         try:
-            self.click((By.XPATH, PublishersLocators.ALL_PUBLISHERS_BUTTON))
-        except:
+            self.click(PublishersLocators.ALL_PUBLISHERS_BUTTON)
+        except (TimeoutException, NoSuchElementException):
             # assume All is default
             pass
 
         # wait for cards to appear
-        return self.finds((By.XPATH, PublishersLocators.ALL_CARD))
+        return self.finds(PublishersLocators.ALL_CARD)
 
     def list_publishers(self, view: str = ""):
         """
@@ -82,10 +84,10 @@ class PublishersPage(BasePage):
         self._select_tab(tab_xpath)
 
         # wait for the grid container to show up
-        self.wait.until(EC.presence_of_element_located((By.XPATH, PublishersLocators.GRID_CONTAINER)))
+        self.wait.until(EC.presence_of_element_located(PublishersLocators.GRID_CONTAINER))
 
         # return all the <a> publisher cards
-        return self.finds((By.XPATH, PublishersLocators.PUBLISHER_CARD))
+        return self.finds(PublishersLocators.PUBLISHER_CARD)
 
 
     def open_publisher_by_index(self, index: int = 0, view: str = "") -> "PublisherDetailPage":
@@ -104,7 +106,7 @@ class PublishersPage(BasePage):
 
     def list_usecase_cards(self):
         """Return all usecase‐card elements on the publisher detail page."""
-        return self.finds((By.XPATH, PublishersLocators.USECASE_CARD))
+        return self.finds(PublishersLocators.USECASE_CARD)
 
     def open_usecase_by_index(self, index: int = 0):
         """
@@ -113,8 +115,7 @@ class PublishersPage(BasePage):
         """
         link_locator = (
             By.XPATH,
-            f"({PublishersLocators.All_UC_Card})[{index+1}]"
-            f"{PublishersLocators.ALL_UC_FIRST_CARD}"
+            f"({PublishersLocators.All_UC_Card[1]}//a)[{index+1}]"
         )
         self.wait.until(EC.element_to_be_clickable(link_locator)).click()
         return self

@@ -1,22 +1,28 @@
 # locators/consumer/sectors_locators.py
+# Optimized with resilient relative XPaths (Phase 13)
+
+from selenium.webdriver.common.by import By
 
 class SectorsLocators:
     """XPaths for elements on the Sectors page."""
 
-    # The page header (“Our Sectors”)
-    HEADER = "/html/body/main/div/main/div[2]/div[1]/div/div[1]/span[1]"
+    # The page header ("Our Sectors")
+    HEADER = (By.XPATH, "//main//span[contains(., 'Sectors') or contains(., 'Our Sectors')] | //main//h1[contains(., 'Sectors')]")
 
-    # All sector‐card containers
-    SEC_CARD = "/html/body/main/div/main/div[2]/div[2]/div[2]"
+    # All sector-card containers
+    SEC_CARD = (By.XPATH, "//main//a[@href[contains(., '/sectors/')]]")
 
-    # First Sector Card
-    SEC_FIRST_CARD = "/html/body/main/div/main/div[2]/div[2]/div[2]/a[1]"
+    # First Sector Card - clickable link
+    SEC_FIRST_CARD = (By.XPATH, "//a[@href[contains(., '/sectors/')]]")
 
-    #ALL dataset card under a sector page
-    SEC_DATASET_CARD = "/html/body/main/div/div/div[2]/div[2]/div/div[2]/div[3]/div[1]"
+    # All dataset cards under a sector page - using the actual class
+    SEC_DATASET_CARD = (By.XPATH, "//div[contains(@class, 'datasets_List')]")
 
-    #First dataset card under a sector page
-    SEC_DATASET_FIRST_CARD = "/html/body/main/div/div/div[2]/div[2]/div/div[2]/div[3]/div[1]/a[1]"
+    # First dataset card under a sector page - clickable link
+    SEC_DATASET_FIRST_CARD = (By.XPATH, "//main//a[@href[contains(., '/datasets/')]]")
 
-    #download link of the first dataset
-    DOWNLOAD_LINK = "//a[@class='flex justify-center']"
+    # Download link of the first dataset resource.
+    # Scoped to /download/resource/ so it targets the actual dataset file —
+    # NOT the chart-image link (/download/chart/), which appears first in DOM
+    # order and is a separate (currently failing) endpoint.
+    DOWNLOAD_LINK = (By.XPATH, "//a[contains(@href, '/download/resource/')]")

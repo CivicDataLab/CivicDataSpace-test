@@ -70,10 +70,20 @@ def driver(request):
 
     # Common Chrome flags
     opts = webdriver.ChromeOptions()
+
+    is_headed = request.config.getoption("--headed", default=False)
+
+    if not is_headed:
+        opts.add_argument("--headless=new")
+    else:
+        opts.add_argument("--start-maximized")
+
     for flag in (
-        "--headless=new", "--no-sandbox", "--disable-gpu",
-        "--disable-dev-shm-usage", "--disable-extensions",
-        "--window-size=1920,1080", "--start-maximized"
+        "--no-sandbox",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--disable-extensions",
+        "--window-size=1920,1080",
     ):
         opts.add_argument(flag)
 
@@ -133,7 +143,8 @@ def driver(request):
     # Teardown
     try:
         drv.quit()
-    except:
+    except WebDriverException:
+        # Ignore errors during driver cleanup (may already be closed)
         pass
     shutil.rmtree(tmp_profile, ignore_errors=True)
 
@@ -168,17 +179,89 @@ def sample_logo_path():
         raise FileNotFoundError(f"Expected sample_logo.png at {logo_path}")
     return logo_path
 
+@pytest.fixture()
+def sample_profile_image_path():
+    """
+    Returns an absolute path to a small image under tests/data/
+    so that CreateUsecasePage.upload_logo(...) can send_keys() it.
+    """
+    here = os.path.dirname(__file__)    # this is a string
+    profile_image_path = os.path.abspath(os.path.join(here, "tests", "data", "sample_profile_image.png"))
+    if not os.path.isfile(profile_image_path):
+        raise FileNotFoundError(f"Expected sample_profile_image.png at {profile_image_path}")
+    return profile_image_path
+
+@pytest.fixture()
+def sample_cover_image_path():
+    here = os.path.dirname(__file__)
+    cover_image_path = os.path.abspath(os.path.join(here, "tests", "data", "sample_profile_image.png"))
+    if not os.path.isfile(cover_image_path):
+        raise FileNotFoundError(f"Expected sample_profile_image.png at {cover_image_path}")
+    return cover_image_path
+
 @pytest.fixture(scope="session")
 def test_credentials():
     """
-        Reads TEST_USER_INDEX (1 or 2) from the environment,
-        then returns (email, password) pulled from TEST_EMAIL_1/2 and TEST_PASSWORD_1/2.
-        """
-    idx = int(os.getenv("TEST_USER_INDEX", "1"))
+    Returns (email, password) for this worker.
+
+    Under pytest-xdist each worker sets PYTEST_XDIST_WORKER to gw0, gw1, …
+    gw0 → TEST_EMAIL_1 / TEST_PASSWORD_1
+    gw1 → TEST_EMAIL_2 / TEST_PASSWORD_2
+    Falls back to TEST_USER_INDEX (or 1) when not running under xdist.
+    """
+    worker = os.getenv("PYTEST_XDIST_WORKER", "")
+    if worker.startswith("gw"):
+        idx = int(worker[2:]) + 1          # gw0→1, gw1→2, gw2→3 …
+    else:
+        idx = int(os.getenv("TEST_USER_INDEX", "1"))
+
     email = os.getenv(f"TEST_EMAIL_{idx}")
     password = os.getenv(f"TEST_PASSWORD_{idx}")
-    assert email and password, f"Credentials for user index {idx} not set!"
+
+    # fall back to user 1 if the derived slot has no credentials configured
+    if not (email and password):
+        email = os.getenv("TEST_EMAIL_1")
+        password = os.getenv("TEST_PASSWORD_1")
+
+    assert email and password, f"No credentials found for worker slot {idx}"
     return email, password
+
+#  ─────────────────────── Login Fixtures (Phase 12) ─────────────────────────────
+
+@pytest.fixture
+def logged_in_provider(driver, base_url, test_credentials):
+    """
+    Auto-login as provider and return ProviderHomePage.
+    Eliminates duplicated login setup across tests.
+
+    Usage:
+        def test_something(logged_in_provider):
+            prov_home = logged_in_provider
+            # ... continue test from logged-in state
+    """
+    from pages.home_page import HomePage
+
+    driver.delete_all_cookies()
+    email, password = test_credentials
+    home = HomePage(driver, base_url)
+    home.load()
+    assert home.is_loaded(), "Homepage did not load successfully"
+
+    prov_home = home.go_to_login(flow="provider", email=email, password=password)
+    return prov_home
+
+@pytest.fixture
+def provider_dashboard(logged_in_provider):
+    """
+    Navigate to provider dashboard (My Dashboard page).
+    Builds on logged_in_provider fixture.
+
+    Usage:
+        def test_something(provider_dashboard):
+            my_dash = provider_dashboard
+            # ... test starts from My Dashboard page
+    """
+    return logged_in_provider.goto_my_dashboard()
 
 
 # 1) pytest_runtest_makereport

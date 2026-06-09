@@ -1,9 +1,7 @@
-cat <<'EOF' > .gitignore
 # IDE
 .idea/
 .vscode/
 .DS_Store
-
 
 # Python
 __pycache__/
@@ -13,20 +11,34 @@ __pycache__/
 dist/
 build/
 venv/
-conftest_local.py
-create_flow_diagram.py
+
+# Test artifacts & debug output
+debug_*.png
+debug_*.html
+*_FAIL.png
+*_failure.png
+*_failure.html
+screenshots/
 report.json
 TEST_REPORT.md
 TEST_REPORT.pdf
-screenshots
-te_components.py
+
+# Local/scratch files
+tasks/
+todo.md
+todo*.md
+conftest_local.py
+create_flow_diagram.py
 debug.py
+
+# Workflow files not committed
+test-and-report.yml
+test-and-report_multiple_jobs.yml
+.github/workflows/run-smoke.yml
+
+# Skipped/temp test files
+te_components.py
 te_prv_004_ind_add_charts.py
-te_prv_006_org_create_dataset.py
 te_prv_007_org_create_usecase.py
 te_prv_008_org_add_charts.py
 te_prv_009_org_edit_profile.py
-test-and-report.yml
-test-and-report_multiple_jobs.yml
-/Users/home/CivicDataSpace-test/.github/workflows/run-smoke.yml
-EOF

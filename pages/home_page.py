@@ -54,12 +54,63 @@ class HomePage(BasePage):
     """
 
     def __init__(self, driver, base_url):
-        self.driver = driver
+        super().__init__(driver)  # Initialize BasePage with self.wait
         self.url = base_url.rstrip("/") + "/"
         
     def load(self) -> None:
         """Navigate to the site root once."""
         self.driver.get(os.getenv("HOME_URL_DEV"))
+        # Wait for page to start loading and initial content to appear
+        time.sleep(2)
+        # Aggressively dismiss tour popup
+        self.dismiss_tour_popup()
+        # Double-check and dismiss again if it reappeared
+        self.dismiss_tour_popup()
+
+    def dismiss_tour_popup(self, timeout: int = 3) -> None:
+        """
+        Dismiss the tour popup using multiple strategies.
+        Safe to call even if popup doesn't exist.
+        """
+        try:
+            skip_btn = self.wait_with_timeout(timeout).until(
+                EC.presence_of_element_located(HomepageLocators.SKIP_TOUR_BUTTON)
+            )
+
+            # Try JavaScript click first (most reliable)
+            try:
+                self.driver.execute_script("arguments[0].click();", skip_btn)
+                time.sleep(0.5)
+            except Exception:
+                # Fallback to regular click
+                try:
+                    skip_btn.click()
+                    time.sleep(0.5)
+                except Exception:
+                    pass
+
+            # If popup still exists, forcefully remove it from DOM
+            try:
+                popup_elements = self.driver.find_elements(*HomepageLocators.SKIP_TOUR_BUTTON)
+                if popup_elements:
+                    self.driver.execute_script("""
+                        var skipBtn = arguments[0];
+                        var modal = skipBtn.closest('div[role="dialog"]') ||
+                                    skipBtn.closest('div[class*="modal"]') ||
+                                    skipBtn.closest('div[class*="Modal"]') ||
+                                    skipBtn.parentElement.parentElement;
+                        if (modal) modal.remove();
+                        skipBtn.remove();
+                    """, popup_elements[0])
+                    time.sleep(0.5)
+            except Exception:
+                pass
+
+            time.sleep(0.5)
+
+        except (TimeoutException, Exception):
+            # Popup doesn't exist or other non-critical error
+            pass
 
     def is_loaded(self, timeout: int = 5) -> bool:
         """
@@ -67,8 +118,8 @@ class HomePage(BasePage):
         We wait on the FORM locator.
         """
         try:
-            WebDriverWait(self.driver, timeout).until(
-            EC.visibility_of_element_located((By.XPATH, HomepageLocators.ICON))
+            self.wait_with_timeout(timeout).until(
+            EC.visibility_of_element_located(HomepageLocators.ICON)
             )
             return True
         except TimeoutException:
@@ -77,53 +128,110 @@ class HomePage(BasePage):
     # ─── Consumer‐flow navigation methods ───────────────────────────────────────────
 
     def go_to_about(self) -> AboutPage:
-        btn = WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_ABOUT))
+        self.dismiss_tour_popup()  # Ensure popup is gone before clicking
+        btn = self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable(HomepageLocators.TAB_ABOUT)
         )
         btn.click()
+
+        # Wait for URL to change to about page
+        self.wait_with_timeout(10).until(
+            lambda driver: "/about" in driver.current_url
+        )
+        time.sleep(1)  # Brief pause for page to start rendering
+
         return AboutPage(self.driver)
 
     def go_to_all_data_page(self) -> DatasetPage:
+        self.dismiss_tour_popup()  # Ensure popup is gone before clicking
 
         try:
-            bann = WebDriverWait(self.driver, 10).until(
+            bann = self.wait_with_timeout(10).until(
                 EC.element_to_be_clickable((By.ID, "cookieConsentAccept"))
             )
             bann.click()
-        except:
+        except TimeoutException:
             pass
 
-        btn = WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_DATASETS))
+        try:
+            btn = self.wait_with_timeout(5).until(
+                EC.element_to_be_clickable(HomepageLocators.TAB_DATASETS)
+            )
+            btn.click()
+        except TimeoutException:
+            # Fallback: dev site uses EXPLORE dropdown instead of direct Datasets link
+            try:
+                explore = self.wait_with_timeout(5).until(
+                    EC.element_to_be_clickable((By.XPATH, "//header//nav//button[contains(., 'Explore') or contains(., 'EXPLORE')]"))
+                )
+                explore.click()
+                time.sleep(1)
+                datasets_link = self.wait_with_timeout(5).until(
+                    EC.element_to_be_clickable((By.XPATH, "//a[contains(@href, '/datasets')]"))
+                )
+                datasets_link.click()
+            except TimeoutException:
+                # Last resort: navigate directly
+                self.driver.get(self.url.rstrip('/') + '/datasets')
+
+        # Wait for URL to change to datasets page
+        self.wait_with_timeout(10).until(
+            lambda driver: "/datasets" in driver.current_url
         )
-        btn.click()
+        time.sleep(1)  # Brief pause for page to start rendering
+
         return DatasetPage(self.driver)
 
     def go_to_publishers(self) -> PublishersPage:
-        btn = WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_PUBLISHERS))
+        self.dismiss_tour_popup()  # Ensure popup is gone before clicking
+        btn = self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable(HomepageLocators.TAB_PUBLISHERS)
         )
         btn.click()
+
+        # Wait for URL to change to publishers page
+        self.wait_with_timeout(10).until(
+            lambda driver: "/publishers" in driver.current_url
+        )
+        time.sleep(1)  # Brief pause for page to start rendering
+
         return PublishersPage(self.driver)
 
     def go_to_sectors(self) -> SectorsPage:
-        btn = WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_SECTORS))
+        self.dismiss_tour_popup()  # Ensure popup is gone before clicking
+        btn = self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable(HomepageLocators.TAB_SECTORS)
         )
         btn.click()
+
+        # Wait for URL to change to sectors page
+        self.wait_with_timeout(10).until(
+            lambda driver: "/sectors" in driver.current_url
+        )
+        time.sleep(1)  # Brief pause for page to start rendering
+
         return SectorsPage(self.driver)
 
     def go_to_usecases(self) -> UseCasePage:
-        btn = WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, HomepageLocators.TAB_USECASES))
+        self.dismiss_tour_popup()  # Ensure popup is gone before clicking
+        btn = self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable(HomepageLocators.TAB_USECASES)
         )
         btn.click()
+
+        # Wait for URL to change to usecases page
+        self.wait_with_timeout(10).until(
+            lambda driver: "/usecases" in driver.current_url
+        )
+        time.sleep(1)  # Brief pause for page to start rendering
+
         return UseCasePage(self.driver)
 
     def is_icon_visible(self, timeout: int = 10) -> bool:
         """TC_HOM_01: Wait for the platform icon (logo) to be visible."""
-        WebDriverWait(self.driver, timeout).until(
-            EC.visibility_of_element_located((By.XPATH, HomepageLocators.ICON))
+        self.dismiss_tour_popup()  # Ensure popup doesn't block visibility check
+        self.wait_with_timeout(timeout).until(
+            EC.visibility_of_element_located(HomepageLocators.ICON)
         )
         return True
 
@@ -133,68 +241,46 @@ class HomePage(BasePage):
     # ─── Provider‐flow login method ──────────────────────────────────────────────────
 
     def go_to_login(self, flow: str = "consumer", email: str|None = None, password: str|None = None):
-        print("\n[STEP] Starting go_to_login (flow=%s)" % flow)
         self.logout()
 
+        # Dismiss tour popup if it's blocking the login button
+        self.dismiss_tour_popup()
+
         if flow.lower() == "provider":
-            print("[WAIT] Checking if dashboard header is already visible")
             try:
-                WebDriverWait(self.driver, 5).until(
-                    EC.visibility_of_element_located((By.XPATH, ProviderHomepageLocators.HEADER))
+                self.wait.until(
+                    EC.visibility_of_element_located(ProviderHomepageLocators.HEADER)
                 )
-                print("[OK] Already logged in; ProviderHomePage visible")
                 return ProviderHomePage(self.driver)
             except TimeoutException:
-                print("[INFO] Not already logged in, continuing to login.")
+                pass
 
-        print("[WAIT] Waiting for LOGIN / SIGN UP button to be clickable")
         try:
-            login_btn = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, LoginLocators.LOGIN_BUTTON))
+            login_btn = self.wait_with_timeout(10).until(
+                EC.element_to_be_clickable(LoginLocators.LOGIN_BUTTON)
             )
-            print("[OK] Login button found, clicking…")
             login_btn.click()
-            self.driver.save_screenshot(f"after_login_click_{int(time.time())}.png")
-            print(f"[OK] Clicked LOGIN, current URL: {self.driver.current_url}")
-        except Exception as e:
-            print(f"[FAIL] Could not find or click login button: {e}")
-            self.driver.save_screenshot('debug_login_fail.png')
-            with open('debug_login_fail.html', 'w') as f:
-                f.write(self.driver.page_source)
+        except Exception:
             raise
 
-        print("[WAIT] Waiting for login form to appear (10s)")
         try:
-            WebDriverWait(self.driver, 10).until(
-                EC.visibility_of_element_located((By.XPATH, LoginLocators.FORM))
+            self.wait_with_timeout(10).until(
+                EC.visibility_of_element_located(LoginLocators.FORM)
             )
-            print("[OK] Login form is now visible")
-        except TimeoutException as e:
-            print("[FAIL] Login form never appeared after clicking LOGIN")
-            self.driver.save_screenshot('debug_no_login_form.png')
-            with open('debug_no_login_form.html', 'w') as f:
-                f.write(self.driver.page_source)
+        except TimeoutException:
             raise AssertionError("Tapped LOGIN / SIGN UP, but the login form never appeared.")
 
         login_page = LoginPage(self.driver)
 
         if flow.lower() == "provider":
-            print("[ACTION] Logging in as provider (auto-fill)")
-            # Use parameters if provided, else fallback
             email = email or os.getenv("TEST_EMAIL")
             password = password or os.getenv("TEST_PASSWORD")
             login_page.login(email, password)
-            print("[WAIT] Waiting for ProviderHomePage header to appear (10s)")
             try:
-                WebDriverWait(self.driver, 10).until(
-                    EC.visibility_of_element_located((By.XPATH, ProviderHomepageLocators.HEADER))
+                self.wait_with_timeout(10).until(
+                    EC.visibility_of_element_located(ProviderHomepageLocators.HEADER)
                 )
-                print("[OK] ProviderHomePage loaded after login")
-            except TimeoutException as e:
-                print("[FAIL] ProviderHomePage header did not appear after login")
-                self.driver.save_screenshot('debug_post_login_fail.png')
-                with open('debug_post_login_fail.html', 'w') as f:
-                    f.write(self.driver.page_source)
+            except TimeoutException:
                 raise
 
             return ProviderHomePage(self.driver)
@@ -211,23 +297,23 @@ class HomePage(BasePage):
     def logout(self):
         try:
             # 1. Click the avatar/profile button
-            avatar_btn = WebDriverWait(self.driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, HomepageLocators.LOGOUT_PROFILE_LOGO))
+            avatar_btn = self.wait.until(
+                EC.element_to_be_clickable(HomepageLocators.LOGOUT_PROFILE_LOGO)
             )
             avatar_btn.click()
 
             # 2. Click "Log Out" in the dropdown
-            logout_btn = WebDriverWait(self.driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, HomepageLocators.LOGOUT))
+            logout_btn = self.wait.until(
+                EC.element_to_be_clickable(HomepageLocators.LOGOUT)
             )
             logout_btn.click()
 
             # 3. Optionally wait for login button to reappear (optional, adjust as needed)
-            WebDriverWait(self.driver, 10).until(
+            self.wait_with_timeout(10).until(
                 EC.visibility_of_element_located((By.XPATH, "//button[contains(.,'LOGIN') or contains(.,'Sign Up')]"))
             )
-        except Exception as e:
-            print("Logout not needed or failed:", e)
+        except Exception:
+            pass
 
         # 4. Always clear cookies/storage for total isolation
         self.driver.delete_all_cookies()

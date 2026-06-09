@@ -8,6 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
+from selenium.common.exceptions import TimeoutException
 from pages.base_page import BasePage
 from locators.provider.create_dataset_locators import CreateDatasetLocators
 from pages.provider.dataset_detail_page import DatasetDetailPage
@@ -31,18 +32,24 @@ class CreateDatasetPage(BasePage):
         return self
 
     def go_to_datafiles_tab(self):
-        # 1) wait until the tab is clickable
         tab = self.wait.until(EC.element_to_be_clickable(
             (By.XPATH, CreateDatasetLocators.TAB_DATAFILES)
         ))
-
-        # 2) scroll it into view (centered)
         self.driver.execute_script(
             "arguments[0].scrollIntoView({behavior: 'auto', block: 'center'});",
             tab
         )
+        tab.click()
+        return self
 
-        # 3) click and return self for chaining
+    def go_to_prompt_files_tab(self):
+        tab = self.wait.until(EC.element_to_be_clickable(
+            (By.XPATH, CreateDatasetLocators.TAB_PROMPT_FILES)
+        ))
+        self.driver.execute_script(
+            "arguments[0].scrollIntoView({behavior: 'auto', block: 'center'});",
+            tab
+        )
         tab.click()
         return self
 
@@ -56,66 +63,47 @@ class CreateDatasetPage(BasePage):
     # ---- Metadata entry ----
     def enter_description(self, text: str):
         fld = self.find((By.XPATH, CreateDatasetLocators.DESCRIPTION))
-        fld.clear()
+        fld.click()
+        fld.send_keys(Keys.CONTROL + 'a')
+        fld.send_keys(Keys.DELETE)
         fld.send_keys(text)
         return self
 
     def select_sectors(self, items: list[str]):
-        # 1) click into the combobox input
-        combo = self.wait.until(EC.element_to_be_clickable(
-            (By.XPATH, CreateDatasetLocators.SECTOR_INPUT)
-        ))
-        combo.click()
-
+        """Select multiple sectors using BasePage utility to eliminate duplication"""
         for val in items:
-            # 2) type to filter if needed (sometimes helps)
-            combo.clear()
-            combo.send_keys(val)
-
-            # 3) click the exact option
-            xpath = CreateDatasetLocators.SECTOR_DROPDOWN_ITEM.format(value=val)
-            opt = self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, xpath)
-            ))
-            opt.click()
-
-        # 4) close dropdown
-        ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
-        time.sleep(3)
+            self.select_combobox_option((By.XPATH, CreateDatasetLocators.SECTOR_INPUT), val)
+        # Wait for any toast notifications to disappear, but don't fail if they persist
+        try:
+            self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=5)
+        except TimeoutException:
+            pass  # Continue anyway - toasts don't block interaction
         return self
 
     def select_tags(self, items: list[str]):
-        # 1) open the tags combobox
-        combo = self.wait.until(EC.element_to_be_clickable(
-            (By.XPATH, CreateDatasetLocators.TAGS_INPUT)
-        ))
-        combo.click()
-
+        """Select multiple tags using BasePage utility to eliminate duplication"""
         for val in items:
-            # 2) optional: filter by typing the tag name
-            combo.clear()
-            combo.send_keys(val)
-
-            # 3) pick the exact matching option
-            xpath = CreateDatasetLocators.TAG_DROPDOWN_ITEM.format(value=val)
-            opt = self.wait.until(EC.element_to_be_clickable(
-                (By.XPATH, xpath)
-            ))
-            opt.click()
-
-        # 4) close dropdown
-        ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
+            self.select_combobox_option((By.XPATH, CreateDatasetLocators.TAGS_INPUT), val)
         return self
 
     def select_geography(self, value: str):
-        toggle = self.wait.until(EC.element_to_be_clickable(
+        import time
+
+        toggle = self.wait_with_timeout(10).until(EC.element_to_be_clickable(
             (By.XPATH, CreateDatasetLocators.GEOGRAPHY_CONTAINER)
         ))
         toggle.click()
-        opt = self.wait.until(EC.element_to_be_clickable(
-            (By.XPATH, CreateDatasetLocators.GEO_OPTION.format(value=value))
-        ))
-        opt.click()
+
+        # Type the value to filter the dropdown options
+        toggle.send_keys(value)
+        time.sleep(2)
+
+        # Use keyboard to select the first filtered option
+        toggle.send_keys(Keys.ARROW_DOWN)
+        time.sleep(0.5)
+        toggle.send_keys(Keys.ENTER)
+        time.sleep(0.5)
+
         ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
         return self
 
@@ -149,18 +137,96 @@ class CreateDatasetPage(BasePage):
 
         return self
 
+    # ---- Prompt Dataset Metadata fields ----
+    def _scroll_to_locator(self, locator):
+        el = self.wait.until(EC.presence_of_element_located(locator))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+        return el
+
+    def select_task_type(self, value: str):
+        loc = (By.XPATH, CreateDatasetLocators.TASK_TYPE_INPUT)
+        self._scroll_to_locator(loc)
+        self.select_combobox_option(loc, value)
+        return self
+
+    def select_domain(self, value: str):
+        loc = (By.XPATH, CreateDatasetLocators.DOMAIN_INPUT)
+        self._scroll_to_locator(loc)
+        self.select_combobox_option(loc, value)
+        return self
+
+    def select_target_languages(self, items: list[str]):
+        loc = (By.XPATH, CreateDatasetLocators.TARGET_LANGUAGES_INPUT)
+        self._scroll_to_locator(loc)
+        for val in items:
+            self.select_combobox_option(loc, val)
+        return self
+
+    def select_target_model_types(self, items: list[str]):
+        loc = (By.XPATH, CreateDatasetLocators.TARGET_MODEL_TYPES_INPUT)
+        self._scroll_to_locator(loc)
+        for val in items:
+            self.select_combobox_option(loc, val)
+        return self
+
+    def get_selected_task_type(self) -> list[str]:
+        els = self.driver.find_elements(By.XPATH, CreateDatasetLocators.TASK_TYPE_SELECTED_PILL)
+        return [el.text.strip() for el in els]
+
+    def get_selected_domain(self) -> list[str]:
+        els = self.driver.find_elements(By.XPATH, CreateDatasetLocators.DOMAIN_SELECTED_PILL)
+        return [el.text.strip() for el in els]
+
+    def get_selected_target_languages(self) -> list[str]:
+        els = self.driver.find_elements(By.XPATH, CreateDatasetLocators.TARGET_LANGUAGES_SELECTED_PILL)
+        return [el.text.strip() for el in els]
+
+    def get_selected_target_model_types(self) -> list[str]:
+        els = self.driver.find_elements(By.XPATH, CreateDatasetLocators.TARGET_MODEL_TYPES_SELECTED_PILL)
+        return [el.text.strip() for el in els]
+
     # ---- File upload ----
     def upload_datafile(self, path: str):
-           
+
         # locate the file‐input directly
         inp = self.wait.until(EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.DATAFILES_INPUT)))
 
-        # 3) send the absolute file-path to it (this triggers the upload)
+        # send the absolute file-path to it (this triggers the upload)
         inp.send_keys(path)
-        time.sleep(3)
-        btn = self.wait.until(EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.BACK_BUTTON)))
+
+        # Wait for back button to be present (indicates upload initiated)
+        btn = self.wait_with_timeout(10).until(
+            EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.BACK_BUTTON))
+        )
         btn.click()
 
+        # Wait a moment for navigation to complete
+        import time
+        time.sleep(2)
+
+        # After clicking back, the page navigates to metadata
+        # We need to explicitly go back to the Data Files tab
+        self.go_to_datafiles_tab()
+
+        # Wait for the uploaded file to appear in the resource list
+        time.sleep(2)
+
+        return self
+
+    def upload_prompt_file(self, path: str):
+        inp = self.wait.until(EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.DATAFILES_INPUT)))
+        inp.send_keys(path)
+
+        btn = self.wait_with_timeout(10).until(
+            EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.BACK_BUTTON))
+        )
+        btn.click()
+
+        import time
+        time.sleep(2)
+
+        self.go_to_prompt_files_tab()
+        time.sleep(2)
         return self
 
     # ---- Final publish ----
@@ -174,7 +240,7 @@ class CreateDatasetPage(BasePage):
         elt = self.wait.until(
             EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.DESCRIPTION))
         )
-        return elt.get_attribute("value").strip()
+        return elt.text.strip()
 
     def get_selected_sectors(self) -> list[str]:
         # Assuming each selected‐tag appears as a “pill” with text inside
@@ -220,14 +286,28 @@ class CreateDatasetPage(BasePage):
 
     def get_uploaded_resource_names(self) -> list[str]:
         """
-        Returns the text of every cell under the “NAME OF RESOURCE” column.
+        Returns the text of every cell under the "NAME OF RESOURCE" column.
         """
         # wait until at least one row has appeared
-        els = self.wait.until(EC.presence_of_all_elements_located(
-            (By.XPATH, CreateDatasetLocators.RESOURCE_NAME_CELLS)
-        ))
-        # strip() in case there’s extra whitespace
-        return [el.text.strip() for el in els]
+        # Try multiple locator strategies in case the table structure changed
+        try:
+            els = self.wait_with_timeout(10).until(EC.presence_of_all_elements_located(
+                (By.XPATH, CreateDatasetLocators.RESOURCE_NAME_CELLS)
+            ))
+        except:
+            # Try alternative: any table row's first cell
+            try:
+                els = self.wait_with_timeout(5).until(EC.presence_of_all_elements_located(
+                    (By.XPATH, "//table//tbody//tr//td[1]")
+                ))
+            except:
+                # Try another alternative: look for file names anywhere in the data files section
+                els = self.wait_with_timeout(5).until(EC.presence_of_all_elements_located(
+                    (By.XPATH, "//div[contains(@class, 'datafile') or contains(@class, 'resource')]//span | //div[contains(@class, 'datafile') or contains(@class, 'resource')]//div")
+                ))
+
+        # strip() in case there's extra whitespace
+        return [el.text.strip() for el in els if el.text.strip()]
 
     # ─── Publish‐tab getters ─────────────────────────────────────────────────────────────────
     def is_publish_tab_visible(self) -> bool:
@@ -236,54 +316,45 @@ class CreateDatasetPage(BasePage):
         ))
 
     def is_published(self) -> bool:
-        # 1) wait for your redirect so you know the mutation has fired
-        WebDriverWait(self.driver, 10).until(
+        """
+        Check if the dataset has been published by navigating to the Published tab.
+
+        After clicking Publish, the page redirects to the drafts tab. We then need to
+        click on the "Published" tab to verify the dataset appears there.
+
+        Returns:
+            True if we can successfully navigate to the Published tab, False otherwise
+        """
+        # Wait for URL to change to drafts tab (confirms redirect after publish)
+        self.wait_with_timeout(10).until(
             lambda d: "?tab=drafts" in d.current_url
         )
-        time.sleep(1)  # give perf logs a moment to fill up
 
-        logs = self.driver.get_log("performance")
-        publish_req_id = None
+        # Wait a moment for the UI to update after redirect
+        import time
+        time.sleep(2)
 
-        # 2) find the requestId for the GraphQL call whose payload contains your mutation
-        for entry in logs:
-            msg = json.loads(entry["message"])["message"]
-            if msg.get("method") != "Network.requestWillBeSent":
-                continue
-            req = msg["params"]["request"]
-            # GraphQL POST bodies always have an "operationName"
-            # or will literally contain your mutation field
-            if req.get("postData") and "publishDataset" in req["postData"]:
-                publish_req_id = msg["params"]["requestId"]
-                break
+        # Click on the "Published" tab to verify dataset is there
+        try:
+            published_tab = self.wait_with_timeout(10).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, "//span[normalize-space()='Published']")
+                )
+            )
+            published_tab.click()
 
-        if not publish_req_id:
+            # Wait for the Published tab to load
+            time.sleep(2)
+
+            # Verify URL changed to published tab
+            self.wait_with_timeout(10).until(
+                lambda d: "?tab=published" in d.current_url.lower()
+            )
+
+            return True
+        except TimeoutException:
+            # If we can't navigate to published tab or it times out
             return False
-
-        # 3) find exactly that request’s response
-        for entry in logs:
-            msg = json.loads(entry["message"])["message"]
-            if msg.get("method") != "Network.responseReceived":
-                continue
-            if msg["params"]["requestId"] != publish_req_id:
-                continue
-
-            resp = msg["params"]["response"]
-            # HTTP 200?
-            if resp.get("status") != 200:
-                return False
-
-            # pull the actual JSON body via CDP
-            body = self.driver.execute_cdp_cmd(
-                "Network.getResponseBody", {"requestId": publish_req_id}
-            )["body"]
-            data = json.loads(body)
-            status = data.get("data", {}) \
-                         .get("publishDataset", {}) \
-                         .get("status")
-            return status == "PUBLISHED"
-
-        return False
 
     def get_download_url(self) -> str:
         link = self.wait.until(

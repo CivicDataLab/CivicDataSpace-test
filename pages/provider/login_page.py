@@ -17,58 +17,49 @@ class LoginPage(BasePage):
         Returns True once the login‐form container is visible.
         We wait on the FORM locator.
         """
-        WebDriverWait(self.driver, timeout).until(
-            EC.visibility_of_element_located((By.XPATH, LoginLocators.FORM))
+        self.wait_with_timeout(timeout).until(
+            EC.visibility_of_element_located(LoginLocators.FORM)
         )
         return True
 
     def login(self, email: str, password: str) -> ProviderHomePage:
         print("[WAIT] Waiting for email input field...")
         try:
-            WebDriverWait(self.driver, 10).until(
-                EC.visibility_of_element_located((By.XPATH, LoginLocators.EMAIL_INPUT))
+            self.wait_with_timeout(10).until(
+                EC.visibility_of_element_located(LoginLocators.EMAIL_INPUT)
             )
             print("[OK] Email input found")
-            self.driver.save_screenshot('login_step_email_found.png')
         except Exception as e:
             print("[FAIL] Email input not found:", e)
-            self.driver.save_screenshot('login_step_email_NOT_found.png')
             raise
 
         try:
             print("[ACTION] Filling email/password...")
-            self.find((By.XPATH, LoginLocators.EMAIL_INPUT)).clear()
-            self.find((By.XPATH, LoginLocators.EMAIL_INPUT)).send_keys(email)
-            self.find((By.XPATH, LoginLocators.PASSWORD_INPUT)).clear()
-            self.find((By.XPATH, LoginLocators.PASSWORD_INPUT)).send_keys(password)
-            self.driver.save_screenshot('username_password.png')
+            self.find(LoginLocators.EMAIL_INPUT).clear()
+            self.find(LoginLocators.EMAIL_INPUT).send_keys(email)
+            self.find(LoginLocators.PASSWORD_INPUT).clear()
+            self.find(LoginLocators.PASSWORD_INPUT).send_keys(password)
             print("[OK] Filled email and password")
         except Exception as e:
             print("[FAIL] Could not fill credentials:", e)
-            self.driver.save_screenshot('login_step_fill_credentials_FAIL.png')
             raise
 
         try:
             print("[ACTION] Clicking SIGN IN button...")
-            self.find((By.XPATH, LoginLocators.SIGNIN_BUTTON)).click()
+            self.find(LoginLocators.SIGNIN_BUTTON).click()
             print("[OK] SIGN IN clicked")
-            self.driver.save_screenshot('login_step_signin_clicked.png')
         except Exception as e:
             print("[FAIL] Could not click sign-in button:", e)
-            self.driver.save_screenshot('login_step_signin_click_FAIL.png')
             raise
 
         try:
             print("[WAIT] Waiting for ProviderHomePage header after login (10s)")
-            WebDriverWait(self.driver, 10).until(
-                EC.visibility_of_element_located(
-                    (By.XPATH, ProviderHomepageLocators.HEADER)
-                )
+            self.wait_with_timeout(10).until(
+                EC.visibility_of_element_located(ProviderHomepageLocators.HEADER)
             )
             print("[OK] ProviderHomePage loaded after login")
         except Exception as e:
             print("[FAIL] ProviderHomePage header did not appear after login:", e)
-            self.driver.save_screenshot('login_step_provider_homepage_header_FAIL.png')
             raise
 
         return ProviderHomePage(self.driver)

@@ -9,8 +9,8 @@ from pages.provider.update_profile_page import UpdateProfilePage
 
 
 
-@pytest.mark.smoke
-def test_prv_005_ind_edit_profile(driver, sample_csv_path, base_url, test_credentials):
+@pytest.mark.functional
+def test_prv_005_ind_edit_profile(driver, sample_profile_image_path, base_url, test_credentials):
     """
         Test Case ID: test_prv_005_ind_edit_profile
         Verify User is able to edit profile details.
@@ -65,3 +65,25 @@ def test_prv_005_ind_edit_profile(driver, sample_csv_path, base_url, test_creden
     assert get_first_name == first_name, (
         f"Step 5a failure: Expected first name to be '{first_name}', but found '{get_first_name}'."
     )
+    #(5b) Last name
+    last_name = 'Manan'
+    up_profile.enter_last_name(last_name)
+    get_last_name = up_profile.get_last_name_value()
+    assert get_last_name == last_name, (
+        f"Step 5b failure: Expected first name to be '{last_name}', but found '{get_last_name}'."
+    )
+
+    # (5b) Enter Bio Text
+    bio_text = 'Quality Assurance Engineer. Deriving Quality at CDL'
+    up_profile.enter_bio_text(bio_text)
+    get_bio_text = up_profile.get_bio_text_value()
+    assert get_bio_text == bio_text, (
+        f"Step 5b failure: Expected first name to be '{bio_text}', but found '{get_bio_text}'."
+    )
+    # (5c) Upload Profile Picture
+    up_profile.upload_profile_image(sample_profile_image_path)
+    assert up_profile.is_profile_image_uploaded(), "Step 5c failure: profile picture upload did not succeed."
+
+    # (5d) Click Save Button
+    up_profile.click_save()
+    assert up_profile.is_profile_image_uploaded(), "Step 5d failure: clicking save button did not succeed."

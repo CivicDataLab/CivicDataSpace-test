@@ -1,19 +1,26 @@
 # locators/consumer/usecase_locators.py
+# Optimized with resilient relative XPaths (Phase 13)
+
+from selenium.webdriver.common.by import By
 
 class UseCaseLocators:
     """XPaths for elements on the Use Cases page."""
 
-    # The page header (“Our Use Cases”)
-    HEADER = "/html/body/main/div/main/div[2]/div/div/span[1]"
+    # The page header ("Our Use Cases")
+    HEADER = (By.XPATH, "//main//span[contains(., 'Use Case') or contains(., 'UseCases')] | //main//h1[contains(., 'Use Case')]")
 
-    # All usecase‐card containers
-    CARD = "/html/body/main/div/main/div[3]/div[2]"
+    # All usecase-card containers
+    CARD = (By.XPATH, "//main//a[@href[contains(., '/usecases/')]]")
 
-    #First UseCase
-    UC_FIRST_CARD = "/html/body/main/div/main/div[3]/div[2]/a[1]"
+    # First UseCase - clickable link
+    UC_FIRST_CARD = (By.XPATH, "//a[@href[contains(., '/usecases/')]]")
 
-    #First Dataset under Usecase
-    UC_DATASET_FIRST_CARD = "/html/body/main/div/div/div[2]/div[2]/div[2]/a"
+    # First Dataset under Usecase.
+    # NOT scoped to a 'datasets_List' container — that CSS-module class no longer
+    # exists in the rendered DOM, which made the download test silently skip.
+    UC_DATASET_FIRST_CARD = (By.XPATH, "//main//a[@href[contains(., '/datasets/')]]")
 
-    #Download link for dataset under use case.
-    DOWNLOAD_LINK = "//a[@class='flex justify-center']"
+    # Download link for the dataset resource under a use case.
+    # Scoped to /download/resource/ so it targets the dataset file, not the
+    # chart-image link (/download/chart/), which is a separate failing endpoint.
+    DOWNLOAD_LINK = (By.XPATH, "//a[contains(@href, '/download/resource/')]")

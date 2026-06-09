@@ -1,9 +1,14 @@
 # pages/base_page.py
+import platform
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 
 class BasePage:
-    def __init__(self, driver, timeout=5):
+    def __init__(self, driver, timeout=15):
         self.driver = driver
         self.wait   = WebDriverWait(driver, timeout)
 
@@ -20,3 +25,370 @@ class BasePage:
         elem = self.wait.until(EC.element_to_be_clickable(by_locator))
         elem.click()
         return elem
+
+    # ── Text Input Utilities ──────────────────────────────────────────────────
+
+    def clear_and_type(self, locator, text, timeout=10, retries=2, slow=False):
+        """Robustly set input value; handles React/Angular controlled inputs."""
+        for _ in range(retries + 1):
+            el = self.wait.until(EC.element_to_be_clickable(locator))
+            self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+            el.click()
+
+            # 1) Triple-click + Ctrl/Cmd+A + Delete + native clear
+            ActionChains(self.driver).double_click(el).perform()
+            for mod in (Keys.CONTROL, Keys.COMMAND):
+                try:
+                    el.send_keys(mod, "a")
+                except Exception:
+                    pass
+            el.send_keys(Keys.DELETE)
+            try:
+                el.clear()
+            except Exception:
+                pass
+
+            # 2) If still has text, backspace its length
+            val = (el.get_attribute("value") or "")
+            if val:
+                el.send_keys(Keys.END)
+                for _ in range(len(val)):
+                    el.send_keys(Keys.BACKSPACE)
+
+            # 3) If STILL not empty, use React-safe native setter + events
+            if (el.get_attribute("value") or "").strip():
+                self.driver.execute_script("""
+                    const e = arguments[0];
+                    const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+                    if (desc && desc.set) desc.set.call(e, '');
+                    else e.value = '';
+                    e.dispatchEvent(new Event('input', {bubbles:true}));
+                    e.dispatchEvent(new Event('change', {bubbles:true}));
+                """, el)
+
+            # Type and verify
+            if slow:
+                for ch in text:
+                    el.send_keys(ch)
+            else:
+                el.send_keys(text)
+
+            self.driver.execute_script("arguments[0].blur();", el)
+            if (el.get_attribute("value") or "").strip() == text:
+                return el
+
+        raise AssertionError(f"Could not set value to '{text}'.")
+
+    def type_text(self, locator, text):
+        """Type text without clearing"""
+        element = self.wait.until(EC.visibility_of_element_located(locator))
+        element.send_keys(text)
+        return element
+
+    def clear_field(self, locator):
+        """Clear input field"""
+        element = self.wait.until(EC.visibility_of_element_located(locator))
+        element.clear()
+        return element
+
+    # ── Dropdown & Selection Utilities ────────────────────────────────────────
+
+    def select_dropdown_by_text(self, locator, text):
+        """Select from native <select> dropdown by visible text"""
+        from selenium.webdriver.support.ui import Select
+        element = self.wait.until(EC.presence_of_element_located(locator))
+        Select(element).select_by_visible_text(text)
+        return element
+
+    def select_combobox_option(self, input_locator, option_text):
+        """
+        Generic combobox selection - click input, type, select option, close dropdown.
+        Works with React/custom dropdowns that aren't native <select> elements.
+        """
+        from selenium.webdriver.common.by import By
+        from selenium.common.exceptions import ElementClickInterceptedException
+
+        combo = self.wait.until(EC.element_to_be_clickable(input_locator))
+        combo.click()
+        combo.clear()
+        combo.send_keys(option_text)
+
+        # Wait for dropdown option to appear
+        xpath = f"//div[@role='option' and normalize-space(.)='{option_text}']"
+        opt = self.wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
+
+        try:
+            opt.click()
+        except ElementClickInterceptedException:
+            self.driver.execute_script("arguments[0].click();", opt)
+
+        import time
+        time.sleep(0.5)
+
+        ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
+        return self
+
+    def set_react_select_by_text(self, locator, text):
+        """Select a native <select> option by visible text the React-safe way.
+
+        Select.select_by_visible_text updates the DOM but bypasses React's tracked setter, so
+        the debounced (blur-driven) autosave never persists it. Set the value via the native
+        setter + change event, then dispatch a bubbling focusout to trigger the blur autosave.
+        """
+        # The native <select> is visually hidden behind a custom-styled component, so it is
+        # not "clickable" and cannot be real-clicked. Use presence and drive it via JS,
+        # dispatching a bubbling focusout (React's onBlur listens at the root, so the event
+        # need not come from a truly focused element) to trigger the blur autosave.
+        el = self.wait.until(EC.presence_of_element_located(locator))
+        matched = self.driver.execute_script(
+            """
+            const sel = arguments[0], text = arguments[1];
+            const opt = Array.from(sel.options).find(
+                o => o.textContent.trim() === text);
+            if (!opt) return false;
+            const setter = Object.getOwnPropertyDescriptor(
+                HTMLSelectElement.prototype, 'value').set;
+            setter.call(sel, opt.value);
+            sel.dispatchEvent(new Event('input', {bubbles: true}));
+            sel.dispatchEvent(new Event('change', {bubbles: true}));
+            sel.dispatchEvent(new Event('blur', {bubbles: false}));
+            sel.dispatchEvent(new Event('focusout', {bubbles: true}));
+            return true;
+            """,
+            el, text
+        )
+        if not matched:
+            raise AssertionError(f"No <select> option with text '{text}'")
+        return el
+
+    # ── Wait Utilities ─────────────────────────────────────────────────────────
+
+    def wait_for_invisibility(self, locator, timeout=None):
+        """Wait for element to become invisible"""
+        wait = WebDriverWait(self.driver, timeout) if timeout else self.wait
+        return wait.until(EC.invisibility_of_element_located(locator))
+
+    def wait_for_url_contains(self, text, timeout=10):
+        """Wait for URL to contain specific text"""
+        return WebDriverWait(self.driver, timeout).until(
+            lambda d: text in d.current_url
+        )
+
+    def wait_with_timeout(self, timeout):
+        """Create a one-off wait with custom timeout"""
+        return WebDriverWait(self.driver, timeout)
+
+    def enter_date(self, locator, iso_date: str):
+        """Set a <input type=date> to iso_date (YYYY-MM-DD) via the native JS setter.
+
+        send_keys interprets keystrokes according to the OS locale (MM/DD/YYYY on Linux,
+        DD/MM/YYYY on macOS), so the same keystroke string produces different dates on
+        different platforms. Using the native setter bypasses locale entirely.
+
+        The date field saves ONLY on blur, and its onBlur handler reads formData from the
+        render closure: onBlur={() => handleSave(formData)}. If we blur immediately after
+        dispatching change, React hasn't flushed the onChange state update yet, so the
+        onBlur closure still holds the pre-change formData and persists startedOn: null —
+        the input shows the date but the server never receives it. So we wait for React to
+        re-render (input.value reflects the new date and a fresh onBlur closure is bound)
+        BEFORE blurring, guaranteeing handleSave runs with the updated formData.
+        """
+        import time as _time
+        self.wait_for_autosave()
+        el = self.wait.until(EC.element_to_be_clickable(locator))
+        # Focus first: the field saves only on blur, and blur() is a no-op unless the
+        # element is the active element. Then set the value via the native setter and
+        # dispatch input/change so React's onChange updates formData.startedOn.
+        self.driver.execute_script(
+            """
+            const el = arguments[0], val = arguments[1];
+            el.focus();
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            setter.call(el, val);
+            el.dispatchEvent(new Event('input', {bubbles: true}));
+            el.dispatchEvent(new Event('change', {bubbles: true}));
+            """,
+            el, iso_date
+        )
+        # Wait for React to commit the onChange state update before blurring, so the
+        # fresh onBlur closure captures the new date instead of stale formData.
+        try:
+            WebDriverWait(self.driver, 5).until(
+                lambda d: el.get_attribute("value") == iso_date
+            )
+        except TimeoutException:
+            pass
+        _time.sleep(0.5)  # let React flush the re-render and rebind onBlur
+        # Now fire a real blur (element is focused) plus a bubbling focusout so React's
+        # onBlur runs handleSave with the updated formData and persists startedOn.
+        self.driver.execute_script(
+            """
+            const el = arguments[0];
+            el.blur();
+            el.dispatchEvent(new Event('focusout', {bubbles: true}));
+            """,
+            el
+        )
+        self.wait_for_autosave(trigger_blur=False)
+        return self
+
+    # ── File Upload Utility ────────────────────────────────────────────────────
+
+    def upload_file_to_dropzone(self, path_to_file, dropzone_class="DropZone-module_DropZone__xD9-6",
+                                input_index=0):
+        """
+        Standard file upload to React DropZone component.
+        Primary: send_keys after removing display:none (triggers real browser/React events + server upload).
+        Fallback: JavaScript DataTransfer (updates client-side state only).
+
+        input_index selects which file <input> to target when a form has several (e.g. the
+        collaborative has separate logo (0) and cover image (1) dropzones); defaulting to the
+        first preserves single-upload behaviour.
+        """
+        import os, time, base64
+        from selenium.webdriver.common.by import By
+
+        assert os.path.isfile(path_to_file), f"File does not exist: {path_to_file}"
+        abs_path = os.path.abspath(path_to_file)
+        file_name = os.path.basename(abs_path)
+        ext = file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
+        mime_map = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+                    "gif": "image/gif", "webp": "image/webp", "svg": "image/svg+xml"}
+        mime_type = mime_map.get(ext, "application/octet-stream")
+
+        inputs = self.wait.until(
+            lambda d: d.find_elements(By.XPATH, "//input[@type='file']") or False
+        )
+        if input_index >= len(inputs):
+            raise AssertionError(
+                f"Wanted file input #{input_index} but only {len(inputs)} present"
+            )
+        input_el = inputs[input_index]
+
+        # Remove display:none so ChromeDriver can interact with the file input.
+        # ChromeDriver uses CDP DOM.setFileInputFiles which triggers real browser events
+        # (including React's synthetic onChange), enabling server-side upload.
+        self.driver.execute_script("arguments[0].removeAttribute('style');", input_el)
+        time.sleep(0.2)
+
+        try:
+            input_el.send_keys(abs_path)
+            time.sleep(2)
+            files_len = self.driver.execute_script("return arguments[0].files.length", input_el)
+            if files_len > 0:
+                return self
+        except Exception:
+            pass
+
+        # Fallback: JavaScript DataTransfer (updates React state client-side)
+        with open(abs_path, "rb") as f:
+            file_b64 = base64.b64encode(f.read()).decode()
+
+        self.driver.execute_script("""
+            var b64 = arguments[0], name = arguments[1], mime = arguments[2], input = arguments[3];
+            try {
+                var bytes = atob(b64);
+                var arr = new Uint8Array(bytes.length);
+                for (var i = 0; i < bytes.length; i++) { arr[i] = bytes.charCodeAt(i); }
+                var blob = new Blob([arr], {type: mime});
+                var file = new File([blob], name, {type: mime});
+                var dt = new DataTransfer();
+                dt.items.add(file);
+                Object.defineProperty(input, 'files', {writable: true, configurable: true, value: dt.files});
+                var event = new Event('change', {bubbles: true, cancelable: false});
+                input.dispatchEvent(event);
+                return input.files.length;
+            } catch(e) { return 'error: ' + e; }
+        """, file_b64, file_name, mime_type, input_el)
+        time.sleep(2)
+        return self
+
+    # ── Element State Utilities ────────────────────────────────────────────────
+
+    def get_attribute(self, locator, attribute_name):
+        """Get attribute value from element"""
+        element = self.wait.until(EC.presence_of_element_located(locator))
+        return element.get_attribute(attribute_name)
+
+    def get_text(self, locator):
+        """Get text content from element"""
+        element = self.wait.until(EC.visibility_of_element_located(locator))
+        return element.text.strip()
+
+    def is_visible(self, locator, timeout=5):
+        """
+        Check if element is visible within timeout period.
+        Returns True if visible, False if not found or not visible.
+        """
+        try:
+            WebDriverWait(self.driver, timeout).until(
+                EC.visibility_of_element_located(locator)
+            )
+            return True
+        except TimeoutException:
+            return False
+
+    # ── Advanced Interaction Utilities ─────────────────────────────────────────
+
+    def scroll_to_element(self, locator):
+        """Scroll element into view (center of viewport)"""
+        element = self.wait.until(EC.presence_of_element_located(locator))
+        self.driver.execute_script(
+            "arguments[0].scrollIntoView({behavior: 'auto', block: 'center'});",
+            element
+        )
+        return element
+
+    def js_click(self, locator):
+        """
+        Click element via JavaScript (bypasses intercepted clicks).
+        Use when standard click() fails due to overlays or animations.
+        """
+        element = self.wait.until(EC.presence_of_element_located(locator))
+        self.driver.execute_script("arguments[0].click();", element)
+        return element
+
+    # ── Autosave Utility ───────────────────────────────────────────────────────
+
+    def wait_for_autosave(self, trigger_blur=True, timeout=15):
+        """
+        Wait for the editor autosave cycle to commit pending changes.
+
+        Blurs the currently focused element via JavaScript to fire its onBlur
+        handler (body.click() does not reliably blur inputs in Chrome), then
+        waits for the 'Saving...' indicator to appear and resolve.
+        Falls back to a generous sleep if the indicator is too fast to catch.
+        """
+        import time as _time
+        from selenium.webdriver.common.by import By
+
+        if trigger_blur:
+            try:
+                # JS blur reliably triggers React's onBlur; body.click() does not
+                # move focus away from focusable elements in Chrome.
+                self.driver.execute_script(
+                    "var el = document.activeElement;"
+                    "if (el && el.tagName !== 'BODY') { el.blur(); }"
+                )
+            except Exception:
+                pass
+
+        saving_locator = (By.XPATH, "//*[normalize-space(text())='Saving...']")
+
+        try:
+            # Poll at 100ms to catch brief Saving... indicator (default is 500ms)
+            WebDriverWait(self.driver, 5, poll_frequency=0.1).until(
+                EC.presence_of_element_located(saving_locator)
+            )
+            # Save in progress — wait until it finishes
+            WebDriverWait(self.driver, timeout).until(
+                EC.invisibility_of_element_located(saving_locator)
+            )
+            _time.sleep(0.3)
+        except TimeoutException:
+            # Saving... didn't appear — either already saved or save was too fast
+            # to catch. Add a generous margin to ensure the network round-trip
+            # completes before navigating away.
+            _time.sleep(4)
+
+        return self

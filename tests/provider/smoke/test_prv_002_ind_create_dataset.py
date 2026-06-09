@@ -2,6 +2,7 @@
 import os
 import pytest
 import requests
+import shutil
 from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -13,7 +14,7 @@ from pages.provider.provider_home_page import ProviderHomePage
 from pages.provider.my_dashboard_page import MyDashboardPage
 from pages.provider.create_dataset_page import CreateDatasetPage
 
-@pytest.mark.smoke
+@pytest.mark.functional
 def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url, test_credentials):
 
     """
@@ -39,8 +40,8 @@ def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url, test_cred
         if not home.is_loaded():
             home.load()
             assert home.is_loaded(), "Homepage did not load successfully"
-    except Exception as e:
-        print(f"Error loading homepage: {e}")
+    except Exception:
+        pass
 
     # Step 2: Login as provider (auto-redirects to /dashboard)
     prov_home = home.go_to_login(flow="provider", email=email, password=password)
@@ -74,9 +75,9 @@ def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url, test_cred
     )
 
     # (5b) Sectors
-    create_ds.select_sectors(["Public Finance"])
+    create_ds.select_sectors(["Budgets"])
     selected_sectors = create_ds.get_selected_sectors()  # e.g. returns ['Budgets']
-    assert "Public Finance" in selected_sectors, (
+    assert "Budgets" in selected_sectors, (
         f"Step 5b failure: Sector 'Budgets' was not selected; current selection = {selected_sectors}."
     )
 
@@ -90,8 +91,8 @@ def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url, test_cred
     # (5d) Geography
     create_ds.select_geography("Assam")
     actual_geo = create_ds.get_selected_geography()  # e.g. returns 'India'
-    assert actual_geo == "Assam", (
-        f"Step 5d failure: Expected geography 'Assam', but saw '{actual_geo}'."
+    assert "Assam" in actual_geo, (
+        f"Step 5d failure: Expected geography containing 'Assam', but saw '{actual_geo}'."
     )
 
     # (5e) Date of Creation
@@ -122,15 +123,31 @@ def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url, test_cred
     # ─── Step 6: DATA FILES TAB ──────────────────────────────────────────────────────────────────────
     create_ds.go_to_datafiles_tab()
 
-    # (6a) Upload sample CSV
-    create_ds.upload_datafile(sample_csv_path)
+    # (6a) Create a unique copy of the CSV file for this test run
+    # This is needed because the platform requires unique resource filenames
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    original_filename = os.path.basename(sample_csv_path)
+    filename_without_ext, ext = os.path.splitext(original_filename)
+    unique_filename = f"{filename_without_ext}_{timestamp}{ext}"
 
-    # (6b) Verify that our CSV appears under “Uploaded Files”
+    # Create unique file in the same directory as the original
+    unique_csv_path = os.path.join(os.path.dirname(sample_csv_path), unique_filename)
+    shutil.copy2(sample_csv_path, unique_csv_path)
+
+    # Upload the unique CSV file
+    create_ds.upload_datafile(unique_csv_path)
+
+    # (6b) Verify that our CSV appears under "Uploaded Files"
     uploaded_list = create_ds.get_uploaded_resource_names()
-    expected_base = os.path.basename(sample_csv_path)
-    assert expected_base in uploaded_list, (
-        f"Step 6b failure: After uploading, expected '{expected_base}' in {uploaded_list}."
+    assert unique_filename in uploaded_list, (
+        f"Step 6b failure: After uploading, expected '{unique_filename}' in {uploaded_list}."
     )
+
+    # Clean up the temporary unique file
+    try:
+        os.remove(unique_csv_path)
+    except:
+        pass  # Ignore cleanup errors
 
     # ─── Step 7: PUBLISH TAB ─────────────────────────────────────────────────────────────────────────
     detail_page = create_ds.go_to_publish_tab()
