@@ -109,6 +109,45 @@ class OrganizationsPage(BasePage):
 
         return CreateDatasetPage(self.driver)
 
+    def click_add_new_prompt_dataset(self):
+        from pages.provider.create_dataset_page import CreateDatasetPage
+        from locators.provider.create_dataset_locators import CreateDatasetLocators
+
+        self.wait_with_timeout(15).until(
+            lambda d: '/dataset' in d.current_url
+        )
+
+        btn = self.wait_with_timeout(15).until(
+            EC.presence_of_element_located(OrgLocators.ADD_NEW_DATASET_BTN),
+            message="Timed out waiting for the 'Add New Dataset' button"
+        )
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
+        self.driver.execute_script("arguments[0].click();", btn)
+
+        self.wait_with_timeout(10).until(
+            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.MODAL_TITLE)),
+            message="Timed out waiting for 'Create New Dataset' modal to appear"
+        )
+
+        prompt_card = self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.PROMPT_DATASET_CARD)),
+            message="Timed out waiting for 'Prompt Dataset' option to be clickable"
+        )
+        prompt_card.click()
+
+        create_btn = self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.CREATE_DATASET_BUTTON)),
+            message="Timed out waiting for 'Create Dataset' button to be clickable"
+        )
+        create_btn.click()
+
+        self.wait_with_timeout(10).until(
+            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
+            message="Timed out waiting for Metadata tab after creating prompt dataset"
+        )
+
+        return CreateDatasetPage(self.driver)
+
     def click_usecases_card(self):
         """
         Click the UseCases navigation link in the organization dashboard.
