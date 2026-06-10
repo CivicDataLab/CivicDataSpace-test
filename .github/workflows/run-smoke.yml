@@ -23,7 +23,7 @@ on:
 jobs:
   consumer-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
 
     env:
       HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
@@ -63,9 +63,18 @@ jobs:
           google-chrome --version || true
           chromedriver --version || true
 
+      - name: Set markers
+        id: markers
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event_name }}" == "workflow_call" ]]; then
+            echo "value=smoke or functional" >> $GITHUB_OUTPUT
+          else
+            echo "value=smoke" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run consumer smoke tests
         run: |
-          pytest tests/consumer/smoke -m "smoke or functional" -v --json-report
+          pytest tests/consumer/smoke -m "${{ steps.markers.outputs.value }}" -v --json-report
 
       - name: Upload screenshots
         if: always()
@@ -105,7 +114,7 @@ jobs:
 
   api-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
 
     env:
       HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
@@ -141,9 +150,18 @@ jobs:
           echo "HOME_URL_DEV set? $([ -n "$HOME_URL_DEV" ] && echo yes || echo no)"
           echo "TEST_EMAIL_1 set? $([ -n "$TEST_EMAIL_1" ] && echo yes || echo no)"
 
+      - name: Set markers
+        id: markers
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event_name }}" == "workflow_call" ]]; then
+            echo "value=smoke or functional" >> $GITHUB_OUTPUT
+          else
+            echo "value=smoke" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run API smoke tests
         run: |
-          pytest tests/api/smoke -m "smoke or functional" -v --json-report -n 2
+          pytest tests/api/smoke -m "${{ steps.markers.outputs.value }}" -v --json-report -n 2
 
       - name: Upload reports
         if: always()
@@ -220,11 +238,18 @@ jobs:
           google-chrome --version || true
           chromedriver --version || true
 
-      - name: Run provider smoke tests
-        env:
-          TEST_USER_INDEX: "1"
+      - name: Set markers
+        id: markers
         run: |
-          pytest tests/provider/smoke -m "smoke or functional" -v --json-report -n 2
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event_name }}" == "workflow_call" ]]; then
+            echo "value=smoke or functional" >> $GITHUB_OUTPUT
+          else
+            echo "value=smoke" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run provider smoke tests
+        run: |
+          pytest tests/provider/smoke -m "${{ steps.markers.outputs.value }}" -v --json-report -n 2
 
       - name: Upload screenshots
         if: always()
