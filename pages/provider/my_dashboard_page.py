@@ -193,6 +193,28 @@ class MyDashboardPage(BasePage):
 
         return CollaborativesListPage(self.driver)
 
+    def click_ai_models_card(self):
+        from pages.provider.ai_models_list_page import AiModelsListPage
+        from selenium.common.exceptions import TimeoutException
+
+        ai_link = self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable(MyDashboardLocators.AI_MODELS_NAV_LINK),
+            message="Timed out waiting for 'AI Models' nav link"
+        )
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", ai_link)
+        self.driver.execute_script("arguments[0].click();", ai_link)
+
+        try:
+            self.wait_with_timeout(8).until(lambda d: '/aimodels' in d.current_url)
+        except TimeoutException:
+            ai_link.click()
+            self.wait_with_timeout(15).until(
+                lambda d: '/aimodels' in d.current_url,
+                message="Timed out waiting for AI Models page URL after retry"
+            )
+
+        return AiModelsListPage(self.driver)
+
     def click_charts_card(self):
         from locators.provider.charts_locators import ChartsLocators
         from pages.provider.charts_list_page import ChartsListPage
