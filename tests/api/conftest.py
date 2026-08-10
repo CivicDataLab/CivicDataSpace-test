@@ -142,3 +142,45 @@ def anon_api_client(api_base_url):
 def graphql_client(api_base_url, auth_token):
     """Authenticated GraphQLClient for the full test session."""
     return GraphQLClient(api_base_url, token=auth_token)
+
+
+@pytest.fixture(scope="session")
+def anon_graphql_client(api_base_url):
+    """Unauthenticated GraphQLClient (for public-query cross-checks, e.g. sitemap counts)."""
+    return GraphQLClient(api_base_url)
+
+
+# ─── Frontend (DataSpaceFrontend) clients — used by sitemap/SEO tests ──────────
+#
+# Additional .env variables used here:
+#   HOME_URL_DEV  - Frontend base URL for the dev environment
+#   HOME_URL_PROD - Frontend base URL for the production environment
+
+@pytest.fixture(scope="session")
+def frontend_base_url_dev():
+    """Frontend base URL for the dev environment. Skips if not set."""
+    url = os.getenv("HOME_URL_DEV")
+    if not url:
+        pytest.skip("HOME_URL_DEV not set — skipping dev frontend tests")
+    return url.rstrip("/")
+
+
+@pytest.fixture(scope="session")
+def frontend_base_url_prod():
+    """Frontend base URL for the production environment. Skips if not set."""
+    url = os.getenv("HOME_URL_PROD")
+    if not url:
+        pytest.skip("HOME_URL_PROD not set — skipping prod frontend tests")
+    return url.rstrip("/")
+
+
+@pytest.fixture(scope="session")
+def dev_frontend_client(frontend_base_url_dev):
+    """Unauthenticated APIClient pointed at the dev frontend (for sitemap/robots.txt checks)."""
+    return APIClient(frontend_base_url_dev)
+
+
+@pytest.fixture(scope="session")
+def prod_frontend_client(frontend_base_url_prod):
+    """Unauthenticated APIClient pointed at the prod frontend (for sitemap/robots.txt checks)."""
+    return APIClient(frontend_base_url_prod)

@@ -91,6 +91,9 @@ def driver(request):
     tmp_profile = tempfile.mkdtemp(prefix="chrome-user-data-")
     opts.add_argument(f"--user-data-dir={tmp_profile}")
 
+    # Capture browser console logs (used by console-error assertions, e.g. GA smoke tests)
+    opts.set_capability("goog:loggingPrefs", {"browser": "ALL"})
+
     if browser == "chrome":
         # 1) Fetch via webdriver_manager
         raw_path = ChromeDriverManager().install()
