@@ -183,6 +183,13 @@ jobs:
           pytest tests/api/smoke -m "${{ steps.markers.outputs.value }}" -v --json-report -n 2
 
       - name: Enforce minimum passed count
+        # Only meaningful when a caller actually supplied api_base_url --
+        # direct push/PR/dispatch runs on this repo have never had a live
+        # backend to test against, so api-smoke legitimately all-skips
+        # there (matches this job's behavior before this guard existed).
+        # A workflow_call caller that DID pass api_base_url is exactly the
+        # case this guard exists to catch.
+        if: ${{ env.API_BASE_URL != '' }}
         run: |
           python - <<'PY'
           import json
