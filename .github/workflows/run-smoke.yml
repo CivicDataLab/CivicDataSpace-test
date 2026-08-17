@@ -8,6 +8,22 @@ on:
     branches: [CI]
   workflow_dispatch: {}
   workflow_call:
+    inputs:
+      api_base_url:
+        description: 'Backend base URL for api-smoke (maps to API_BASE_URL). Leave unset to skip API tests.'
+        type: string
+        required: false
+        default: ''
+      deployed_sha:
+        description: 'Commit SHA to verify against the live /health/ git_sha field. Leave unset to skip the check.'
+        type: string
+        required: false
+        default: ''
+      min_passed:
+        description: 'Minimum number of api-smoke tests that must pass for the job to succeed.'
+        type: number
+        required: false
+        default: 1
     secrets:
       HOME_URL_DEV:
         required: true
@@ -120,6 +136,8 @@ jobs:
       HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
       TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
       TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+      API_BASE_URL: ${{ inputs.api_base_url }}
+      EXPECTED_DEPLOYED_SHA: ${{ inputs.deployed_sha }}
 
     steps:
       - uses: actions/checkout@v4
@@ -149,6 +167,7 @@ jobs:
         run: |
           echo "HOME_URL_DEV set? $([ -n "$HOME_URL_DEV" ] && echo yes || echo no)"
           echo "TEST_EMAIL_1 set? $([ -n "$TEST_EMAIL_1" ] && echo yes || echo no)"
+          echo "API_BASE_URL set? $([ -n "$API_BASE_URL" ] && echo yes || echo no)"
 
       - name: Set markers
         id: markers
@@ -162,6 +181,26 @@ jobs:
       - name: Run API smoke tests
         run: |
           pytest tests/api/smoke -m "${{ steps.markers.outputs.value }}" -v --json-report -n 2
+
+      - name: Enforce minimum passed count
+        run: |
+          python - <<'PY'
+          import json
+          import sys
+
+          min_passed = int("${{ inputs.min_passed }}" or "1")
+          summary = json.load(open("report.json")).get("summary", {})
+          passed = summary.get("passed", 0)
+
+          print(f"passed={passed} min_passed={min_passed}")
+          if passed < min_passed:
+              print(
+                  f"::error::Only {passed} test(s) passed, need at least {min_passed} "
+                  "-- a fully-skipped run (e.g. API_BASE_URL not reaching the tests) "
+                  "would otherwise exit 0 and look green."
+              )
+              sys.exit(1)
+          PY
 
       - name: Upload reports
         if: always()
