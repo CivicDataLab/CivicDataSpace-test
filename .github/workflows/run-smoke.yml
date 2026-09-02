@@ -19,6 +19,12 @@ on:
         required: false
       TEST_PASSWORD_2:
         required: false
+      # Required in practice by the api-smoke job, declared optional so the
+      # existing callers (DataSpaceBackend, DataSpaceFrontend) keep parsing
+      # until they pass it. api-smoke preflights it and fails with a readable
+      # message rather than a 401 from inside a fixture.
+      KEYCLOAK_CLIENT_SECRET:
+        required: false
 
 jobs:
   consumer-smoke:
@@ -121,6 +127,24 @@ jobs:
       TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
       TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
 
+      # Without these the keycloak_config fixture skips, and every
+      # authenticated API test skips with it -- a green run that asserted
+      # nothing. Host, realm and client id are public, so they are repo
+      # variables with literal defaults: visible in review, overridable
+      # without a code change, and correct out of the box.
+      KEYCLOAK_URL: ${{ vars.KEYCLOAK_URL || 'https://auth.civicdatalab.in' }}
+      KEYCLOAK_REALM: ${{ vars.KEYCLOAK_REALM || 'DataSpace' }}
+      KEYCLOAK_CLIENT_ID: ${{ vars.KEYCLOAK_CLIENT_ID || 'dataspace' }}
+      # `dataspace` is a confidential client: ROPC returns 401
+      # unauthorized_client without this, so it is a real secret.
+      KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+      # What KEYCLOAK_URL must actually resolve to. Pinned independently and
+      # NOT derived from KEYCLOAK_URL: the decommissioned server is internally
+      # consistent (it reports its own /auth issuer quite happily), so
+      # comparing an issuer against the host it came from passes for any
+      # running Keycloak and proves nothing about which one it is.
+      EXPECTED_ISSUER: ${{ vars.EXPECTED_ISSUER || 'https://auth.civicdatalab.in/realms/DataSpace' }}
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -145,10 +169,34 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Sanity check
+      # Fails the job instead of letting the run go green on skips. The whole
+      # point of this suite is the authenticated paths; if the Keycloak config
+      # is absent they skip, the summary still reads 0 failed, and nobody
+      # notices. That is how a stale KEYCLOAK_URL survived the migration.
+      - name: Preflight Keycloak configuration
         run: |
+          missing=0
+          for v in KEYCLOAK_URL KEYCLOAK_REALM KEYCLOAK_CLIENT_ID KEYCLOAK_CLIENT_SECRET; do
+            if [ -z "${!v}" ]; then echo "::error::$v is not set"; missing=1; else echo "$v set"; fi
+          done
           echo "HOME_URL_DEV set? $([ -n "$HOME_URL_DEV" ] && echo yes || echo no)"
           echo "TEST_EMAIL_1 set? $([ -n "$TEST_EMAIL_1" ] && echo yes || echo no)"
+          if [ "$missing" = "1" ]; then
+            echo "::error::Authenticated API tests would silently skip. Add the missing values as repository secrets/variables on CivicDataSpace-test, and pass KEYCLOAK_CLIENT_SECRET from any workflow that calls this one."
+            exit 1
+          fi
+
+          # Prove the configured host is the migrated one before running anything.
+          issuer=$(curl -sf --max-time 15 "$KEYCLOAK_URL/realms/$KEYCLOAK_REALM/.well-known/openid-configuration" | python -c 'import json,sys; print(json.load(sys.stdin)["issuer"])' 2>/dev/null) || {
+            echo "::error::No OIDC discovery document at $KEYCLOAK_URL/realms/$KEYCLOAK_REALM -- KEYCLOAK_URL is wrong or the server is down."
+            exit 1
+          }
+          echo "issuer:   $issuer"
+          echo "expected: $EXPECTED_ISSUER"
+          if [ "$issuer" != "$EXPECTED_ISSUER" ]; then
+            echo "::error::KEYCLOAK_URL resolves to issuer '$issuer', but this deployment requires '$EXPECTED_ISSUER'. Tokens from the wrong issuer are rejected by the backend, so every authenticated test would fail or silently skip."
+            exit 1
+          fi
 
       - name: Set markers
         id: markers
