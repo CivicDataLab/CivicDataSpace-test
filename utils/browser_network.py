@@ -8,19 +8,6 @@ import json
 from collections import Counter
 
 
-def enable_network_logging(options):
-    """Turn on Chrome's performance log alongside the console log.
-
-    The shared `driver` fixture only enables {"browser": "ALL"}. Network events
-    live in the performance log, so anything asserting on requests has to ask
-    for it explicitly.
-    """
-    options.set_capability(
-        "goog:loggingPrefs", {"browser": "ALL", "performance": "ALL"}
-    )
-    return options
-
-
 def count_requests(driver, substring):
     """Count requests whose URL contains *substring*, grouped by path.
 

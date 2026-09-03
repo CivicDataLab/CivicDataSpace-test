@@ -22,13 +22,11 @@
 # magnitude below a loop.
 
 import os
-import tempfile
 import time
 
 import pytest
-from selenium import webdriver
 
-from utils.browser_network import count_requests, enable_network_logging
+from utils.browser_network import count_requests
 
 pytestmark = [pytest.mark.smoke, pytest.mark.regression]
 
@@ -41,43 +39,16 @@ MAX_AUTH_REQUESTS = 15
 SETTLE_SECONDS = 12
 
 
-@pytest.fixture
-def network_driver():
-    """A Chrome driver with the performance log enabled.
-
-    Separate from the shared `driver` fixture on purpose: that one enables only
-    the browser console log, and turning on performance logging for every test
-    in the suite would add log volume that nothing else reads.
-    """
-    opts = webdriver.ChromeOptions()
-    for flag in (
-        "--headless=new",
-        "--no-sandbox",
-        "--disable-gpu",
-        "--disable-dev-shm-usage",
-        "--disable-extensions",
-        "--window-size=1920,1080",
-    ):
-        opts.add_argument(flag)
-    opts.add_argument(f"--user-data-dir={tempfile.mkdtemp(prefix='chrome-net-')}")
-    enable_network_logging(opts)
-
-    driver = webdriver.Chrome(options=opts)
-    driver.set_page_load_timeout(60)
-    yield driver
-    driver.quit()
-
-
 @pytest.mark.parametrize("path", ["/", "/datasets"])
-def test_page_load_does_not_loop_on_auth_requests(network_driver, path):
+def test_page_load_does_not_loop_on_auth_requests(driver, path):
     """A page load must not issue a runaway number of NextAuth requests."""
-    network_driver.get(f"{BASE_URL}{path}")
+    driver.get(f"{BASE_URL}{path}")
     # Deliberately generous: the loop was fastest right after load, so a short
     # window would miss it. This is long enough for a broken build to give itself
     # away.
     time.sleep(SETTLE_SECONDS)
 
-    counts = count_requests(network_driver, "/api/auth/")
+    counts = count_requests(driver, "/api/auth/")
     total = sum(counts.values())
 
     assert total <= MAX_AUTH_REQUESTS, (
@@ -91,7 +62,7 @@ def test_page_load_does_not_loop_on_auth_requests(network_driver, path):
 
 
 @pytest.mark.parametrize("path", ["/", "/datasets"])
-def test_page_load_does_not_repeatedly_sign_out(network_driver, path):
+def test_page_load_does_not_repeatedly_sign_out(driver, path):
     """Signing out is never part of loading a page anonymously.
 
     Split from the count above because it fails for a specific, unambiguous
@@ -99,10 +70,10 @@ def test_page_load_does_not_repeatedly_sign_out(network_driver, path):
     an anonymous page load has no session to end, so any signout at all is the
     bug.
     """
-    network_driver.get(f"{BASE_URL}{path}")
+    driver.get(f"{BASE_URL}{path}")
     time.sleep(SETTLE_SECONDS)
 
-    counts = count_requests(network_driver, "/api/auth/")
+    counts = count_requests(driver, "/api/auth/")
     signouts = counts.get("signout", 0)
 
     assert signouts == 0, (
