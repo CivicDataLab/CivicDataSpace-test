@@ -54,7 +54,32 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: CivicDataLab/CivicDataSpace-test
-          ref: CI
+          # Check out the code under test, which is not always `CI`.
+          #
+          # `repository:` has to be pinned because this workflow is called from
+          # other repos (DataSpaceBackend, DataSpaceFrontend); without it a
+          # checkout there would fetch the caller's code, not this suite.
+          #
+          # But pinning `ref: CI` too meant a pull request's checks ran against
+          # `CI` rather than against the pull request. That went wrong three
+          # separate ways in one day:
+          #
+          #   - #24 added tests that never executed on their own PR. They were
+          #     green, merged, and then broke consumer-smoke on the next deploy
+          #     in a different repo - which rolled the backend back.
+          #   - #20's checks reported on `CI`, not on the merge being proposed.
+          #   - #26, the fix for that breakage, could not go green: its checks
+          #     ran the broken code it was deleting, so it was unmergeable
+          #     without an override.
+          #
+          # When this workflow runs in its own repository, check out whatever
+          # triggered it - the PR head for a pull_request, the pushed commit
+          # otherwise. When it is called from another repository,
+          # `github.repository` is the caller, and `CI` remains correct.
+          ref: >-
+            ${{ github.repository == 'CivicDataLab/CivicDataSpace-test'
+                && (github.event.pull_request.head.sha || github.sha)
+                || 'CI' }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -172,7 +197,32 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: CivicDataLab/CivicDataSpace-test
-          ref: CI
+          # Check out the code under test, which is not always `CI`.
+          #
+          # `repository:` has to be pinned because this workflow is called from
+          # other repos (DataSpaceBackend, DataSpaceFrontend); without it a
+          # checkout there would fetch the caller's code, not this suite.
+          #
+          # But pinning `ref: CI` too meant a pull request's checks ran against
+          # `CI` rather than against the pull request. That went wrong three
+          # separate ways in one day:
+          #
+          #   - #24 added tests that never executed on their own PR. They were
+          #     green, merged, and then broke consumer-smoke on the next deploy
+          #     in a different repo - which rolled the backend back.
+          #   - #20's checks reported on `CI`, not on the merge being proposed.
+          #   - #26, the fix for that breakage, could not go green: its checks
+          #     ran the broken code it was deleting, so it was unmergeable
+          #     without an override.
+          #
+          # When this workflow runs in its own repository, check out whatever
+          # triggered it - the PR head for a pull_request, the pushed commit
+          # otherwise. When it is called from another repository,
+          # `github.repository` is the caller, and `CI` remains correct.
+          ref: >-
+            ${{ github.repository == 'CivicDataLab/CivicDataSpace-test'
+                && (github.event.pull_request.head.sha || github.sha)
+                || 'CI' }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -308,7 +358,32 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: CivicDataLab/CivicDataSpace-test
-          ref: CI
+          # Check out the code under test, which is not always `CI`.
+          #
+          # `repository:` has to be pinned because this workflow is called from
+          # other repos (DataSpaceBackend, DataSpaceFrontend); without it a
+          # checkout there would fetch the caller's code, not this suite.
+          #
+          # But pinning `ref: CI` too meant a pull request's checks ran against
+          # `CI` rather than against the pull request. That went wrong three
+          # separate ways in one day:
+          #
+          #   - #24 added tests that never executed on their own PR. They were
+          #     green, merged, and then broke consumer-smoke on the next deploy
+          #     in a different repo - which rolled the backend back.
+          #   - #20's checks reported on `CI`, not on the merge being proposed.
+          #   - #26, the fix for that breakage, could not go green: its checks
+          #     ran the broken code it was deleting, so it was unmergeable
+          #     without an override.
+          #
+          # When this workflow runs in its own repository, check out whatever
+          # triggered it - the PR head for a pull_request, the pushed commit
+          # otherwise. When it is called from another repository,
+          # `github.repository` is the caller, and `CI` remains correct.
+          ref: >-
+            ${{ github.repository == 'CivicDataLab/CivicDataSpace-test'
+                && (github.event.pull_request.head.sha || github.sha)
+                || 'CI' }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
