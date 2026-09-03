@@ -92,7 +92,14 @@ def driver(request):
     opts.add_argument(f"--user-data-dir={tmp_profile}")
 
     # Capture browser console logs (used by console-error assertions, e.g. GA smoke tests)
-    opts.set_capability("goog:loggingPrefs", {"browser": "ALL"})
+    # "performance" carries Chrome's Network.* events, which is the only way to
+    # assert on what the app actually requested. Tests that count requests need
+    # it; adding it here rather than in a second driver fixture keeps
+    # chromedriver resolution (below) in one place - duplicating that setup is
+    # what broke consumer-smoke with a driver/browser version mismatch.
+    opts.set_capability(
+        "goog:loggingPrefs", {"browser": "ALL", "performance": "ALL"}
+    )
 
     if browser == "chrome":
         # 1) Fetch via webdriver_manager
