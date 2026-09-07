@@ -1,0 +1,167 @@
+# Keycloak auth-page tests, runnable on their own.
+#
+# The theme (DataSpaceKeycloakTheme) deploys independently of the app, so a theme
+# change can break sign-in without anything in the product repos moving. Running the
+# whole smoke suite for that is ~15 minutes of mostly irrelevant browsing; this runs
+# only the tests that exercise Keycloak-served pages and the token exchange.
+#
+# Three ways in, deliberately:
+#   workflow_call        - the theme's deploy calls this after a healthy deploy.
+#                          Needs no token, which is why it is the default path.
+#   repository_dispatch  - for any repo that would rather fire an event. Requires a
+#                          PAT with `repo` scope in the SENDING repo, because the
+#                          default GITHUB_TOKEN cannot dispatch across repositories.
+#   workflow_dispatch    - run it by hand.
+
+name: Keycloak Tests
+
+on:
+  workflow_call:
+    inputs:
+      keycloak_url:
+        description: 'Keycloak base URL to test against'
+        type: string
+        required: false
+        default: 'https://auth.civicdatalab.in'
+      app_base_url:
+        description: 'App whose callback the sign-in flow returns to'
+        type: string
+        required: false
+        default: 'https://dev.civicdataspace.in'
+    secrets:
+      HOME_URL_DEV:
+        required: false
+      KEYCLOAK_CLIENT_SECRET:
+        required: false
+  repository_dispatch:
+    types: [keycloak-deployed]
+  workflow_dispatch:
+    inputs:
+      keycloak_url:
+        description: 'Keycloak base URL to test against'
+        type: string
+        required: false
+        default: 'https://auth.civicdatalab.in'
+
+concurrency:
+  group: keycloak-tests
+  cancel-in-progress: false
+
+jobs:
+  keycloak:
+    name: Keycloak auth pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      # inputs.* is empty on repository_dispatch, so fall back to the payload and
+      # then to the default. Without this the URL is blank on a dispatched run and
+      # every test would fail for the wrong reason.
+      KEYCLOAK_URL: >-
+        ${{ inputs.keycloak_url
+            || github.event.client_payload.keycloak_url
+            || 'https://auth.civicdatalab.in' }}
+      HOME_URL_DEV: >-
+        ${{ inputs.app_base_url
+            || github.event.client_payload.app_base_url
+            || secrets.HOME_URL_DEV
+            || 'https://dev.civicdataspace.in' }}
+      KEYCLOAK_REALM: ${{ vars.KEYCLOAK_REALM || 'DataSpace' }}
+      KEYCLOAK_CLIENT_ID: ${{ vars.KEYCLOAK_CLIENT_ID || 'dataspace' }}
+      KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: CivicDataLab/CivicDataSpace-test
+          # Same reasoning as run-smoke.yml: check out this repo's own code when the
+          # run originates here, and the CI branch when another repo called us.
+          ref: >-
+            ${{ github.repository == 'CivicDataLab/CivicDataSpace-test'
+                && (github.event.pull_request.head.sha || github.sha)
+                || 'CI' }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Set up Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          install-chromedriver: true
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Fails fast and legibly rather than letting every test fail with a confusing
+      # locator timeout because the host is wrong.
+      - name: Preflight the Keycloak host
+        run: |
+          set -euo pipefail
+          echo "Keycloak: $KEYCLOAK_URL"
+          echo "App:      $HOME_URL_DEV"
+          echo "Trigger:  ${{ github.event_name }}${{ github.event.action && format(' ({0})', github.event.action) || '' }}"
+
+          ISSUER=$(curl -sf --max-time 15 \
+            "$KEYCLOAK_URL/realms/$KEYCLOAK_REALM/.well-known/openid-configuration" \
+            | python -c 'import json,sys; print(json.load(sys.stdin)["issuer"])' 2>/dev/null) || {
+              echo "::error::No OIDC discovery document at $KEYCLOAK_URL/realms/$KEYCLOAK_REALM"
+              exit 1
+            }
+          echo "issuer: $ISSUER"
+
+          # The decommissioned server served every realm under /auth. Anything still
+          # answering there is the old host, and tokens from it are rejected.
+          case "$ISSUER" in
+            */auth/realms/*)
+              echo "::error::Issuer $ISSUER is under /auth — that is the decommissioned Keycloak."
+              exit 1 ;;
+          esac
+
+      - name: Run Keycloak auth-page tests
+        run: |
+          pytest \
+            tests/consumer/smoke/test_con_auth_pages.py \
+            tests/api/smoke/test_api_007_keycloak_migration.py \
+            -v --json-report
+
+      # Creates real accounts, so it only runs when it can also delete them. The
+      # fixture skips without admin access rather than leaving strays behind.
+      - name: Run registration flow tests
+        if: env.KEYCLOAK_CLIENT_SECRET != ''
+        run: pytest tests/consumer/functional/test_con_registration.py -v
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keycloak-report
+          path: |
+            report.json
+            TEST_REPORT.md
+          if-no-files-found: ignore
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Keycloak tests" >> "$GITHUB_STEP_SUMMARY"
+          echo "- keycloak: \`$KEYCLOAK_URL\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- trigger: \`${{ github.event_name }}\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f report.json ]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          s = json.load(open("report.json")).get("summary", {})
+          for k in ("total", "passed", "failed", "skipped", "error"):
+              if k in s:
+                  print(f"- **{k}**: {s[k]}")
+          PY
+          fi
