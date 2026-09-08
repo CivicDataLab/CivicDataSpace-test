@@ -19,6 +19,8 @@ class Locators:
     ABOUT_SECTION          = (By.XPATH, "//footer//div[contains(@class, 'about') or .//h3[contains(., 'About')]]")
     SITEMAP_LINKS          = (By.XPATH, "//footer//a[contains(., 'Sitemap')]//span")
     CONTACT_SECTION        = (By.XPATH, "//footer//a[contains(., 'Contact')]//span")
+    # Matches the <a> itself, not its inner <span>, so the test can read @href.
+    PRIVACY_LINK           = (By.XPATH, "//footer//a[.//span[normalize-space()='Privacy'] or normalize-space()='Privacy']")
 
     # Social media icons (footer)
     TWITTER_ICON           = (By.XPATH, "//footer//a[contains(@href, 'twitter')]//svg")
