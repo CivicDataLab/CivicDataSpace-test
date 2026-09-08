@@ -1,6 +1,7 @@
 # CivicDataSpace Automated Test Suite
 
 [![smoke](https://img.shields.io/github/actions/workflow/status/CivicDataLab/CivicDataSpace-test/run-smoke.yml?branch=CI&label=smoke&logo=githubactions&logoColor=white)](https://github.com/CivicDataLab/CivicDataSpace-test/actions/workflows/run-smoke.yml)
+[![keycloak tests](https://img.shields.io/github/actions/workflow/status/CivicDataLab/DataSpaceKeycloakTheme/auth-tests.yml?branch=main&label=keycloak%20tests&logo=githubactions&logoColor=white)](https://github.com/CivicDataLab/DataSpaceKeycloakTheme/actions/workflows/auth-tests.yml)
 [![tests against](https://img.shields.io/badge/tests%20against-dev.civicdataspace.in-0A7D33)](https://dev.civicdataspace.in)
 [![auth](https://img.shields.io/badge/auth-auth.civicdatalab.in-0A7D33)](https://auth.civicdatalab.in/realms/DataSpace)
 [![pytest](https://img.shields.io/badge/pytest-Selenium-4D4D4D)](https://www.selenium.dev/)
