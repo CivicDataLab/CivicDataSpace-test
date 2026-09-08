@@ -54,6 +54,51 @@ def test_TC_HOM_01_icon_visible(driver):
     load_homepage(driver)
     icon = wait_and_capture(driver, "TC_HOM_01", *Locators.ICON)
     assert icon.is_displayed()
+
+
+@pytest.mark.smoke
+def test_TC_HOM_15_privacy_link_in_footer(driver):
+    """Footer exposes a Privacy link pointing at /privacy.
+
+    Covers DataSpaceFrontend#447, which added the link to MainFooter. The href
+    is conditional there (absolute platform URL on a collaborative subdomain,
+    relative /privacy otherwise); this asserts the non-subdomain branch, which
+    is what dev serves.
+    """
+    load_homepage(driver)
+    link = wait_and_capture(driver, "TC_HOM_15", *Locators.PRIVACY_LINK)
+    assert link.is_displayed(), "Privacy link is not visible in the footer"
+
+    href = link.get_attribute("href") or ""
+    assert href.rstrip("/").endswith("/privacy"), (
+        f"Privacy link points at {href!r}, expected a URL ending in /privacy"
+    )
+
+
+@pytest.mark.smoke
+def test_TC_HOM_16_privacy_page_renders(driver):
+    """Following the footer Privacy link lands on a real privacy page.
+
+    The link existing is not enough — a link to a 404 would still satisfy
+    TC_HOM_15. This follows it and checks the destination actually rendered
+    policy content rather than an error page.
+    """
+    load_homepage(driver)
+    link = wait_and_capture(driver, "TC_HOM_15", *Locators.PRIVACY_LINK)
+    driver.get(link.get_attribute("href"))
+
+    WebDriverWait(driver, 10).until(
+        lambda d: d.execute_script("return document.readyState") == "complete"
+    )
+
+    assert "/privacy" in driver.current_url, (
+        f"Expected to land on the privacy page, got {driver.current_url}"
+    )
+    body = driver.find_element(By.TAG_NAME, "body").text
+    assert "privacy" in body.lower(), "Privacy page rendered no privacy content"
+    assert "404" not in body and "not found" not in body.lower(), (
+        "Privacy link led to a 404 / not-found page"
+    )
 '''
 def test_TC_HOM_02_image_renders(driver):
     """Verify homepage image renders without error"""
