@@ -28,6 +28,11 @@ on:
         type: string
         required: false
         default: 'https://dev.civicdataspace.in'
+      api_base_url:
+        description: 'Backend API base URL, for the health assertions'
+        type: string
+        required: false
+        default: 'https://dev.api.civicdataspace.in'
     secrets:
       HOME_URL_DEV:
         required: false
@@ -66,6 +71,14 @@ jobs:
             || github.event.client_payload.app_base_url
             || secrets.HOME_URL_DEV
             || 'https://dev.civicdataspace.in' }}
+      # Without this the api_base_url fixture has nothing to read and skips,
+      # taking every test that depends on it with it. That is how
+      # test_backend_reports_core_services_healthy sat out the first real run of
+      # this workflow -- 12 passed, 1 skipped, job green, nobody the wiser.
+      API_BASE_URL: >-
+        ${{ inputs.api_base_url
+            || github.event.client_payload.api_base_url
+            || 'https://dev.api.civicdataspace.in' }}
       KEYCLOAK_REALM: ${{ vars.KEYCLOAK_REALM || 'DataSpace' }}
       KEYCLOAK_CLIENT_ID: ${{ vars.KEYCLOAK_CLIENT_ID || 'dataspace' }}
       KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
@@ -129,10 +142,27 @@ jobs:
 
       - name: Run Keycloak auth-page tests
         run: |
+          set -euo pipefail
           pytest \
             tests/consumer/smoke/test_con_auth_pages.py \
             tests/api/smoke/test_api_007_keycloak_migration.py \
             -v --json-report
+
+          # A skip here means a fixture found no configuration, not that a test
+          # was deliberately excluded -- there are no skip markers in these two
+          # files. Treat it as a failure: a silently skipped test is the same
+          # green as a passing one, which is exactly how this workflow shipped
+          # with its health assertion inert.
+          python - <<'PY'
+          import json, sys
+          s = json.load(open("report.json")).get("summary", {})
+          print(f"summary: {s}")
+          if s.get("skipped"):
+              print(f"::error::{s['skipped']} test(s) skipped -- a fixture is missing "
+                    "configuration. These files have no skip markers, so a skip here "
+                    "means the job is asserting less than it appears to.")
+              sys.exit(1)
+          PY
 
       # Creates real accounts, so it only runs when it can also delete them. The
       # fixture skips without admin access rather than leaving strays behind.
