@@ -73,7 +73,9 @@ markers first:
 sed -n '/^markers/,/^$/p' pytest.ini
 ```
 
-Verified 2026-09-09 — treat as a starting map, still re-read at runtime:
+Verified 2026-09-09 — a starting map only. **This table goes stale**: IDS-DRR gained
+`security`, `performance`, `load`, `accessibility` and `responsive` within a day of the
+first version of this file being written. Re-read `pytest.ini` every time.
 
 | Category | `CivicDataSpace-test` | `ParakhAI_test` | `IDS-DRR-QA-Automation` |
 |---|---|---|---|
@@ -81,18 +83,24 @@ Verified 2026-09-09 — treat as a starting map, still re-read at runtime:
 | functional | `functional` | `e2e` | `flow` |
 | api | `api` | `api` | **none** |
 | regression | `regression` | `regression` | **none** |
-| security | **none** | `security` | **none** |
-| performance | **none** | `performance` | **none** |
-| load | **none** | `load` | **none** |
+| security | **none** | `security` | `security` |
+| performance | **none** | `performance` | `performance` |
+| load | **none** | `load` | `load` (opt-in, `-m load` only) |
 
 Also available: CDS `mobile`/`seo`/`accessibility`/`widget`; Parakh `visual`/`auth`/
 `mobile`/`accessibility`/`regression_write` (write-side, sandbox-org only, opt-in);
-IDS-DRR `analytics`/`dataset`/`component`/`multistate`/`map_validation`/
-`chart_validation`/`table_validation`/`cross_state`.
+IDS-DRR `accessibility`/`responsive`/`analytics`/`dataset`/`component`/`multistate`/
+`map_validation`/`chart_validation`/`table_validation`/`cross_state`.
+
+IDS-DRR still has **no `api` and no `regression`** marker, and no API layer or login flow
+to test — it is Selenium against public pages. Its `load` marker is opt-in and excluded
+from the default run; do not add `load` tests that would fire in normal CI.
 
 When a category has no home in the target repo, **write what fits and name the rest as
 a gap in the PR body**. Do not stand up new infrastructure — an API harness inside a
-100%-Selenium suite is not something an auto-generated PR gets to decide.
+100%-Selenium suite is not something an auto-generated PR gets to decide. (If a marker
+you need is genuinely missing, say so; the owner may add it, as happened for IDS-DRR's
+`security`/`performance`/`load`.)
 
 ## 3. Decide what the diff actually warrants
 
