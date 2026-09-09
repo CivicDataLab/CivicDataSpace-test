@@ -165,12 +165,46 @@ GraphQL client helper covering this area. Reuse it.
   filters don't route to will silently never run. Check `.github/workflows/ci.yml`'s
   `filters:` block and update it in the same PR if the path is new.
 
-### Confirm your test is actually collected
+### Confirm your test is actually collected — under CI's real marker filter
 
-Existence in the file is not execution. Always:
+Existence in the file is not execution, and neither is local collection. Check both:
 
 ```bash
-python -m pytest <file> --collect-only -q | grep <your_test_name>
+python -m pytest <file> --collect-only -q | grep <your_test_name>        # exists
+python -m pytest <dir> -m "<CI's filter>" --collect-only -q | grep <name>  # CI runs it
+```
+
+**Read the marker filter out of the workflow, don't guess it.** In
+`CivicDataSpace-test/.github/workflows/run-smoke.yml`:
+
+```yaml
+# pull_request           -> -m "smoke"
+# workflow_dispatch/call -> -m "smoke or functional"
+pytest tests/<domain>/smoke -m "${{ steps.markers.outputs.value }}" ...
+```
+
+Consequences, both real and both hit on live runs:
+
+- **`regression` is never selected on any event.** A test marked only
+  `api`+`regression` is silently deselected everywhere. It merges, shows a green
+  `api-smoke` check, and never runs again. This happened on `test-sync/DataSpaceBackend-pr136`:
+  the green check ran 23 pre-existing tests and zero of the two added. Anything that must
+  run in CI needs `smoke` (or `functional`, dispatch-only).
+- Only files under `tests/<domain>/smoke/` are collected at all — CI passes that directory
+  explicitly. A test elsewhere in the tree never runs regardless of its markers.
+
+A green check on your own PR is **not** evidence your test ran. Open the job log and find
+your test name in it, or check the passed-count moved by the number you added.
+
+### Pick the file number from the target branch, not the working tree
+
+`test_<domain>_<NNN>_<what>.py` numbering must be free **on the base branch you're
+targeting**. Listing the local working tree gives the wrong answer when it sits on an
+older branch — that produced a second `test_api_007_*` on a branch that already had
+007 and 008:
+
+```bash
+git ls-tree origin/<base> --name-only tests/<domain>/smoke/
 ```
 
 Real instance: `tests/consumer/smoke/test_components.py` has a `'''` at line 57 closing
@@ -317,6 +351,8 @@ them from fighting each other. Do not skip it.
   green CI run does not mean your new test executed.
 - `CivicDataSpace-test` executes from its `CI` branch. Its default branch (`main`) and
   `dev` do not run the workflows — see §7. Flag in the PR body which branch you targeted.
+- A green check on your PR does not mean your test ran. `regression`-only tests are
+  deselected by every event's marker filter here — see §5. Read the job log.
 - Suites share one dev backend with known concurrency limits. Never add a test that
   hammers it in parallel; the existing serialization in each repo's CI exists for a
   reason. This also means **concurrency/pool-exhaustion bugs are not reproducible here** —
