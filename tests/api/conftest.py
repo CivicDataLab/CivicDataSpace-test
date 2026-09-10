@@ -42,9 +42,21 @@ def _get_keycloak_token(keycloak_url: str, realm: str, client_id: str,
         payload["client_secret"] = client_secret
     resp = requests.post(token_url, data=payload)
     if resp.status_code == 401:
-        pytest.skip(
-            "Keycloak ROPC token request returned 401 — check that Direct Access Grants "
-            "is enabled and KEYCLOAK_CLIENT_SECRET is correct"
+        # Skip only when the client secret is genuinely absent — that is an
+        # unconfigured environment, which is a legitimate reason to opt out.
+        # A 401 WITH a secret configured is a real misconfiguration (or a caller
+        # that forgot to pass it), and skipping there hides broken auth coverage:
+        # test_auth_token_has_required_fields silently never ran because of
+        # exactly that. Fail loudly instead.
+        if not client_secret:
+            pytest.skip(
+                "Keycloak ROPC token request returned 401 and no KEYCLOAK_CLIENT_SECRET "
+                "is set — enable Direct Access Grants or configure the secret"
+            )
+        raise AssertionError(
+            f"Keycloak ROPC token request returned 401 for {email} despite a configured "
+            f"client secret — check Direct Access Grants, the secret value, and that the "
+            f"caller passes client_secret. Response: {resp.text[:300]}"
         )
     assert resp.status_code == 200, (
         f"Keycloak token request failed ({resp.status_code}): {resp.text}"

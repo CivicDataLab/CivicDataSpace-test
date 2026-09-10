@@ -36,10 +36,24 @@ def _ga_script_src(driver):
 
 
 def _syntax_errors_in_console(driver):
+    """
+    Console entries mentioning SyntaxError.
+
+    Chrome is configured with `goog:loggingPrefs {"browser": "ALL"}` (conftest.py),
+    so `get_log("browser")` must work there — a failure means that capability was
+    dropped, and swallowing it into a skip would silently retire this check. Firefox
+    genuinely does not implement the endpoint, so it keeps the skip.
+    """
     try:
         logs = driver.get_log("browser")
-    except Exception:
-        pytest.skip("Browser console logs not available in this Selenium/driver setup")
+    except Exception as exc:
+        browser = (driver.capabilities or {}).get("browserName", "").lower()
+        if browser and browser != "chrome":
+            pytest.skip(f"{browser} does not expose browser console logs: {exc}")
+        raise AssertionError(
+            f"Chrome console logs unavailable despite goog:loggingPrefs being set in "
+            f"conftest.py — the capability was likely dropped: {exc}"
+        ) from exc
     return [entry for entry in logs if "SyntaxError" in entry.get("message", "")]
 
 
