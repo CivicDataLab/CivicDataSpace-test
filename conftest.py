@@ -229,6 +229,68 @@ def test_credentials():
     assert email and password, f"No credentials found for worker slot {idx}"
     return email, password
 
+#  ────────────────── Org write-permission gate (2026-09-09) ────────────────────
+
+@pytest.fixture(scope="session")
+def org_add_permission(test_credentials):
+    """
+    Names of organizations this worker's account may CREATE content in.
+
+    The org-scoped provider flows (create dataset / prompt dataset / usecase /
+    collaborative under an org) all need `canAdd` on some organization. A
+    Keycloak account whose org role is `auditor` has canAdd=false and cannot pass
+    those flows no matter how the UI is driven — TEST_EMAIL_2 is exactly that: a
+    lone `auditor` on CivicDataLab, which is why every org-create test failed on
+    gw1 while the read-only ones passed.
+
+    That is an account-provisioning gap, not a product defect and not a test bug,
+    so the flows skip with a precise reason instead of failing. Grant the account
+    an `admin` (or otherwise canAdd) role on an org and they run again with no
+    code change.
+    """
+    api = os.getenv("API_BASE_URL")
+    kc, realm = os.getenv("KEYCLOAK_URL"), os.getenv("KEYCLOAK_REALM")
+    cid, secret = os.getenv("KEYCLOAK_CLIENT_ID"), os.getenv("KEYCLOAK_CLIENT_SECRET")
+    if not all([api, kc, realm, cid]):
+        pytest.skip("API_BASE_URL / KEYCLOAK_* not configured — cannot resolve org permissions")
+
+    import requests
+
+    email, password = test_credentials
+    payload = {
+        "grant_type": "password", "client_id": cid,
+        "username": email, "password": password,
+    }
+    if secret:
+        payload["client_secret"] = secret
+
+    try:
+        tok = requests.post(
+            f"{kc.rstrip('/')}/realms/{realm}/protocol/openid-connect/token",
+            data=payload, timeout=30,
+        )
+        tok.raise_for_status()
+        access = tok.json()["access_token"]
+        resp = requests.post(
+            f"{api.rstrip('/')}/api/graphql",
+            json={"query": "query{userPermissions{organizations{organizationName roleName canAdd}}}"},
+            headers={"Authorization": f"Bearer {access}"}, timeout=30,
+        )
+        resp.raise_for_status()
+        orgs = (resp.json().get("data") or {}).get("userPermissions", {}).get("organizations") or []
+    except Exception as exc:
+        pytest.skip(f"Could not resolve org permissions for {email}: {exc}")
+
+    writable = [o["organizationName"] for o in orgs if o.get("canAdd")]
+    if not writable:
+        roles = ", ".join(f"{o['organizationName']}={o.get('roleName')}" for o in orgs) or "no orgs"
+        pytest.skip(
+            f"{email} has canAdd on no organization ({roles}); org-create flows "
+            f"cannot run. Grant an admin role on an org to enable them."
+        )
+    return writable
+
+
 #  ─────────────────────── Login Fixtures (Phase 12) ─────────────────────────────
 
 @pytest.fixture

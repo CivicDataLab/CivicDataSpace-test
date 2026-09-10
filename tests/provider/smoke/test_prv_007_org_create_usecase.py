@@ -17,7 +17,7 @@ from pages.provider.create_usecase_page import CreateUsecasePage
 from pages.provider.organizations_page import OrganizationsPage
 
 @pytest.mark.functional
-def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_credentials):
+def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_credentials, org_add_permission):
     """
     Test Case ID: test_prv_007_org_create_usecase
     Verify User is able to create a UseCase end-to-end as an Organization provider.
