@@ -52,8 +52,10 @@ def test_graphql_datasets_items_have_required_fields(graphql_client):
     """Each dataset item must have id, title, and status fields."""
     data = graphql_client.query(DATASETS_QUERY)
     datasets = data.get("datasets", [])
-    if not datasets:
-        pytest.skip("No datasets in the system — skipping field validation")
+    # Deliberately NOT a skip: every environment this suite targets is populated
+    # (54 datasets on dev as of 2026-09-09). An empty list here means the query or
+    # the index is broken, and skipping would hide exactly that.
+    assert datasets, "datasets query returned an empty list — broken query or index, not an empty environment"
     first = datasets[0]
     assert "id" in first, f"Dataset missing 'id': {first}"
     assert "title" in first, f"Dataset missing 'title': {first}"
@@ -89,8 +91,7 @@ def test_graphql_usecases_items_have_required_fields(graphql_client):
     """Each use case must have id, title, and status fields."""
     data = graphql_client.query(USE_CASES_QUERY)
     use_cases = data.get("useCases", [])
-    if not use_cases:
-        pytest.skip("No use cases in the system — skipping field validation")
+    assert use_cases, "useCases query returned an empty list — broken query or index, not an empty environment"
     first = use_cases[0]
     assert "id" in first, f"UseCase missing 'id': {first}"
     assert "title" in first, f"UseCase missing 'title': {first}"
@@ -128,8 +129,7 @@ def test_graphql_organizations_items_have_required_fields(graphql_client):
     """Each organization must have id, name, and slug fields."""
     data = graphql_client.query(ALL_ORGANIZATIONS_QUERY)
     orgs = data.get("allOrganizations", [])
-    if not orgs:
-        pytest.skip("No organizations in the system — skipping field validation")
+    assert orgs, "allOrganizations query returned an empty list — broken query, not an empty environment"
     first = orgs[0]
     assert "id" in first, f"Organization missing 'id': {first}"
     assert "name" in first, f"Organization missing 'name': {first}"
