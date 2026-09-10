@@ -7,23 +7,32 @@ import subprocess
 # load environment variables from the .env file in the project root
 load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 
+from _pytest.runner import runtestprotocol
 from pathlib import Path
+import platform
 import shutil
 import logging
-import re
 import stat
 import tempfile
 import pytest
+import requests
 from selenium import webdriver
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import WebDriverException
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 # Imports to get firefox driver working
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from webdriver_manager.firefox import GeckoDriverManager
 
+
+# This global dict will map each failed test nodeid → its screenshot relative path.
+#
+FAILED_SCREENSHOTS = {}
 
 def pytest_configure(config):
     # this will always print once at startup
@@ -54,49 +63,9 @@ def pytest_addoption(parser):
         help="Send 'chrome' or 'firefox' as parameter for execution"
     )
 
-# ─── WEBDRIVER BINARY (resolved once per worker) ────────────────────────────────
-@pytest.fixture(scope="session")
-def webdriver_binary(request):
-    """
-    Absolute path to the chromedriver/geckodriver binary.
-
-    webdriver-manager hits the network to check for a newer driver and writes to
-    the shared ~/.wdm cache, so doing this per test cost a round-trip on every
-    one of them and let parallel workers race on the same cache directory.
-    Resolving once per session (i.e. once per xdist worker) keeps both problems
-    to a single call.
-    """
-    browser = request.config.getoption("--browser", default="chrome").lower()
-
-    if browser == "firefox":
-        path = GeckoDriverManager().install()
-        print(f"[INFO] Using geckodriver at: {path}")
-        return path
-
-    raw_path = ChromeDriverManager().install()
-    folder = os.path.dirname(raw_path)
-
-    # If the returned path isn't the actual binary, look for it
-    if not os.access(raw_path, os.X_OK) or os.path.basename(raw_path) != "chromedriver":
-        candidates = [fn for fn in os.listdir(folder) if fn.lower() == "chromedriver"]
-        if not candidates:
-            raise RuntimeError(
-                f"Couldn’t find executable ‘chromedriver’ in {folder}. "
-                f"Files there: {os.listdir(folder)}"
-            )
-        real = os.path.join(folder, candidates[0])
-        # ensure it’s executable
-        st = os.stat(real)
-        os.chmod(real, st.st_mode | stat.S_IXUSR)
-        raw_path = real
-
-    print(f"[INFO] Using chromedriver at: {raw_path}")
-    return raw_path
-
-
 # ─── SELENIUM DRIVER FIXTURE ────────────────────────────────────────────────────
 @pytest.fixture
-def driver(request, webdriver_binary):
+def driver(request):
     browser = request.config.getoption("--browser", default="chrome").lower()
 
     # Common Chrome flags
@@ -126,11 +95,37 @@ def driver(request, webdriver_binary):
     opts.set_capability("goog:loggingPrefs", {"browser": "ALL"})
 
     if browser == "chrome":
-        service = ChromeService(webdriver_binary)
+        # 1) Fetch via webdriver_manager
+        raw_path = ChromeDriverManager().install()
+        folder = os.path.dirname(raw_path)
+
+        # 2) If the returned path isn't the actual binary, look for it
+        if not os.access(raw_path, os.X_OK) or os.path.basename(raw_path) != "chromedriver":
+            candidates = [
+                fn for fn in os.listdir(folder)
+                if fn.lower() == "chromedriver"
+            ]
+            if not candidates:
+                raise RuntimeError(
+                    f"Couldn’t find executable ‘chromedriver’ in {folder}. "
+                    f"Files there: {os.listdir(folder)}"
+                )
+            real = os.path.join(folder, candidates[0])
+            # ensure it’s executable
+            st = os.stat(real)
+            os.chmod(real, st.st_mode | stat.S_IXUSR)
+            driver_path = real
+        else:
+            driver_path = raw_path
+
+        print(f"[INFO] Using chromedriver at: {driver_path}")
+        service = ChromeService(driver_path)
         drv = webdriver.Chrome(service=service, options=opts)
 
     elif browser == "firefox":
-        service = FirefoxService(webdriver_binary)
+        gd = GeckoDriverManager().install()
+        print(f"[INFO] Using geckodriver at: {gd}")
+        service = FirefoxService(gd)
         drv = webdriver.Firefox(service=service)
 
     else:
@@ -212,46 +207,27 @@ def test_credentials():
     """
     Returns (email, password) for this worker.
 
-    Credentials are read from consecutive TEST_EMAIL_n / TEST_PASSWORD_n pairs.
-    Under pytest-xdist each worker sets PYTEST_XDIST_WORKER to gw0, gw1, … and
-    gets the matching account; workers past the last configured account fall back
-    to the first one. Outside xdist the slot comes from TEST_USER_INDEX (default 1).
-
-    Provider flows create and mutate data under the account they log in as — and
-    several hardcode data that only exists on account 1 — so the fallback is to
-    account 1 rather than a round-robin. That does mean extra workers share one
-    account, which the warning below calls out.
+    Under pytest-xdist each worker sets PYTEST_XDIST_WORKER to gw0, gw1, …
+    gw0 → TEST_EMAIL_1 / TEST_PASSWORD_1
+    gw1 → TEST_EMAIL_2 / TEST_PASSWORD_2
+    Falls back to TEST_USER_INDEX (or 1) when not running under xdist.
     """
-    accounts = []
-    idx = 1
-    while True:
-        email = os.getenv(f"TEST_EMAIL_{idx}")
-        password = os.getenv(f"TEST_PASSWORD_{idx}")
-        if not (email and password):
-            break
-        accounts.append((email, password))
-        idx += 1
-
-    assert accounts, "No credentials found — set TEST_EMAIL_1 / TEST_PASSWORD_1"
-
     worker = os.getenv("PYTEST_XDIST_WORKER", "")
     if worker.startswith("gw"):
-        slot = int(worker[2:])
-        if slot >= len(accounts):
-            logging.warning(
-                "%s: only %d test account(s) configured — falling back to %s, which "
-                "another worker is already using. Add TEST_EMAIL_%d / TEST_PASSWORD_%d "
-                "to isolate it.",
-                worker, len(accounts), accounts[0][0],
-                len(accounts) + 1, len(accounts) + 1,
-            )
-            slot = 0
+        idx = int(worker[2:]) + 1          # gw0→1, gw1→2, gw2→3 …
     else:
-        slot = int(os.getenv("TEST_USER_INDEX", "1")) - 1
-        if slot >= len(accounts):
-            slot = 0
+        idx = int(os.getenv("TEST_USER_INDEX", "1"))
 
-    return accounts[slot]
+    email = os.getenv(f"TEST_EMAIL_{idx}")
+    password = os.getenv(f"TEST_PASSWORD_{idx}")
+
+    # fall back to user 1 if the derived slot has no credentials configured
+    if not (email and password):
+        email = os.getenv("TEST_EMAIL_1")
+        password = os.getenv("TEST_PASSWORD_1")
+
+    assert email and password, f"No credentials found for worker slot {idx}"
+    return email, password
 
 #  ────────────────── Org write-permission gate (2026-09-09) ────────────────────
 
@@ -355,56 +331,73 @@ def provider_dashboard(logged_in_provider):
 
 # 1) pytest_runtest_makereport
 #    After each test “call” phase, if it failed and a WebDriver fixture is present,
-#    take a screenshot and attach its path to item.user_properties.
+#    take a screenshot and stash (nodeid → relative PNG path) in FAILED_SCREENSHOTS.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 @pytest.hookimpl(hookwrapper=True, tryfirst=True)
 def pytest_runtest_makereport(item, call):
     """
     Called after each test run phase. If the test “call” phase failed and the test
-    has a WebDriver fixture, take a screenshot and record its relative path on
-    item.user_properties, which pytest-json-report writes into report.json.
+    has a WebDriver fixture, take a screenshot and record the relative path in FAILED_SCREENSHOTS.
     """
     outcome = yield
     rep = outcome.get_result()
 
     # We only care about failures in the “call” phase
-    if rep.when != "call" or not rep.failed:
-        return
+    if rep.when == "call" and rep.failed:
+        # 1) See if any fixture in this test is a WebDriver instance
+        driver_obj = None
+        for _, fixture_val in item.funcargs.items():
+            if isinstance(fixture_val, WebDriver):
+                driver_obj = fixture_val
+                break
 
-    # 1) See if any fixture in this test is a WebDriver instance
-    driver_obj = next(
-        (val for val in item.funcargs.values() if isinstance(val, WebDriver)), None
-    )
-    if not driver_obj:
-        # No WebDriver fixture → nothing to screenshot
-        return
+        if not driver_obj:
+            # No WebDriver fixture → nothing to screenshot
+            return
 
-    # 2) Make sure ./screenshots exists
-    screenshots_dir = Path(os.getcwd()) / "screenshots"
-    screenshots_dir.mkdir(parents=True, exist_ok=True)
+        # 2) Make sure ./screenshots exists
+        screenshots_dir = Path(os.getcwd()) / "screenshots"
+        screenshots_dir.mkdir(parents=True, exist_ok=True)
 
-    # 3) Build a filename from the full nodeid so parametrised cases keep their own
-    #    file, plus the xdist worker id so two workers never race on one path.
-    worker = os.getenv("PYTEST_XDIST_WORKER", "")
-    stem = re.sub(r"[^A-Za-z0-9_.-]+", "_", rep.nodeid).strip("_")
-    suffix = f"__{worker}" if worker else ""
-    png_path = screenshots_dir / f"{stem}{suffix}.png"
+        # 3) Build a filename from the test nodeid
+        sanitized = item.name
+        png_path = screenshots_dir / f"{sanitized}.png"
 
-    try:
-        driver_obj.save_screenshot(str(png_path))
-        rel = os.path.relpath(str(png_path), os.getcwd())
+        try:
+            driver_obj.save_screenshot(str(png_path))
+            rel = os.path.relpath(str(png_path), os.getcwd())
 
-        # user_properties travels with the report through xdist's serialization,
-        # so the controller's report.json gets the path even in parallel runs.
-        item.user_properties.append(("screenshot", rel))
+            # Record in the global dict for pytest_json_modifyreport to inject later
+            FAILED_SCREENSHOTS[rep.nodeid] = rel
 
-        print(f"\n📸 [HOOK] Saved screenshot for {rep.nodeid}: {rel}\n")
-    except Exception as e:
-        print(f"\n⚠️ [HOOK] Could not save screenshot for {rep.nodeid}: {e}\n")
+            print(f"\n📸 [HOOK] Saved screenshot for {rep.nodeid}: {rel}\n")
+        except Exception as e:
+            print(f"\n⚠️ [HOOK] Could not save screenshot for {rep.nodeid}: {e}\n")
 
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
-# 2) pytest_sessionfinish
+# 2) pytest_json_modifyreport
+#    This hook is provided by pytest-json-report. It runs after the plugin builds its
+#    internal JSON data but before writing report.json. We inject our screenshot path here.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+@pytest.hookimpl
+def pytest_json_modifyreport(json_report):
+    """
+    For each test in the JSON report, if we have a screenshot recorded in FAILED_SCREENSHOTS,
+    append ["screenshot", <rel_path>] into that test’s "user_properties" array.
+    """
+    for test_dict in json_report.get("tests", []):
+        nodeid = test_dict.get("nodeid")
+        if nodeid in FAILED_SCREENSHOTS:
+            rel_path = FAILED_SCREENSHOTS[nodeid]
+            if "user_properties" not in test_dict or test_dict["user_properties"] is None:
+                test_dict["user_properties"] = []
+            test_dict["user_properties"].append(["screenshot", rel_path])
+            print(f"🔗 [HOOK] Injected screenshot into JSON for {nodeid}: {rel_path}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+# 3) pytest_sessionfinish
 #    After pytest finishes running all tests (and after report.json is written),
 #    automatically call report_generator.py to produce TEST_REPORT.md and TEST_REPORT.pdf.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -413,25 +406,9 @@ def pytest_sessionfinish(session, exitstatus):
     """
     Called once pytest is completely done. If report.json exists, invoke report_generator.py.
     """
-    # Under xdist every worker also fires this hook; only the controller has the
-    # finished report.json, so workers would race each other writing the PDF.
-    if hasattr(session.config, "workerinput"):
-        return
-
-    # Nothing ran — report.json is stale from a previous session.
-    if session.config.getoption("collectonly", default=False):
-        return
-
     rpt = Path(os.getcwd()) / "report.json"
     if rpt.exists():
         print("\n\n📄 Generating TEST_REPORT.md + TEST_REPORT.pdf …")
         subprocess.run([sys.executable, "report_generator.py"], check=False)
     else:
         print("\n\n⚠️  report.json not found; skipping report generation.")
-
-    # Accessibility runs leave structured findings behind; turn them into
-    # ACCESSIBILITY_REPORT.md/.html. Skipped when the run had no a11y tests so
-    # an unrelated run never overwrites the last accessibility report.
-    if any((Path(os.getcwd()) / "reports" / "a11y").glob("*.json")):
-        print("\n📄 Generating ACCESSIBILITY_REPORT.md + .html …")
-        subprocess.run([sys.executable, "a11y_report_generator.py"], check=False)
