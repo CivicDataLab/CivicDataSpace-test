@@ -5,6 +5,8 @@ import pytest
 import requests
 from pages.home_page import HomePage
 
+pytestmark = pytest.mark.readonly
+
 logger = logging.getLogger(__name__)
 
 # ---------- fixtures & helpers ----------

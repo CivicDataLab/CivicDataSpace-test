@@ -28,7 +28,7 @@ import pytest
 
 from utils.browser_network import count_requests
 
-pytestmark = [pytest.mark.smoke, pytest.mark.regression]
+pytestmark = [pytest.mark.smoke, pytest.mark.regression, pytest.mark.readonly]
 
 BASE_URL = os.getenv("HOME_URL_DEV", "https://dev.civicdataspace.in")
 

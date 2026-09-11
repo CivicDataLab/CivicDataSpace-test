@@ -11,7 +11,7 @@ import pytest
 
 from pages.consumer.privacy_page import PRIVACY_PATH, PrivacyPage
 
-pytestmark = pytest.mark.smoke
+pytestmark = [pytest.mark.smoke, pytest.mark.readonly]
 
 BASE_URL = os.getenv("HOME_URL_DEV", "https://dev.civicdataspace.in")
 

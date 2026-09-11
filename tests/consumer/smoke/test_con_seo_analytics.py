@@ -21,6 +21,8 @@ from urllib.parse import urlparse
 
 import pytest
 
+pytestmark = pytest.mark.readonly
+
 DEV_URL = os.getenv("HOME_URL_DEV")
 # HOME_URL_DEV is whichever site the suite targets; prod deploys point it at prod.
 TARGET_HOST = urlparse(DEV_URL or "").hostname or ""

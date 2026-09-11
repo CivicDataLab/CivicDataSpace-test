@@ -7,6 +7,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.readonly
+
 
 @pytest.mark.api
 @pytest.mark.functional

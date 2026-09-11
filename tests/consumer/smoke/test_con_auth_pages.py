@@ -22,7 +22,7 @@ import requests
 
 from pages.consumer.keycloak_auth_page import KeycloakLoginPage, KeycloakRegisterPage
 
-pytestmark = pytest.mark.smoke
+pytestmark = [pytest.mark.smoke, pytest.mark.readonly]
 
 BASE_URL = os.getenv("HOME_URL_DEV", "https://dev.civicdataspace.in")
 
