@@ -65,6 +65,11 @@ jobs:
 
     env:
       HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
+      # For the functional login test. Deliberately NOT KEYCLOAK_CLIENT_SECRET:
+      # without it the registration tests skip instead of creating users in the
+      # Keycloak realm that dev and prod share.
+      TEST_EMAIL_1:    ${{ secrets.TEST_EMAIL_1 }}
+      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
 
     steps:
       - uses: actions/checkout@v4
