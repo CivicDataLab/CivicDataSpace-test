@@ -6,7 +6,13 @@ on:
     branches: [CI]
   pull_request:
     branches: [CI]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Which tests to run: smoke | functional | full (smoke+functional+regression) | readonly (the production allowlist: readonly-marked api + consumer tests; provider never runs). Empty keeps the legacy selection.'
+        type: string
+        required: false
+        default: ''
   workflow_call:
     inputs:
       api_base_url:
@@ -29,6 +35,11 @@ on:
         type: boolean
         required: false
         default: false
+      suite:
+        description: 'Which tests to run: smoke | functional | full (smoke+functional+regression) | readonly (the production allowlist: readonly-marked api + consumer tests; provider never runs). Empty keeps the legacy selection.'
+        type: string
+        required: false
+        default: ''
     secrets:
       HOME_URL_DEV:
         required: true
@@ -117,16 +128,28 @@ jobs:
 
       - name: Set markers
         id: markers
+        # Selected by an explicit input: inside a called workflow github.event_name
+        # is the CALLER's event (push for merge-triggered deploys), so it cannot
+        # tell a deploy from a push. Empty suite keeps the legacy behaviour.
+        env:
+          SUITE: ${{ inputs.suite }}
+          EVENT: ${{ github.event_name }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event_name }}" == "workflow_call" ]]; then
-            echo "value=smoke or functional" >> $GITHUB_OUTPUT
-          else
-            echo "value=smoke" >> $GITHUB_OUTPUT
-          fi
+          case "$SUITE" in
+            smoke)      m="smoke";                             p="tests/consumer" ;;
+            functional) m="functional";                        p="tests/consumer" ;;
+            full)       m="smoke or functional or regression"; p="tests/consumer" ;;
+            readonly)   m="readonly";                          p="tests/consumer" ;;
+            "")         p="tests/consumer/smoke"
+                        if [[ "$EVENT" == "workflow_dispatch" || "$EVENT" == "workflow_call" ]]; then m="smoke or functional"; else m="smoke"; fi ;;
+            *)          echo "::error::Unknown suite '$SUITE'"; exit 1 ;;
+          esac
+          echo "value=$m" >> "$GITHUB_OUTPUT"
+          echo "path=$p" >> "$GITHUB_OUTPUT"
 
       - name: Run consumer smoke tests
         run: |
-          pytest tests/consumer/smoke -m "${{ steps.markers.outputs.value }}" -v --json-report
+          pytest "${{ steps.markers.outputs.path }}" -m "${{ steps.markers.outputs.value }}" -v --json-report
 
       - name: Upload screenshots
         if: always()
@@ -280,16 +303,28 @@ jobs:
 
       - name: Set markers
         id: markers
+        # Selected by an explicit input: inside a called workflow github.event_name
+        # is the CALLER's event (push for merge-triggered deploys), so it cannot
+        # tell a deploy from a push. Empty suite keeps the legacy behaviour.
+        env:
+          SUITE: ${{ inputs.suite }}
+          EVENT: ${{ github.event_name }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event_name }}" == "workflow_call" ]]; then
-            echo "value=smoke or functional" >> $GITHUB_OUTPUT
-          else
-            echo "value=smoke" >> $GITHUB_OUTPUT
-          fi
+          case "$SUITE" in
+            smoke)      m="smoke";                             p="tests/api" ;;
+            functional) m="functional";                        p="tests/api" ;;
+            full)       m="smoke or functional or regression"; p="tests/api" ;;
+            readonly)   m="readonly";                          p="tests/api" ;;
+            "")         p="tests/api/smoke"
+                        if [[ "$EVENT" == "workflow_dispatch" || "$EVENT" == "workflow_call" ]]; then m="smoke or functional"; else m="smoke"; fi ;;
+            *)          echo "::error::Unknown suite '$SUITE'"; exit 1 ;;
+          esac
+          echo "value=$m" >> "$GITHUB_OUTPUT"
+          echo "path=$p" >> "$GITHUB_OUTPUT"
 
       - name: Run API smoke tests
         run: |
-          pytest tests/api/smoke -m "${{ steps.markers.outputs.value }}" -v --json-report -n 2
+          pytest "${{ steps.markers.outputs.path }}" -m "${{ steps.markers.outputs.value }}" -v --json-report -n 2
 
       - name: Enforce minimum passed count
         # Now that API_BASE_URL always has a value, this runs on every event,
@@ -351,7 +386,7 @@ jobs:
   provider-smoke:
     # Negated so push/pull_request/workflow_dispatch runs (where inputs.* is
     # null, which GitHub coerces like false) still run it.
-    if: ${{ !inputs.skip_provider }}
+    if: ${{ !inputs.skip_provider && inputs.suite != 'readonly' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -425,16 +460,28 @@ jobs:
 
       - name: Set markers
         id: markers
+        # Selected by an explicit input: inside a called workflow github.event_name
+        # is the CALLER's event (push for merge-triggered deploys), so it cannot
+        # tell a deploy from a push. Empty suite keeps the legacy behaviour.
+        env:
+          SUITE: ${{ inputs.suite }}
+          EVENT: ${{ github.event_name }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event_name }}" == "workflow_call" ]]; then
-            echo "value=smoke or functional" >> $GITHUB_OUTPUT
-          else
-            echo "value=smoke" >> $GITHUB_OUTPUT
-          fi
+          case "$SUITE" in
+            smoke)      m="smoke";                             p="tests/provider" ;;
+            functional) m="functional";                        p="tests/provider" ;;
+            full)       m="smoke or functional or regression"; p="tests/provider" ;;
+            readonly)   m="readonly";                          p="tests/provider" ;;
+            "")         p="tests/provider/smoke"
+                        if [[ "$EVENT" == "workflow_dispatch" || "$EVENT" == "workflow_call" ]]; then m="smoke or functional"; else m="smoke"; fi ;;
+            *)          echo "::error::Unknown suite '$SUITE'"; exit 1 ;;
+          esac
+          echo "value=$m" >> "$GITHUB_OUTPUT"
+          echo "path=$p" >> "$GITHUB_OUTPUT"
 
       - name: Run provider smoke tests
         run: |
-          pytest tests/provider/smoke -m "${{ steps.markers.outputs.value }}" -v --json-report -n 2
+          pytest "${{ steps.markers.outputs.path }}" -m "${{ steps.markers.outputs.value }}" -v --json-report -n 2
 
       - name: Upload screenshots
         if: always()
