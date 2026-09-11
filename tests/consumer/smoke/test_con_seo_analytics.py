@@ -17,6 +17,7 @@
 import os
 import re
 import time
+from urllib.parse import urlparse
 
 import pytest
 
@@ -114,12 +115,18 @@ def test_prod_data_layer_has_config_call(driver):
 
 # ─── Dev: GA must be completely absent ─────────────────────────────────────────
 
+def _require_dev_target():
+    # HOME_URL_DEV is whichever site the suite targets; prod deploys point it at prod.
+    host = urlparse(DEV_URL or "").hostname or ""
+    if not host.startswith("dev."):
+        pytest.skip(f"HOME_URL_DEV targets '{host or 'nothing'}', not a dev host; GA-absent checks apply to dev only")
+
+
 @pytest.mark.smoke
 @pytest.mark.seo
 def test_dev_ga_script_tag_absent(driver):
     """Dev must not load any googletagmanager script (GA intentionally disabled)."""
-    if not DEV_URL:
-        pytest.skip("HOME_URL_DEV not set")
+    _require_dev_target()
     driver.get(DEV_URL)
     time.sleep(GA_SETTLE_SECONDS)
 
@@ -131,8 +138,7 @@ def test_dev_ga_script_tag_absent(driver):
 @pytest.mark.seo
 def test_dev_gtag_is_undefined(driver):
     """window.gtag must be undefined on dev (GA intentionally disabled)."""
-    if not DEV_URL:
-        pytest.skip("HOME_URL_DEV not set")
+    _require_dev_target()
     driver.get(DEV_URL)
     time.sleep(GA_SETTLE_SECONDS)
 
