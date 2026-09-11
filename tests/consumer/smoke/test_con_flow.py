@@ -1,8 +1,8 @@
 # tests/consumer/smoke/test_con_flow.py
 import logging
+import re
 import pytest
 import requests
-from selenium.common.exceptions import TimeoutException
 from pages.home_page import HomePage
 
 logger = logging.getLogger(__name__)
@@ -15,6 +15,10 @@ def home(driver, base_url):
     page = HomePage(driver, base_url)
     page.load()
     return page
+
+def _published_use_case_count(card) -> int:
+    m = re.search(r"(\d+)\s+Use Cases?", card.text)
+    return int(m.group(1)) if m else 0
 
 def _check_download(url: str, timeout: int = 10) -> int:
     """Return HTTP status for a HEAD request to *url*."""
@@ -90,19 +94,17 @@ def test_publishers_flow(tc_id, view, home, driver):
     cards = pub.list_publishers(view)
     assert cards, f"{tc_id}: no publisher cards in '{view}' view"
 
-    for idx in range(len(cards)):
-        try:
-            detail = pub.open_publisher_by_index(idx, view=view)
-            usecases = detail.list_usecases()
-            if usecases:
-                break
-        except TimeoutException:
-            # Couldn’t open this publisher or its use-cases; try next one
-            continue
-    else:
-        pytest.skip(f"{tc_id}: no publishers with use-cases in '{view}' view")
+    # Pick by the card's own "N Use Cases" badge rather than opening publishers
+    # one by one: with few publishers holding use cases (4 of 62 orgs on prod),
+    # each empty one cost up to 20s and the scan blew the 30s test budget.
+    idx = next((i for i, c in enumerate(cards) if _published_use_case_count(c) > 0), None)
+    if idx is None:
+        pytest.skip(f"{tc_id}: no publisher in '{view}' view has published use cases")
 
-    # open the first use-case we found
+    detail = pub.open_publisher_by_index(idx, view=view)
+    assert detail.list_usecases(), (
+        f"{tc_id}: publisher card {idx} shows published use cases but its page lists none"
+    )
     detail.open_usecase_by_index(0)
     assert "/usecases/" in driver.current_url, (
         f"{tc_id}: expected /usecases/ in URL, got {driver.current_url}"
