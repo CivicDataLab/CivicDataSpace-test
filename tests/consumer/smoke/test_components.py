@@ -99,72 +99,60 @@ def test_TC_HOM_16_privacy_page_renders(driver):
     assert "404" not in body and "not found" not in body.lower(), (
         "Privacy link led to a 404 / not-found page"
     )
-'''
+
+@pytest.mark.smoke
 def test_TC_HOM_02_image_renders(driver):
     """Verify homepage image renders without error"""
     load_homepage(driver)
-    img = wait_and_capture(driver, "TC_HOM_02", By.XPATH, Locators.IMAGE)
-    assert img.get_attribute("naturalWidth") != "0", "Image not rendered"
+    img = wait_and_capture(driver, "TC_HOM_02", *Locators.IMAGE)
+    # The hero is a ~1.5MB lazy-loaded SVG: it is visible before it finishes loading.
+    WebDriverWait(driver, 15).until(
+        lambda d: d.execute_script("return arguments[0].complete && arguments[0].naturalWidth > 0", img),
+        message="TC_HOM_02: hero image never finished loading (naturalWidth stayed 0)",
+    )
 
+@pytest.mark.smoke
 def test_TC_HOM_03_search_bar_present(driver):
     """Verify search bar is visible"""
     load_homepage(driver)
-    bar = wait_and_capture(driver, "TC_HOM_03", By.XPATH, Locators.SEARCH_BAR)
+    bar = wait_and_capture(driver, "TC_HOM_03", *Locators.SEARCH_BAR)
     assert bar.is_displayed()
 
+@pytest.mark.smoke
 def test_TC_HOM_04_search_button_clickable(driver):
     """Verify search button is clickable (no crash on empty click)"""
     load_homepage(driver)
-    btn = wait_and_capture(
-        driver,
-        "TC_HOM_04",
-        By.XPATH,
-        Locators.SEARCH_BUTTON,
-        condition=EC.element_to_be_clickable
-    )
-    logger.info("Clicking SEARCH BUTTON without text")
+    btn = wait_and_capture(driver, "TC_HOM_04", *Locators.SEARCH_BUTTON, condition=EC.element_to_be_clickable)
     assert btn.is_displayed()
 
-
+@pytest.mark.smoke
 def test_TC_HOM_05_recent_datasets_btn(driver):
     """Explore All Datasets button exists"""
     load_homepage(driver)
-    btn = wait_and_capture(driver, "TC_HOM_05", By.XPATH, Locators.RECENT_DATASETS_BTN)
+    btn = wait_and_capture(driver, "TC_HOM_05", *Locators.RECENT_DATASETS_BTN)
     assert btn.is_displayed()
 
+@pytest.mark.smoke
 def test_TC_HOM_06_explore_sectors_btn(driver):
     """Explore All Sectors button is present"""
     load_homepage(driver)
-    btn = wait_and_capture(driver, "TC_HOM_06", By.XPATH, Locators.EXPLORE_SECTORS_BTN)
+    btn = wait_and_capture(driver, "TC_HOM_06", *Locators.EXPLORE_SECTORS_BTN)
     assert btn.is_displayed()
 
-def test_TC_HOM_07_about_section(driver):
-    """About section is visible"""
+@pytest.mark.smoke
+def test_TC_HOM_07_about_link(driver):
+    """Footer About Us link is visible"""
     load_homepage(driver)
-    sec = wait_and_capture(driver, "TC_HOM_07", By.XPATH, Locators.ABOUT_SECTION)
-    assert sec.is_displayed()
+    link = wait_and_capture(driver, "TC_HOM_07", *Locators.ABOUT_LINK)
+    assert link.is_displayed()
 
-def test_TC_HOM_08_sitemap_links(driver):
-    """Sitemap links visible"""
-    load_homepage(driver)
-    try:
-        links = WebDriverWait(driver, 10).until(
-            lambda d: d.find_elements(By.XPATH, Locators.SITEMAP_LINKS) or TimeoutException()
-        )
-    except TimeoutException:
-        driver.save_screenshot("TC_HOM_08_failure.png")
-        with open("TC_HOM_08_failure.html", "w", encoding="utf-8") as f:
-            f.write(driver.page_source)
-        pytest.fail("TC_HOM_08 failed: no sitemap links found. See TC_HOM_08_failure.png/html")
-    assert len(links) > 0, "No sitemap links rendered"
-
+@pytest.mark.smoke
 def test_TC_HOM_09_contact_section(driver):
     """Contact Us section is present"""
     load_homepage(driver)
-    sec = wait_and_capture(driver, "TC_HOM_09", By.XPATH, Locators.CONTACT_SECTION)
+    sec = wait_and_capture(driver, "TC_HOM_09", *Locators.CONTACT_SECTION)
     assert sec.is_displayed()
 
-'''
 # To be added once the social media links are visible.
 # @pytest.mark.parametrize("locator,tc_id", [
 #     (Locators.TWITTER_ICON,  "TC_HOM_10"),
