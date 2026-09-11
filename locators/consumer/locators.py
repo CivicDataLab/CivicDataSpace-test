@@ -9,15 +9,14 @@ class Locators:
     # ═══════════════════════════════════════════════════════════════════════════
 
     ICON                   = (By.XPATH, "//header//nav//img[contains(@src, 'logo') or contains(@class, 'logo')]")
-    IMAGE                  = (By.XPATH, "//main//img[contains(@class, 'hero') or contains(@class, 'banner')]")
-    SEARCH_BAR             = (By.XPATH, "//input[@type='search' or @placeholder='Search' or contains(@class, 'search')]")
-    SEARCH_BUTTON          = (By.XPATH, "//header//nav//button[contains(@aria-label, 'search') or .//span[contains(@class, 'search')]]")
+    IMAGE                  = (By.XPATH, "//main//img[contains(@src, 'hero-image')]")
+    SEARCH_BAR             = (By.XPATH, "//input[@placeholder='Search for any data']")
+    SEARCH_BUTTON          = (By.XPATH, "//input[@placeholder='Search for any data']/ancestor::div[.//button][1]//button[normalize-space()='Search']")
     RECENT_DATASETS_BTN    = (By.XPATH, "//button[contains(., 'Recent') or contains(., 'Datasets')]//span")
     EXPLORE_SECTORS_BTN    = (By.XPATH, "//button[contains(., 'Explore') or contains(., 'Sectors')]//span")
 
     # Footer elements
-    ABOUT_SECTION          = (By.XPATH, "//footer//div[contains(@class, 'about') or .//h3[contains(., 'About')]]")
-    SITEMAP_LINKS          = (By.XPATH, "//footer//a[contains(., 'Sitemap')]//span")
+    ABOUT_LINK             = (By.XPATH, "//footer//a[contains(@href, '/about-us')]")
     CONTACT_SECTION        = (By.XPATH, "//footer//a[contains(., 'Contact')]//span")
     # Matches the <a> itself, not its inner <span>, so the test can read @href.
     PRIVACY_LINK           = (By.XPATH, "//footer//a[.//span[normalize-space()='Privacy'] or normalize-space()='Privacy']")
