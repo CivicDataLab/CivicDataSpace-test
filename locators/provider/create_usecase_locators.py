@@ -24,10 +24,10 @@ class CreateUsecaseLocators:
     SECTOR_INPUT = (By.XPATH,"//label[normalize-space()='Sectors' or normalize-space()='Sectors *']/following::input[@role='combobox'][1]")
     SECTOR_DROPDOWN_ITEM = "//div[@role='option' and normalize-space(.)='{value}']"
 
-    GEOGRAPHY_CONTAINER = (By.XPATH,"//label[normalize-space()='Geographies' or normalize-space()='Geography *' or normalize-space()='Geography']/following::input[1]")
+    GEOGRAPHY_CONTAINER = (By.XPATH,"//label[normalize-space()='Geographies' or normalize-space()='Geography *' or normalize-space()='Geography']/following::input[@role='combobox'][1]")
     GEO_OPTION = "//div[@role='option' and starts-with(normalize-space(.), '{value}')]"
 
-    SDG_GOALS_CONTAINER = (By.XPATH,"//label[normalize-space()='SDG Goals *' or normalize-space()='SDG Goal *' or contains(text(),'SDG')]/following::input[1]")
+    SDG_GOALS_CONTAINER = (By.XPATH,"//label[normalize-space()='SDG Goals *' or normalize-space()='SDG Goal *' or contains(text(),'SDG')]/following::input[@role='combobox'][1]")
     SDG_GOALS_OPTION = "//div[@role='option' and normalize-space(.)='{value}']"
 
     STARTED_ON_INPUT = (By.XPATH, "//input[@type='date' and @name='startedOn']")
