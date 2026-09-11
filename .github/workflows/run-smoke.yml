@@ -24,6 +24,11 @@ on:
         type: number
         required: false
         default: 1
+      skip_provider:
+        description: 'Skip provider-smoke, which creates datasets, use cases and collaboratives with the test account. Set on production deploys.'
+        type: boolean
+        required: false
+        default: false
     secrets:
       HOME_URL_DEV:
         required: true
@@ -344,6 +349,9 @@ jobs:
           fi
 
   provider-smoke:
+    # Negated so push/pull_request/workflow_dispatch runs (where inputs.* is
+    # null, which GitHub coerces like false) still run it.
+    if: ${{ !inputs.skip_provider }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
