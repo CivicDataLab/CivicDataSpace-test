@@ -20,7 +20,7 @@ import pytest
 
 from pages.consumer.bhashini_page import BhashiniWidgetPage
 
-pytestmark = pytest.mark.smoke
+pytestmark = [pytest.mark.smoke, pytest.mark.readonly]
 
 BASE_URL = os.getenv("HOME_URL_DEV", "https://dev.civicdataspace.in")
 

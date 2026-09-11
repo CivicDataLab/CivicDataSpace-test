@@ -17,6 +17,8 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
+pytestmark = pytest.mark.readonly
+
 SITEMAP_NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
 
 # The sitemap index is paginated: each entity is split into

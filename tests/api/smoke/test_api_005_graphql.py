@@ -9,6 +9,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.readonly
+
 
 # ─── Introspection ──────────────────────────────────────────────────────────────
 

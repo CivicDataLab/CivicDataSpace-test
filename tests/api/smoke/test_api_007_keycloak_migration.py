@@ -23,6 +23,8 @@ import os
 import pytest
 import requests
 
+pytestmark = pytest.mark.readonly
+
 KEYCLOAK_BASE = "https://auth.civicdatalab.in"
 KEYCLOAK_REALM = "DataSpace"
 

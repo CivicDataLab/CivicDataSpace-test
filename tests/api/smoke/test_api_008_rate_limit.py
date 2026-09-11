@@ -21,7 +21,7 @@ import os
 import pytest
 import requests
 
-pytestmark = [pytest.mark.api, pytest.mark.smoke, pytest.mark.regression]
+pytestmark = [pytest.mark.api, pytest.mark.smoke, pytest.mark.regression, pytest.mark.readonly]
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://dev.api.civicdataspace.in")
 

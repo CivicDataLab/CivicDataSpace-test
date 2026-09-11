@@ -12,6 +12,8 @@ from selenium.common.exceptions import TimeoutException, ElementClickIntercepted
 
 from locators.consumer.locators import Locators
 
+pytestmark = pytest.mark.readonly
+
 load_dotenv()
 
 # ─── LOGGER SETUP ──────────────────────────────────────────────────────────────

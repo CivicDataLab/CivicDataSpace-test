@@ -23,6 +23,8 @@ import requests
 
 from tests.api.conftest import _get_keycloak_token
 
+pytestmark = pytest.mark.readonly
+
 
 def _login(api_base_url, keycloak_config, email, password):
     """Exchange a fresh Keycloak token for a Django JWT, return the response body."""
