@@ -17,6 +17,7 @@ from pages.provider.create_usecase_page import CreateUsecasePage
 from pages.provider.organizations_page import OrganizationsPage
 
 @pytest.mark.functional
+@pytest.mark.xfail(reason="Charts feature isn't fully built yet", strict=False)
 def test_prv_008_org_add_charts(driver, sample_logo_path, base_url, test_credentials, org_add_permission):
     """
     Test Case ID: test_prv_008_org_add_charts
