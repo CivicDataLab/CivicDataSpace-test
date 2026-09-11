@@ -25,12 +25,18 @@ def test_auth_token_has_required_fields(auth_token, api_base_url, keycloak_confi
         keycloak_config["client_id"],
         email,
         password,
+        # `dataspace` is a confidential client: omitting the secret makes Keycloak
+        # reject the ROPC request with 401, which _get_keycloak_token turns into a
+        # skip — so this test silently never ran until 2026-09-09.
+        client_secret=keycloak_config.get("client_secret"),
     )
     resp = requests.post(
         f"{api_base_url}/api/auth/keycloak/login/",
         json={"token": kc_token},
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 200, (
+        f"Django token exchange failed ({resp.status_code}): {resp.text}"
+    )
     body = resp.json()
     assert "access" in body, "Response missing 'access' token"
     assert "refresh" in body, "Response missing 'refresh' token"
