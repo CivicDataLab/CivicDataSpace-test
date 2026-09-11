@@ -102,7 +102,7 @@ class OrganizationsPage(BasePage):
         create_btn.click()
 
         # Wait for metadata tab
-        self.wait_with_timeout(10).until(
+        self.wait_with_timeout(30).until(
             EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
             message="Timed out waiting for Metadata tab to appear after creating dataset"
         )
@@ -141,7 +141,7 @@ class OrganizationsPage(BasePage):
         )
         create_btn.click()
 
-        self.wait_with_timeout(10).until(
+        self.wait_with_timeout(30).until(
             EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
             message="Timed out waiting for Metadata tab after creating prompt dataset"
         )

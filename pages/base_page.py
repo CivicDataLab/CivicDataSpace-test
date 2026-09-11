@@ -113,9 +113,10 @@ class BasePage:
         combo.clear()
         combo.send_keys(option_text)
 
-        # Wait for dropdown option to appear
+        # Options are often populated by a GraphQL query on page load, so allow
+        # the same 30s select_sdg_goals already uses for its option list.
         xpath = f"//div[@role='option' and normalize-space(.)='{option_text}']"
-        opt = self.wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
+        opt = self.wait_with_timeout(30).until(EC.element_to_be_clickable((By.XPATH, xpath)))
 
         try:
             opt.click()
