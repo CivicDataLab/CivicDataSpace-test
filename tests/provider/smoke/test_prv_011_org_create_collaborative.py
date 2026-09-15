@@ -19,7 +19,7 @@ from tests.data.test_data import CollaborativeTestData
 
 @pytest.mark.functional
 @pytest.mark.timeout(360)
-def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover_image_path, base_url, test_credentials):
+def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover_image_path, base_url, test_credentials, org_add_permission):
     """
     Test Case ID: test_prv_011_org_create_collaborative
     Verify User is able to create a Collaborative end-to-end as an Organization provider.
