@@ -91,7 +91,9 @@ class MyDashboardPage(BasePage):
         create_btn.click()
 
         # Wait for the metadata tab to confirm we're inside the creation form
-        self.wait_with_timeout(30).until(
+        # The create mutation plus the navigation it triggers is the slow step;
+        # 30s was not enough under concurrent load.
+        self.wait_with_timeout(60).until(
             EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
             message="Timed out waiting for Metadata tab to appear after creating dataset"
         )
@@ -128,7 +130,9 @@ class MyDashboardPage(BasePage):
         )
         create_btn.click()
 
-        self.wait_with_timeout(30).until(
+        # The create mutation plus the navigation it triggers is the slow step;
+        # 30s was not enough under concurrent load.
+        self.wait_with_timeout(60).until(
             EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
             message="Timed out waiting for Metadata tab after creating prompt dataset"
         )
