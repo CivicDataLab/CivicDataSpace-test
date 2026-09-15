@@ -413,6 +413,14 @@ jobs:
       TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
       TEST_EMAIL_2:    ${{ secrets.TEST_EMAIL_2 }}
       TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
+      # org_add_permission (conftest) resolves which orgs this worker's account
+      # can create content in. Without these it skips every org-create test on
+      # both workers -- including the account that has canAdd.
+      API_BASE_URL: ${{ inputs.api_base_url || vars.API_BASE_URL || 'https://dev.api.civicdataspace.in' }}
+      KEYCLOAK_URL: ${{ vars.KEYCLOAK_URL || 'https://auth.civicdatalab.in' }}
+      KEYCLOAK_REALM: ${{ vars.KEYCLOAK_REALM || 'DataSpace' }}
+      KEYCLOAK_CLIENT_ID: ${{ vars.KEYCLOAK_CLIENT_ID || 'dataspace' }}
+      KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
 
     steps:
       - uses: actions/checkout@v4
