@@ -15,10 +15,10 @@ class CreateDatasetLocators:
     # ---- Metadata fields ----
     DESCRIPTION         = "//div[contains(@class, 'ql-editor') and @contenteditable='true']"
 
-    SECTOR_INPUT        = "//label[normalize-space()='Sectors *']/following::input[@role='combobox'][1]"
+    SECTOR_INPUT        = "//label[normalize-space()='Sectors *']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
     SECTOR_DROPDOWN_ITEM = "//div[@role='option'][normalize-space(.)='{value}']"
 
-    TAGS_INPUT           = "//label[normalize-space()='Tags' or normalize-space()='Tags *']/following::input[@role='combobox'][1]"
+    TAGS_INPUT           = "//label[normalize-space()='Tags' or normalize-space()='Tags *']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
     TAG_DROPDOWN_ITEM    = "//div[@role='option' and normalize-space(.)='{value}']"
 
     GEOGRAPHY_CONTAINER = "//label[normalize-space()='Geographies']/following::input[1]"
@@ -101,10 +101,10 @@ class CreateDatasetLocators:
 
     # ─── Prompt Dataset Metadata section ──────────────────────────────────────
     # Anchored to each field's label div — works regardless of heading tag type.
-    TASK_TYPE_INPUT          = "//label[normalize-space()='Task Type']/following::input[@role='combobox'][1]"
-    DOMAIN_INPUT             = "//label[normalize-space()='Domain']/following::input[@role='combobox'][1]"
-    TARGET_LANGUAGES_INPUT   = "//label[normalize-space()='Target Languages']/following::input[@role='combobox'][1]"
-    TARGET_MODEL_TYPES_INPUT = "//label[normalize-space()='Target Model Types']/following::input[@role='combobox'][1]"
+    TASK_TYPE_INPUT          = "//label[normalize-space()='Task Type']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
+    DOMAIN_INPUT             = "//label[normalize-space()='Domain']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
+    TARGET_LANGUAGES_INPUT   = "//label[normalize-space()='Target Languages']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
+    TARGET_MODEL_TYPES_INPUT = "//label[normalize-space()='Target Model Types']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
 
     TASK_TYPE_SELECTED_PILL = (
         "//div[./div[normalize-space(.)='Task Type']]"

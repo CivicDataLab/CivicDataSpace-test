@@ -102,7 +102,10 @@ class OrganizationsPage(BasePage):
         create_btn.click()
 
         # Wait for metadata tab
-        self.wait_with_timeout(30).until(
+        # The create mutation plus the navigation it triggers is the slow step;
+        # 30s was not enough under concurrent load. The org flow does not land
+        # on an /edit URL, so wait on the tab itself rather than the URL.
+        self.wait_with_timeout(60).until(
             EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
             message="Timed out waiting for Metadata tab to appear after creating dataset"
         )
@@ -141,7 +144,10 @@ class OrganizationsPage(BasePage):
         )
         create_btn.click()
 
-        self.wait_with_timeout(30).until(
+        # The create mutation plus the navigation it triggers is the slow step;
+        # 30s was not enough under concurrent load. The org flow does not land
+        # on an /edit URL, so wait on the tab itself rather than the URL.
+        self.wait_with_timeout(60).until(
             EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
             message="Timed out waiting for Metadata tab after creating prompt dataset"
         )
