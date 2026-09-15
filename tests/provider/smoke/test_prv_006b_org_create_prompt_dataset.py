@@ -10,7 +10,7 @@ from pages.provider.create_dataset_page import CreateDatasetPage
 
 
 @pytest.mark.functional
-def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, test_credentials):
+def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, test_credentials, org_add_permission):
     """
     Test Case ID: test_prv_006b_org_create_prompt_dataset
     Verify a user can create a Prompt Dataset end-to-end from the Org Dashboard.
