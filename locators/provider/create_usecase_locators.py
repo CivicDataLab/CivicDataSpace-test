@@ -18,16 +18,16 @@ class CreateUsecaseLocators:
 
     PLATFORM_URL_INPUT = (By.XPATH, "//input[@name='platformUrl']")
 
-    TAGS_INPUT = (By.XPATH,"//label[normalize-space()='Tags']/following::input[@role='combobox'][1]")
+    TAGS_INPUT = (By.XPATH,"//label[normalize-space()='Tags']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']")
     TAG_DROPDOWN_ITEM = "//div[@role='option' and normalize-space(.)='{value}']"
 
-    SECTOR_INPUT = (By.XPATH,"//label[normalize-space()='Sectors' or normalize-space()='Sectors *']/following::input[@role='combobox'][1]")
+    SECTOR_INPUT = (By.XPATH,"//label[normalize-space()='Sectors' or normalize-space()='Sectors *']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']")
     SECTOR_DROPDOWN_ITEM = "//div[@role='option' and normalize-space(.)='{value}']"
 
-    GEOGRAPHY_CONTAINER = (By.XPATH,"//label[normalize-space()='Geographies' or normalize-space()='Geography *' or normalize-space()='Geography']/following::input[@role='combobox'][1]")
+    GEOGRAPHY_CONTAINER = (By.XPATH,"//label[normalize-space()='Geographies' or normalize-space()='Geography *' or normalize-space()='Geography']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']")
     GEO_OPTION = "//div[@role='option' and starts-with(normalize-space(.), '{value}')]"
 
-    SDG_GOALS_CONTAINER = (By.XPATH,"//label[normalize-space()='SDG Goals *' or normalize-space()='SDG Goal *' or contains(text(),'SDG')]/following::input[@role='combobox'][1]")
+    SDG_GOALS_CONTAINER = (By.XPATH,"//label[normalize-space()='SDG Goals *' or normalize-space()='SDG Goal *' or contains(text(),'SDG')]/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']")
     SDG_GOALS_OPTION = "//div[@role='option' and normalize-space(.)='{value}']"
 
     STARTED_ON_INPUT = (By.XPATH, "//input[@type='date' and @name='startedOn']")
