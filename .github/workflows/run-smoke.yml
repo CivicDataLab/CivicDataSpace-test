@@ -13,6 +13,11 @@ on:
         type: string
         required: false
         default: ''
+      only_provider:
+        description: 'Run only provider-smoke (skip api and consumer).'
+        type: boolean
+        required: false
+        default: false
   workflow_call:
     inputs:
       api_base_url:
@@ -40,6 +45,11 @@ on:
         type: string
         required: false
         default: ''
+      only_provider:
+        description: 'Run only provider-smoke (skip api and consumer). For a report-only provider run alongside a gating run that skips provider.'
+        type: boolean
+        required: false
+        default: false
     secrets:
       HOME_URL_DEV:
         required: true
@@ -60,6 +70,7 @@ on:
 
 jobs:
   consumer-smoke:
+    if: ${{ !inputs.only_provider }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -193,6 +204,7 @@ jobs:
           fi
 
   api-smoke:
+    if: ${{ !inputs.only_provider }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
