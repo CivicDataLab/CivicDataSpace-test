@@ -139,26 +139,33 @@ class MyDashboardPage(BasePage):
 
         return CreateDatasetPage(self.driver)
 
+    def _open_sidebar_section(self, link_locator, url_part: str, name: str) -> None:
+        """Click a dashboard sidebar link and wait until the URL actually changes.
+
+        A click sometimes lands before the Next.js router is ready and nothing
+        navigates: the link highlights but the page stays put (seen on the CI
+        runner for UseCases, Collaboratives, AI Models, Charts and Profile). So
+        confirm the URL moved, and click once more, re-found, if it didn't.
+        """
+        link = self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable(link_locator),
+            message=f"Timed out waiting for the '{name}' link to be clickable",
+        )
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", link)
+        self.driver.execute_script("arguments[0].click();", link)
+        try:
+            self.wait_with_timeout(8).until(lambda d: url_part in d.current_url)
+        except TimeoutException:
+            self.wait_with_timeout(10).until(EC.element_to_be_clickable(link_locator)).click()
+            self.wait_with_timeout(15).until(
+                lambda d: url_part in d.current_url,
+                message=f"Timed out waiting for the {name} page URL after retry click",
+            )
+
     def click_usecases_card(self):
         from locators.provider.usecases_list_page_locators import UseCaseListPageLocators
 
-        usecases_link = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable(MyDashboardLocators.USECASES_NAV_LINK),
-            message="Timed out waiting for the 'Usecases' card to be clickable"
-        )
-        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", usecases_link)
-        self.driver.execute_script("arguments[0].click();", usecases_link)
-
-        # JS click occasionally doesn't trigger React's router (e.g. under server load right
-        # after the previous test finishes). Retry once with a real click if URL hasn't changed.
-        try:
-            self.wait_with_timeout(8).until(lambda d: '/usecases' in d.current_url)
-        except TimeoutException:
-            usecases_link.click()
-            self.wait_with_timeout(15).until(
-                lambda d: '/usecases' in d.current_url,
-                message="Timed out waiting for UseCases page URL after retry click"
-            )
+        self._open_sidebar_section(MyDashboardLocators.USECASES_NAV_LINK, "/usecases", "UseCases")
 
         self.wait_with_timeout(15).until(
             EC.presence_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON),
@@ -171,24 +178,9 @@ class MyDashboardPage(BasePage):
         from locators.provider.collaboratives_list_page_locators import CollaborativesListPageLocators
         from pages.provider.collaboratives_list_page import CollaborativesListPage
 
-        collaboratives_link = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable(MyDashboardLocators.COLLABORATIVES_NAV_LINK),
-            message="Timed out waiting for the 'Collaboratives' card to be clickable"
+        self._open_sidebar_section(
+            MyDashboardLocators.COLLABORATIVES_NAV_LINK, "collaboratives", "Collaboratives"
         )
-        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", collaboratives_link)
-        self.driver.execute_script("arguments[0].click();", collaboratives_link)
-
-        # Same retry pattern as click_usecases_card: JS click occasionally doesn't trigger
-        # React's router on CI runners. The broad text-based fallbacks that were here before
-        # matched sidebar nav items already on screen, causing a false-positive early return.
-        try:
-            self.wait_with_timeout(8).until(lambda d: 'collaboratives' in d.current_url)
-        except TimeoutException:
-            collaboratives_link.click()
-            self.wait_with_timeout(15).until(
-                lambda d: 'collaboratives' in d.current_url,
-                message="Timed out waiting for Collaboratives page URL after retry click"
-            )
 
         self.wait_with_timeout(20).until(
             EC.visibility_of_element_located(CollaborativesListPageLocators.ADD_NEW_COLLABORATIVE_BUTTON),
@@ -199,23 +191,8 @@ class MyDashboardPage(BasePage):
 
     def click_ai_models_card(self):
         from pages.provider.ai_models_list_page import AiModelsListPage
-        from selenium.common.exceptions import TimeoutException
 
-        ai_link = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable(MyDashboardLocators.AI_MODELS_NAV_LINK),
-            message="Timed out waiting for 'AI Models' nav link"
-        )
-        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", ai_link)
-        self.driver.execute_script("arguments[0].click();", ai_link)
-
-        try:
-            self.wait_with_timeout(8).until(lambda d: '/aimodels' in d.current_url)
-        except TimeoutException:
-            ai_link.click()
-            self.wait_with_timeout(15).until(
-                lambda d: '/aimodels' in d.current_url,
-                message="Timed out waiting for AI Models page URL after retry"
-            )
+        self._open_sidebar_section(MyDashboardLocators.AI_MODELS_NAV_LINK, "/aimodels", "AI Models")
 
         return AiModelsListPage(self.driver)
 
@@ -223,21 +200,7 @@ class MyDashboardPage(BasePage):
         from locators.provider.charts_locators import ChartsLocators
         from pages.provider.charts_list_page import ChartsListPage
 
-        charts_link = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable(MyDashboardLocators.CHARTS_NAV_LINK),
-            message="Timed out waiting for 'Add & Manage Charts' link to be clickable"
-        )
-        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", charts_link)
-        self.driver.execute_script("arguments[0].click();", charts_link)
-
-        try:
-            self.wait_with_timeout(8).until(lambda d: '/charts' in d.current_url)
-        except TimeoutException:
-            charts_link.click()
-            self.wait_with_timeout(15).until(
-                lambda d: '/charts' in d.current_url,
-                message="Timed out waiting for Charts page URL after retry click"
-            )
+        self._open_sidebar_section(MyDashboardLocators.CHARTS_NAV_LINK, "/charts", "Charts")
 
         self.wait_with_timeout(15).until(
             EC.visibility_of_element_located(ChartsLocators.ADD_CHART_BTN),
@@ -248,20 +211,9 @@ class MyDashboardPage(BasePage):
     def click_profile_card(self):
         from locators.provider.update_profile_locators import UpdateProfilePageLocators
 
-        # Wait for and click the Profile navigation link
-        profile_link = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable(MyDashboardLocators.PROFILE_NAV_LINK),
-            message="Timed out waiting for the 'Profile' card to be clickable"
-        )
+        self._open_sidebar_section(MyDashboardLocators.PROFILE_NAV_LINK, "/profile", "Profile")
 
-        # Scroll into view and click
-        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", profile_link)
-        profile_link.click()
-
-        # The heading renders only after the profile query returns, so this waits
-        # on the backend, not on the client. 15s held locally but timed out on the
-        # CI runner with two workers.
-        self.wait_with_timeout(60).until(
+        self.wait_with_timeout(20).until(
             EC.visibility_of_element_located(UpdateProfilePageLocators.My_Profile_HEADING),
             message="Timed out waiting for Profile page to load"
         )
