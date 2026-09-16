@@ -247,7 +247,6 @@ class MyDashboardPage(BasePage):
 
     def click_profile_card(self):
         from locators.provider.update_profile_locators import UpdateProfilePageLocators
-        import time
 
         # Wait for and click the Profile navigation link
         profile_link = self.wait_with_timeout(10).until(
@@ -259,11 +258,10 @@ class MyDashboardPage(BasePage):
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", profile_link)
         profile_link.click()
 
-        # Give the page time to navigate
-        time.sleep(2)
-
-        # Wait for the profile page to load by checking for the "My Profile" heading
-        self.wait_with_timeout(15).until(
+        # The heading renders only after the profile query returns, so this waits
+        # on the backend, not on the client. 15s held locally but timed out on the
+        # CI runner with two workers.
+        self.wait_with_timeout(60).until(
             EC.visibility_of_element_located(UpdateProfilePageLocators.My_Profile_HEADING),
             message="Timed out waiting for Profile page to load"
         )
