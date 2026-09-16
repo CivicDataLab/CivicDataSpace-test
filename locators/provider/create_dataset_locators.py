@@ -45,18 +45,20 @@ class CreateDatasetLocators:
     #Getter locators :
     # 5b) After selecting sectors, each chosen sector usually appears as a "pill"
     SECTOR_SELECTED_PILL = (
-        "//div[contains(@class,'Input-module_tags')]"
+        "//label[normalize-space()='Sectors' or normalize-space()='Sectors *']"
+        "/ancestor::div[.//input[@role='combobox']][1]"
         "//span[contains(@class,'Tag-module_TagText')]"
     )
     # 5c) Tag pills (after selecting tags, each chosen tag appears)
     TAG_SELECTED_PILL = (
-        "//div[contains(@class,'Input-module_tags')]"
+        "//label[normalize-space()='Tags' or normalize-space()='Tags *']"
+        "/ancestor::div[.//input[@role='combobox']][1]"
         "//span[contains(@class,'Tag-module_TagText')]"
     )
     # 5d) Selected geography appears as a single “pill” or dropdown value
     GEOGRAPHY_SELECTED_PILL = (
         "//label[normalize-space(text())='Geographies']"
-        "/following::div[contains(@class,'Input-module_tags')][1]"
+        "/ancestor::div[.//input[@role='combobox']][1]"
         "//span[contains(@class,'Tag-module_TagText')]"
     )
 

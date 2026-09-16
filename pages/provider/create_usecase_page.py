@@ -168,16 +168,18 @@ class CreateUsecasePage(BasePage):
     def get_platform_url_value(self):
         return self.driver.find_element(*CreateUsecaseLocators.PLATFORM_URL_INPUT).get_attribute("value")
 
-    def get_selected_tags(self) -> list[str]:
-        elements = self.driver.find_elements(By.XPATH, CreateUsecaseLocators.SELECTED_TAGS)
+    def _get_pill_texts(self, xpath: str) -> list[str]:
+        try:
+            elements = self.wait.until(EC.presence_of_all_elements_located((By.XPATH, xpath)))
+        except TimeoutException:
+            return []
         return [el.text.strip() for el in elements if el.text.strip()]
 
+    def get_selected_tags(self) -> list[str]:
+        return self._get_pill_texts(CreateUsecaseLocators.SELECTED_TAGS)
+
     def get_selected_sectors(self) -> list[str]:
-        # Assuming each selected‐tag appears as a "pill" with text inside
-        elements = self.driver.find_elements(
-            By.XPATH, CreateUsecaseLocators.SELECTED_SECTORS
-        )
-        return [el.text.strip() for el in elements]
+        return self._get_pill_texts(CreateUsecaseLocators.SELECTED_SECTORS)
 
     def get_selected_geography(self) -> str:
         elt = self.wait.until(
