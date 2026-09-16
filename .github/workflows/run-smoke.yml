@@ -220,6 +220,14 @@ jobs:
       API_BASE_URL: ${{ inputs.api_base_url || vars.API_BASE_URL || 'https://dev.api.civicdataspace.in' }}
       EXPECTED_DEPLOYED_SHA: ${{ inputs.deployed_sha }}
 
+      # Without these the analytics_base_url_dev/prod fixtures skip, and every
+      # test_api_010_analytics_health test skips with them -- a green job that
+      # asserted nothing about analytics at all. Public, non-secret URLs, same
+      # reasoning as KEYCLOAK_URL below: repo variables with literal defaults,
+      # correct out of the box, overridable without a code change.
+      ANALYTICS_URL_DEV: ${{ vars.ANALYTICS_URL_DEV || 'https://dev.analytics.civicdataspace.in' }}
+      ANALYTICS_URL_PROD: ${{ vars.ANALYTICS_URL_PROD || 'https://analytics.civicdataspace.in' }}
+
       # Without these the keycloak_config fixture skips, and every
       # authenticated API test skips with it -- a green run that asserted
       # nothing. Host, realm and client id are public, so they are repo
