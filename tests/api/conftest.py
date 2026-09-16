@@ -231,3 +231,44 @@ def dev_frontend_client(frontend_base_url_dev):
 def prod_frontend_client(frontend_base_url_prod):
     """Unauthenticated APIClient pointed at the prod frontend (for sitemap/robots.txt checks)."""
     return APIClient(frontend_base_url_prod)
+
+
+# ─── Analytics (dashboard-superset) — used by test_api_010_analytics_health ────
+#
+# Additional .env variables used here:
+#   ANALYTICS_URL_DEV  - Analytics (Superset) base URL for the dev environment
+#   ANALYTICS_URL_PROD - Analytics (Superset) base URL for the production environment
+#
+# No authenticated client here on purpose: every analytics check is read-only
+# and unauthenticated by design (see the test file) -- nothing writes to
+# either environment, so there's no reason to hold real Superset credentials
+# in this suite at all, on prod or on dev.
+
+@pytest.fixture(scope="session")
+def analytics_base_url_dev():
+    """Analytics base URL for the dev environment. Skips if not set."""
+    url = os.getenv("ANALYTICS_URL_DEV")
+    if not url:
+        pytest.skip("ANALYTICS_URL_DEV not set — skipping dev analytics tests")
+    return url.rstrip("/")
+
+
+@pytest.fixture(scope="session")
+def analytics_base_url_prod():
+    """Analytics base URL for the production environment. Skips if not set."""
+    url = os.getenv("ANALYTICS_URL_PROD")
+    if not url:
+        pytest.skip("ANALYTICS_URL_PROD not set — skipping prod analytics tests")
+    return url.rstrip("/")
+
+
+@pytest.fixture(scope="session")
+def dev_analytics_client(analytics_base_url_dev):
+    """Unauthenticated APIClient pointed at the dev analytics (Superset) instance."""
+    return APIClient(analytics_base_url_dev)
+
+
+@pytest.fixture(scope="session")
+def prod_analytics_client(analytics_base_url_prod):
+    """Unauthenticated APIClient pointed at the prod analytics (Superset) instance."""
+    return APIClient(analytics_base_url_prod)
