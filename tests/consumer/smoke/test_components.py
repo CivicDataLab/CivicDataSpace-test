@@ -167,67 +167,58 @@ def test_TC_HOM_09_contact_section(driver):
 #     load_homepage(driver)
 #     icon_link = wait_and_capture(driver, tc_id, By.XPATH, locator, condition=EC.element_to_be_clickable)
 #     assert icon_link.is_displayed(), f"{tc_id} failed: link not displayed"
-'''
-
+@pytest.mark.smoke
 def test_TC_HOM_14_cdl_redirect(driver):
     """CDL redirect element present"""
     load_homepage(driver)
-    link = wait_and_capture(driver, "TC_HOM_14", By.XPATH, Locators.CDL_REDIRECT_ELEMENT)
+    link = wait_and_capture(driver, "TC_HOM_14", *Locators.CDL_REDIRECT_ELEMENT)
     href = link.get_attribute("href")
-    assert href.startswith("https://www.civicdatalab.in/"), f"Unexpected href: {href}"
+    assert href.startswith("https://www.civicdatalab.in"), f"Unexpected href: {href}"
 
-# ─── DATASET TAB TESTS ─────────────────────────────────────────────────────────
+# ─── DATASET LISTING TESTS ─────────────────────────────────────────────────────
 
 @pytest.fixture(scope="function")
 def dataset_page(driver):
-    load_homepage(driver)
-    tab = wait_and_capture(
-        driver, "SETUP_DS_TAB", By.XPATH, Locators.DATASET_TAB,
-        condition=EC.element_to_be_clickable
-    )
-    tab.click()
+    # The header has no direct Datasets link any more (it sits under Explore),
+    # so open the listing page itself.
+    driver.get(f"{BASE_URL}/datasets")
     return driver
 
+@pytest.mark.smoke
 def test_TC_DS_01_search_field_visible(dataset_page):
-    bar = wait_and_capture(dataset_page, "TC_DS_01", By.XPATH, Locators.DATASET_SEARCH_FIELD)
+    bar = wait_and_capture(dataset_page, "TC_DS_01", *Locators.DATASET_SEARCH_FIELD)
     assert bar.is_displayed()
 
+@pytest.mark.smoke
 def test_TC_DS_02_sector_filter_dropdown(dataset_page):
-    btn = wait_and_capture(dataset_page, "TC_DS_02", By.XPATH, Locators.DATASET_FILTER_RESET_BUTTON)
-    btn.click()
-    sd = wait_and_capture(dataset_page, "TC_DS_02", By.XPATH, Locators.DATASET_SECTOR_DROPDOWN)
+    wait_and_capture(dataset_page, "TC_DS_02", *Locators.DATASET_FILTER_RESET_BUTTON,
+                     condition=EC.element_to_be_clickable).click()
+    sd = wait_and_capture(dataset_page, "TC_DS_02", *Locators.DATASET_SECTOR_DROPDOWN)
     assert sd.is_displayed()
 
+@pytest.mark.smoke
 def test_TC_DS_03_tags_filter_dropdown(dataset_page):
-    btn = wait_and_capture(dataset_page, "TC_DS_03", By.XPATH, Locators.DATASET_FILTER_RESET_BUTTON)
-    btn.click()
-    td = wait_and_capture(dataset_page, "TC_DS_03", By.XPATH, Locators.DATASET_TAGS_DROPDOWN)
+    wait_and_capture(dataset_page, "TC_DS_03", *Locators.DATASET_FILTER_RESET_BUTTON,
+                     condition=EC.element_to_be_clickable).click()
+    td = wait_and_capture(dataset_page, "TC_DS_03", *Locators.DATASET_TAGS_DROPDOWN)
     assert td.is_displayed()
 
-def test_TC_DS_04_toggle_view_options(dataset_page):
-    grid = wait_and_capture(dataset_page, "TC_DS_04", By.XPATH, Locators.DATASET_TOGGLE_GRID)
-    lst  = wait_and_capture(dataset_page, "TC_DS_04", By.XPATH, Locators.DATASET_TOGGLE_LIST)
-    assert grid.is_displayed() and lst.is_displayed() and grid != lst
-
+@pytest.mark.smoke
 def test_TC_DS_05_dataset_cards_render(dataset_page):
-    """TC_DS_04: Dataset cards are rendered on the Dataset tab"""
-    # wait up to 10s for *all* cards to be present in the DOM
-    cards = WebDriverWait(dataset_page, 10).until(
-        EC.presence_of_all_elements_located((By.XPATH, Locators.DATASET_CARD))
+    """Dataset cards are rendered on the listing page"""
+    cards = WebDriverWait(dataset_page, 15).until(
+        EC.presence_of_all_elements_located(Locators.DATASET_CARD)
     )
+    assert cards, "TC_DS_05 failed: expected at least one dataset card"
 
-    count = len(cards)
-    assert count > 0, (
-        f"TC_DS_04 failed: expected >0 dataset cards, but found {count}. "
-        "Check your `Locators.DATASET_CARD` XPath."
-    )
-
-def test_TC_DS_06_view_details_links(dataset_page):
-    first = wait_and_capture(dataset_page, "TC_DS_05", By.XPATH, Locators.DATASET_CARD)
-    first.click()
-    link = wait_and_capture(dataset_page, "TC_DS_05", By.XPATH, Locators.DATASET_VIEW_DETAILS_LINK)
-    assert link.is_displayed()
-'''
+@pytest.mark.smoke
+def test_TC_DS_06_card_opens_dataset_details(dataset_page):
+    card = wait_and_capture(dataset_page, "TC_DS_06", *Locators.DATASET_CARD,
+                            condition=EC.element_to_be_clickable)
+    expected = card.get_attribute("href")
+    card.click()
+    WebDriverWait(dataset_page, 15).until(EC.url_to_be(expected),
+                                          message=f"TC_DS_06: card did not open {expected}")
 # ─── SECTORS TAB TESTS ─────────────────────────────────────────────────────────
 
 @pytest.fixture(scope="function")
