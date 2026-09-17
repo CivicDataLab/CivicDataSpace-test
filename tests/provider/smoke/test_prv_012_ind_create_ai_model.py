@@ -11,6 +11,7 @@ from pages.provider.create_ai_model_page import CreateAiModelPage
 
 
 @pytest.mark.functional
+@pytest.mark.smoke
 def test_prv_012_ind_create_ai_model(driver, base_url, test_credentials):
     """
     Test Case ID: test_prv_012_ind_create_ai_model
