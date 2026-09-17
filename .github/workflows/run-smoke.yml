@@ -156,7 +156,7 @@ jobs:
             functional) m="functional";                        p="tests/consumer" ;;
             full)       m="smoke or functional or regression"; p="tests/consumer" ;;
             readonly)   m="readonly";                          p="tests/consumer" ;;
-            "")         p="tests/consumer/smoke"
+            "")         p="tests/consumer"
                         if [[ "$EVENT" == "workflow_dispatch" || "$EVENT" == "workflow_call" ]]; then m="smoke or functional"; else m="smoke"; fi ;;
             *)          echo "::error::Unknown suite '$SUITE'"; exit 1 ;;
           esac
