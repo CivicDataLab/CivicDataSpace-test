@@ -103,11 +103,18 @@ def test_user_info_returns_current_user(api_client):
 
 
 @pytest.mark.api
+@pytest.mark.smoke
 @pytest.mark.regression
-@pytest.mark.xfail(reason="Backend returns 500 instead of 401 for unauthenticated /api/auth/user/info/")
 def test_user_info_requires_auth(anon_api_client):
-    """GET /api/auth/user/info/ without a token must return 401 or 403."""
+    """GET /api/auth/user/info/ without a token must return 401 or 403.
+
+    DataSpaceBackend#187 added permission_classes = [IsAuthenticated] to
+    UserInfoView; before that, the project-wide AllowAny default let an
+    anonymous request through and reading .email off AnonymousUser raised a
+    500 instead.
+    """
     resp = anon_api_client.get("/api/auth/user/info/")
     assert resp.status_code in (401, 403), (
-        f"Expected 401/403 for unauthenticated user info, got {resp.status_code}"
+        f"Expected 401/403 for unauthenticated GET {anon_api_client.base_url}"
+        f"/api/auth/user/info/, got {resp.status_code}: {resp.text}"
     )

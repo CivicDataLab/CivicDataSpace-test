@@ -51,13 +51,19 @@ def test_search_usecases_returns_200(anon_api_client):
 
 
 @pytest.mark.api
+@pytest.mark.smoke
 @pytest.mark.regression
-@pytest.mark.xfail(reason="Backend Elasticsearch InnerDoc serialization error on /api/search/aimodel/ (500)")
 def test_search_aimodels_returns_200(anon_api_client):
-    """GET /api/search/aimodel/ should return 200."""
+    """GET /api/search/aimodel/ should return 200.
+
+    DataSpaceBackend#187 converts AttrList/AttrDict/InnerDoc values to plain
+    data before caching; before that, pickling a cached hit with nested
+    fields raised and the view's except-Exception turned it into a 500.
+    """
     resp = anon_api_client.get("/api/search/aimodel/")
     assert resp.status_code == 200, (
-        f"AI model search failed ({resp.status_code}): {resp.text}"
+        f"AI model search failed for GET {anon_api_client.base_url}"
+        f"/api/search/aimodel/ ({resp.status_code}): {resp.text}"
     )
 
 
