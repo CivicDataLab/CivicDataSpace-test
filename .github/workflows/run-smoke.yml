@@ -61,6 +61,10 @@ on:
         required: false
       TEST_PASSWORD_2:
         required: false
+      TEST_EMAIL_3:
+        required: false
+      TEST_PASSWORD_3:
+        required: false
       # Required in practice by api-smoke, declared optional so the existing
       # callers (DataSpaceBackend, DataSpaceFrontend) keep parsing until they
       # pass it. api-smoke preflights it and fails with a readable message
@@ -165,7 +169,13 @@ jobs:
 
       - name: Run consumer smoke tests
         run: |
-          pytest "${{ steps.markers.outputs.path }}" -m "${{ steps.markers.outputs.value }}" -v --json-report
+          # -n 4: unlike api-smoke/provider-smoke, nothing here needs a real
+          # login (no test_credentials/auth_token usage in tests/consumer/),
+          # so this isn't bounded by account count the way those two are.
+          # Picked against file count (7 files under tests/consumer/smoke/
+          # today, --dist loadfile keeps each on one worker) and typical
+          # GH-hosted runner core counts -- not account availability.
+          pytest "${{ steps.markers.outputs.path }}" -m "${{ steps.markers.outputs.value }}" -v --json-report -n 4
 
       - name: Upload screenshots
         if: always()
@@ -212,6 +222,15 @@ jobs:
       HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
       TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
       TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+      # TEST_EMAIL_2 was never forwarded here despite this job already running
+      # -n 2 -- gw1 has been silently falling back to TEST_EMAIL_1 this whole
+      # time (conftest.py's test_credentials does that when a worker's slot has
+      # no matching credentials, rather than failing). Adding _2 fixes that
+      # existing gap; adding _3 is for the new worker below.
+      TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_2 }}
+      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
+      TEST_EMAIL_3: ${{ secrets.TEST_EMAIL_3 }}
+      TEST_PASSWORD_3: ${{ secrets.TEST_PASSWORD_3 }}
       # Falls back to the dev backend so push/PR runs actually exercise the
       # API tests. Without a default, `inputs` is empty on a push event, every
       # api-smoke test skipped, and the job reported success having asserted
@@ -349,7 +368,11 @@ jobs:
 
       - name: Run API smoke tests
         run: |
-          pytest "${{ steps.markers.outputs.path }}" -m "${{ steps.markers.outputs.value }}" -v --json-report -n 2
+          # -n 3: matches the 3 configured test accounts (test_credentials maps
+          # gw0/gw1/gw2 -> TEST_EMAIL_1/2/3). Don't raise this without adding a
+          # 4th account first -- an extra worker with no matching credentials
+          # falls back to TEST_EMAIL_1 silently, not an error.
+          pytest "${{ steps.markers.outputs.path }}" -m "${{ steps.markers.outputs.value }}" -v --json-report -n 3
 
       - name: Enforce minimum passed count
         # Now that API_BASE_URL always has a value, this runs on every event,
@@ -421,9 +444,11 @@ jobs:
       TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
       TEST_EMAIL_2:    ${{ secrets.TEST_EMAIL_2 }}
       TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
+      TEST_EMAIL_3:    ${{ secrets.TEST_EMAIL_3 }}
+      TEST_PASSWORD_3: ${{ secrets.TEST_PASSWORD_3 }}
       # org_add_permission (conftest) resolves which orgs this worker's account
       # can create content in. Without these it skips every org-create test on
-      # both workers -- including the account that has canAdd.
+      # any of the three workers -- including accounts that have canAdd.
       API_BASE_URL: ${{ inputs.api_base_url || vars.API_BASE_URL || 'https://dev.api.civicdataspace.in' }}
       KEYCLOAK_URL: ${{ vars.KEYCLOAK_URL || 'https://auth.civicdatalab.in' }}
       KEYCLOAK_REALM: ${{ vars.KEYCLOAK_REALM || 'DataSpace' }}
@@ -514,7 +539,11 @@ jobs:
 
       - name: Run provider smoke tests
         run: |
-          pytest "${{ steps.markers.outputs.path }}" -m "${{ steps.markers.outputs.value }}" -v --json-report -n 2
+          # -n 3: matches the 3 configured test accounts, same reasoning as
+          # api-smoke above. --dist loadfile (pytest.ini) keeps the numbered
+          # provider flows in file order per worker, so each of the 3 accounts
+          # runs its own files start to finish rather than interleaving.
+          pytest "${{ steps.markers.outputs.path }}" -m "${{ steps.markers.outputs.value }}" -v --json-report -n 3
 
       - name: Upload screenshots
         if: always()
