@@ -38,6 +38,7 @@ def test_con_002_access_all_data_page(home):
     assert ds_page.list_cards(), "Con_002: Dataset cards failed to load"
 
 @pytest.mark.functional
+@pytest.mark.smoke
 def test_con_003_verify_dataset_download(home):
     ds_page = home.go_to_all_data_page()
     assert ds_page.is_loaded(), "Con_003: Datasets page failed to load"
@@ -51,6 +52,7 @@ def test_con_004_access_sectors_page(home):
     assert sec_page.has_cards(), "Con_004: Sector cards missing"
 
 @pytest.mark.functional
+@pytest.mark.smoke
 @pytest.mark.parametrize("sector_index,dataset_index", [(0, 0)])
 def test_con_005_sector_download(home, sector_index, dataset_index):
     sec_page = home.go_to_sectors()
@@ -68,6 +70,7 @@ def test_con_006_access_use_case_page(home):
     assert uc_page.has_cards(), "Con_006: Use-Case cards missing"
 
 @pytest.mark.functional
+@pytest.mark.smoke
 @pytest.mark.parametrize("usecase_index,dataset_index", [(0, 0)])
 def test_con_007_use_case_download(home, usecase_index, dataset_index):
     uc_page = home.go_to_usecases()
@@ -90,6 +93,7 @@ def test_con_008_access_publishers_page(home):
 )
 
 @pytest.mark.functional
+@pytest.mark.smoke
 @pytest.mark.timeout(30)
 def test_publishers_flow(tc_id, view, home, driver):
     pub   = home.go_to_publishers()

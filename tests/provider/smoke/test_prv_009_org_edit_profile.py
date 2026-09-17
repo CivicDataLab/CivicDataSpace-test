@@ -9,6 +9,7 @@ from pages.provider.organizations_page import OrganizationsPage
 
 
 @pytest.mark.functional
+@pytest.mark.smoke
 def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, test_credentials):
     """
     Test Case ID: test_prv_009_org_edit_profile
