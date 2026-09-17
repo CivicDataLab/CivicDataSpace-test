@@ -87,6 +87,7 @@ class CreateDatasetPage(BasePage):
         return self
 
     def select_geography(self, value: str):
+        self.wait_until_saved()
         import time
 
         toggle = self.wait_with_timeout(10).until(EC.element_to_be_clickable(

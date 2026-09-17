@@ -126,6 +126,7 @@ class CreateCollaborativePage(BasePage):
 
     def select_sdg_goals(self, value: str):
         """Select SDG goal from dropdown."""
+        self.wait_until_saved()
         # Try multiple strategies to find the SDG goals container
         toggle = None
         strategies = [
@@ -177,6 +178,7 @@ class CreateCollaborativePage(BasePage):
 
     def select_geography(self, value: str):
         """Select geography from dropdown."""
+        self.wait_until_saved()
         import time
         # Wait for geography input to be clickable
         toggle = self.wait.until(EC.element_to_be_clickable(CreateCollaborativeLocators.GEOGRAPHY_CONTAINER))
