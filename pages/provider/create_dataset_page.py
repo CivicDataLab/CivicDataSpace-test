@@ -187,47 +187,45 @@ class CreateDatasetPage(BasePage):
         return [el.text.strip() for el in els]
 
     # ---- File upload ----
-    def upload_datafile(self, path: str):
+    def _upload_and_return_to_list(self, path: str, go_to_tab) -> None:
+        """Upload a file, wait until it has really landed, then return to the file list.
 
-        # locate the file‐input directly
+        When an upload finishes the app opens that file's edit view. Clicking back
+        as soon as the back arrow appears could land mid-upload; the completed
+        upload then reopened the edit view, and the resource-name getter fell back
+        to its schema table and returned column names (test_prv_002b).
+        """
+        import os
+
+        filename = os.path.basename(path)
         inp = self.wait.until(EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.DATAFILES_INPUT)))
-
-        # send the absolute file-path to it (this triggers the upload)
         inp.send_keys(path)
 
-        # Wait for back button to be present (indicates upload initiated)
-        btn = self.wait_with_timeout(10).until(
-            EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.BACK_BUTTON))
+        # The edit view for this upload names the file once the upload is done.
+        self.wait_with_timeout(60).until(
+            EC.presence_of_element_located((By.XPATH, f"//*[normalize-space(text())='{filename}']")),
+            message=f"Timed out waiting for '{filename}' to finish uploading",
         )
-        btn.click()
+        self.wait_until_saved()
+        self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.BACK_BUTTON))
+        ).click()
 
-        # Wait a moment for navigation to complete
-        import time
-        time.sleep(2)
+        go_to_tab()
+        self.wait_with_timeout(30).until(
+            lambda d: any(
+                el.text.strip() == filename
+                for el in d.find_elements(By.XPATH, CreateDatasetLocators.RESOURCE_NAME_CELLS)
+            ),
+            message=f"Timed out waiting for '{filename}' in the uploaded file list",
+        )
 
-        # After clicking back, the page navigates to metadata
-        # We need to explicitly go back to the Data Files tab
-        self.go_to_datafiles_tab()
-
-        # Wait for the uploaded file to appear in the resource list
-        time.sleep(2)
-
+    def upload_datafile(self, path: str):
+        self._upload_and_return_to_list(path, self.go_to_datafiles_tab)
         return self
 
     def upload_prompt_file(self, path: str):
-        inp = self.wait.until(EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.DATAFILES_INPUT)))
-        inp.send_keys(path)
-
-        btn = self.wait_with_timeout(10).until(
-            EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.BACK_BUTTON))
-        )
-        btn.click()
-
-        import time
-        time.sleep(2)
-
-        self.go_to_prompt_files_tab()
-        time.sleep(2)
+        self._upload_and_return_to_list(path, self.go_to_prompt_files_tab)
         return self
 
     # ---- Final publish ----
