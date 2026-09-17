@@ -100,6 +100,21 @@ class BasePage:
         Select(element).select_by_visible_text(text)
         return element
 
+    def wait_until_saved(self, timeout=30):
+        """Wait until no autosave is in flight.
+
+        Editor forms save on every field change. A dropdown opened while a save is
+        running gets re-rendered away and the choice is lost: test_prv_007's retry
+        screenshot shows SDG Goals empty with 'Saving...' still spinning. Returns
+        at once when nothing is saving.
+        """
+        from selenium.webdriver.common.by import By
+
+        self.wait_with_timeout(timeout).until(
+            EC.invisibility_of_element_located((By.XPATH, "//*[normalize-space(text())='Saving...']")),
+            message="Timed out waiting for the editor autosave to finish",
+        )
+
     def select_combobox_option(self, input_locator, option_text):
         """
         Generic combobox selection - click input, type, select option, close dropdown.
@@ -108,6 +123,7 @@ class BasePage:
         from selenium.webdriver.common.by import By
         from selenium.common.exceptions import ElementClickInterceptedException
 
+        self.wait_until_saved()
         combo = self.wait.until(EC.element_to_be_clickable(input_locator))
         combo.click()
         combo.clear()
