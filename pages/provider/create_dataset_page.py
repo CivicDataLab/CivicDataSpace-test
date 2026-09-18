@@ -186,15 +186,15 @@ class CreateDatasetPage(BasePage):
         els = self.driver.find_elements(By.XPATH, CreateDatasetLocators.TARGET_MODEL_TYPES_SELECTED_PILL)
         return [el.text.strip() for el in els]
 
-    # ---- File upload ----
-    def _upload_and_return_to_list(self, path: str, go_to_tab) -> None:
-        """Upload a file, wait until it has really landed, then return to the file list.
+    def get_prompt_field_options(self, label: str) -> list[str]:
+        """Every option the prompt dropdown labelled `label` offers, e.g. 'Task Type'."""
+        loc = (By.XPATH, CreateDatasetLocators.COMBOBOX_BY_LABEL.format(label))
+        self._scroll_to_locator(loc)
+        return self.get_combobox_options(loc)
 
-        When an upload finishes the app opens that file's edit view. Clicking back
-        as soon as the back arrow appears could land mid-upload; the completed
-        upload then reopened the edit view, and the resource-name getter fell back
-        to its schema table and returned column names (test_prv_002b).
-        """
+    # ---- File upload ----
+    def _upload(self, path: str) -> str:
+        """Upload a file and wait until its edit view shows it. Returns the file name."""
         import os
 
         filename = os.path.basename(path)
@@ -207,6 +207,22 @@ class CreateDatasetPage(BasePage):
             message=f"Timed out waiting for '{filename}' to finish uploading",
         )
         self.wait_until_saved()
+        return filename
+
+    def upload_prompt_file_and_open(self, path: str):
+        """Upload a prompt file and stay on its edit view (where Prompt Format lives)."""
+        self._upload(path)
+        return self
+
+    def _upload_and_return_to_list(self, path: str, go_to_tab) -> None:
+        """Upload a file, wait until it has really landed, then return to the file list.
+
+        When an upload finishes the app opens that file's edit view. Clicking back
+        as soon as the back arrow appears could land mid-upload; the completed
+        upload then reopened the edit view, and the resource-name getter fell back
+        to its schema table and returned column names (test_prv_002b).
+        """
+        filename = self._upload(path)
         self.wait_with_timeout(10).until(
             EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.BACK_BUTTON))
         ).click()

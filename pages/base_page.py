@@ -115,6 +115,28 @@ class BasePage:
             message="Timed out waiting for the editor autosave to finish",
         )
 
+    def get_combobox_options(self, input_locator) -> list[str]:
+        """Open a combobox and return the label of every option it lists."""
+        from selenium.webdriver.common.by import By
+
+        self.wait_until_saved()
+        combo = self.wait.until(EC.presence_of_element_located(input_locator))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", combo)
+        # A JS click: these lists don't close on Escape, Tab or blur, so a list
+        # opened earlier can sit over this input and swallow a real click.
+        self.driver.execute_script("arguments[0].click();", combo)
+        # Other comboboxes' options stay in the DOM, so read only this one's
+        # listbox, which the input names in aria-controls.
+        listbox = combo.get_attribute("aria-controls")
+        assert listbox, "Combobox input has no aria-controls listbox"
+        options = self.wait_with_timeout(30).until(
+            EC.presence_of_all_elements_located((By.XPATH, f"//*[@id='{listbox}']//*[@role='option']")),
+            message="Combobox opened but listed no options",
+        )
+        # textContent, not .text: options scrolled out of the list's viewport
+        # count as not displayed and would come back empty.
+        return [o.get_attribute("textContent").strip() for o in options]
+
     def select_combobox_option(self, input_locator, option_text):
         """
         Generic combobox selection - click input, type, select option, close dropdown.

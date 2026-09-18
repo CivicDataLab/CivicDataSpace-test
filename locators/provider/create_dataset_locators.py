@@ -106,6 +106,8 @@ class CreateDatasetLocators:
     TASK_TYPE_INPUT          = "//label[normalize-space()='Task Type']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
     DOMAIN_INPUT             = "//label[normalize-space()='Domain']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
     TARGET_LANGUAGES_INPUT   = "//label[normalize-space()='Target Languages']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
+    # Any labelled combobox on the prompt dataset forms, e.g. .format('Prompt Format').
+    COMBOBOX_BY_LABEL        = "//label[normalize-space()='{}']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
     TARGET_MODEL_TYPES_INPUT = "//label[normalize-space()='Target Model Types']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
 
     TASK_TYPE_SELECTED_PILL = (
