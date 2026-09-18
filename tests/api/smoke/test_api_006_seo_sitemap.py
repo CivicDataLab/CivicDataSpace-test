@@ -276,6 +276,7 @@ def _dataset_search_total(anon_api_client):
 
 
 @pytest.mark.api
+@pytest.mark.smoke
 @pytest.mark.seo
 def test_sitemap_datasets_count_matches_backend(dev_frontend_client, anon_api_client, frontend_base_url_dev):
     """
