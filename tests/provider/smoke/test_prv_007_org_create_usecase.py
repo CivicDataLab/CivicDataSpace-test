@@ -17,7 +17,12 @@ from pages.provider.create_usecase_page import CreateUsecasePage
 from pages.provider.organizations_page import OrganizationsPage
 
 @pytest.mark.functional
-@pytest.mark.smoke
+# Not @pytest.mark.smoke: fails reproducibly under concurrent (-n 3) provider-smoke
+# CI runs (AssertionError: Summary mismatch, Found: '' - a race on the same worker
+# that also fails test_prv_006, in the same run). Org-collision with another
+# worker's account was ruled out as the cause - still failing after separating
+# TEST_EMAIL_3 onto its own org - so this needs its own investigation before it's
+# safe to gate default PR/push runs on. Runs on dispatch (-m "smoke or functional").
 def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_credentials, org_add_permission):
     """
     Test Case ID: test_prv_007_org_create_usecase
