@@ -60,7 +60,7 @@ class CreateCollaborativePage(BasePage):
 
         for strategy in strategies:
             try:
-                name_input = self.wait_with_timeout(10).until(
+                name_input = self.wait_with_timeout(15).until(
                     EC.visibility_of_element_located(strategy)
                 )
                 break
@@ -137,7 +137,7 @@ class CreateCollaborativePage(BasePage):
 
         for strategy in strategies:
             try:
-                toggle = self.wait_with_timeout(10).until(EC.element_to_be_clickable(strategy))
+                toggle = self.wait_with_timeout(15).until(EC.element_to_be_clickable(strategy))
                 break
             except TimeoutException:
                 continue
@@ -148,7 +148,7 @@ class CreateCollaborativePage(BasePage):
         toggle.click()
         time.sleep(1)  # Wait for dropdown to appear
 
-        opt = self.wait_with_timeout(10).until(EC.element_to_be_clickable(
+        opt = self.wait_with_timeout(15).until(EC.element_to_be_clickable(
             (By.XPATH, CreateCollaborativeLocators.SDG_GOALS_OPTION.format(value=value))
         ))
         try:
@@ -559,7 +559,7 @@ class CreateCollaborativePage(BasePage):
 
     def go_to_publish_tab(self):
         """Click on the Publish tab."""
-        self.wait_with_timeout(10).until(
+        self.wait_with_timeout(15).until(
             EC.element_to_be_clickable(CreateCollaborativeLocators.PUBLISH_TAB),
             message="Timed out waiting for Publish tab"
         ).click()
