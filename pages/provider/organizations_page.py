@@ -201,7 +201,7 @@ class OrganizationsPage(BasePage):
         import time
 
         # Wait for and click the Collaboratives navigation link
-        collaboratives_link = self.wait_with_timeout(10).until(
+        collaboratives_link = self.wait_with_timeout(15).until(
             EC.element_to_be_clickable(OrgLocators.COLLABORATIVES_NAV_LINK),
             message="Timed out waiting for the 'Collaboratives' link to be clickable"
         )

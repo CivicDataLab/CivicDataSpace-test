@@ -253,26 +253,36 @@ def org_add_permission(test_credentials):
     an `admin` (or otherwise canAdd) role on an org and they run again with no
     code change.
 
-    Current roles (verified live against dev 2026-09-17 via this exact query —
-    re-check here before trusting this comment, don't just read it; it already
-    went stale once when TEST_EMAIL_2's role changed and nothing here was
-    updated to match):
+    Current roles (verified live against dev 2026-09-18 via this exact query —
+    re-check here before trusting this comment, don't just read it; it has
+    already gone stale twice: once when TEST_EMAIL_2's role changed, and again
+    when TEST_EMAIL_3 was moved off "my test agency" onto its own org):
 
     - TEST_EMAIL_1 — admin/canAdd=true on 11 orgs (CivicDataLab, Open Budgets
       India, JusticeHub, "my test agency", "test org name", ASDMA, HPSDMA, The
       Rockefeller Foundation, Patrick J. McGovern Foundation, BMA, Gates
       Foundation). Broadest account by far.
     - TEST_EMAIL_2 — admin/canAdd=true on "my test agency" only; still
-      auditor/canAdd=false on CivicDataLab. Org-create flows for gw1 now run
-      (they used to skip), but land in "my test agency" specifically.
-    - TEST_EMAIL_3 — admin/canAdd=true on "my test agency" only, same as
-      TEST_EMAIL_2. Added 2026-09-17 for a 3rd xdist worker; already
-      write-capable from creation, nothing further to grant.
+      auditor/canAdd=false on CivicDataLab.
+    - TEST_EMAIL_3 — admin/canAdd=true on "test org name" only. Was originally
+      provisioned on "my test agency" alongside TEST_EMAIL_2 (2026-09-17),
+      which meant both accounts landed on the *same* org via
+      `OrganizationsPage.select_org()`'s hardcoded preference below — real,
+      reproducible write contention on that one org row under concurrent
+      (`-n 3`) CI runs (test_prv_006/007 failing on whichever worker held
+      TEST_EMAIL_3). Moved to "test org name" 2026-09-18 specifically to
+      eliminate that collision, not just to add coverage.
 
-    None of this suite's code hardcodes an org name — `writable` is whatever
-    the live permissions query returns for the account, and provider tests
-    pick from it dynamically. Don't add an assertion that assumes a specific
-    worker always lands on a specific org; these roles will change again.
+    Correction to a claim this docstring used to make: this fixture's
+    `writable` list IS whatever the live permissions query returns, but the
+    org a test actually lands on in the browser is NOT picked from it
+    dynamically. `OrganizationsPage.select_org()` hardcodes a preference for
+    `OrgLocators.ORG_TEST` ("my test agency") first, falling back to "the
+    first available org card" only if that specific one isn't clickable for
+    the logged-in account. So which org two concurrently-running accounts
+    collide on is determined by that hardcoded locator, not by this fixture —
+    keep that coupling in mind before granting/revoking canAdd on "my test
+    agency" for any future account.
     """
     api = os.getenv("API_BASE_URL")
     kc, realm = os.getenv("KEYCLOAK_URL"), os.getenv("KEYCLOAK_REALM")
