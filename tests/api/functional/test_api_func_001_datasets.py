@@ -340,3 +340,31 @@ def test_published_dataset_is_searchable(graphql_client, anon_api_client):
     finally:
         graphql_client.query(DELETE_DATASET_MUTATION, {"datasetId": dataset_id})
 
+
+@pytest.mark.api
+@pytest.mark.regression
+def test_search_reflects_publish_without_waiting(graphql_client, anon_api_client):
+    """Search is right the moment publish/unpublish returns, even for a cached query.
+
+    The search before publishing caches an empty result for this exact query. If
+    invalidation runs before the index write, or the write isn't refreshed, the
+    reads below return that stale result: DataSpaceBackend#193.
+    """
+    title = _unique_title()
+    dataset_id = _create_titled_dataset(graphql_client, title)
+    try:
+        assert dataset_id not in _search_ids(anon_api_client), (
+            f"Draft dataset {dataset_id} is already in search before publishing"
+        )
+
+        graphql_client.query(PUBLISH_DATASET_MUTATION, {"datasetId": dataset_id})
+        assert dataset_id in _search_ids(anon_api_client), (
+            f"Search right after publishing is stale: {dataset_id} ('{title}') missing"
+        )
+
+        graphql_client.query(UNPUBLISH_DATASET_MUTATION, {"datasetId": dataset_id})
+        assert dataset_id not in _search_ids(anon_api_client), (
+            f"Search right after unpublishing is stale: {dataset_id} ('{title}') still listed"
+        )
+    finally:
+        graphql_client.query(DELETE_DATASET_MUTATION, {"datasetId": dataset_id})
