@@ -4,6 +4,7 @@ import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import Select
 from selenium.common.exceptions import TimeoutException
 
 from pages.base_page import BasePage
@@ -382,3 +383,15 @@ class CreateAiModelPage(BasePage):
             EC.visibility_of_element_located((By.XPATH, AiModelsLocators.DESCRIPTION_EDITOR))
         )
         return el.text.strip()
+
+    def get_domain_option_values(self) -> list:
+        """Real (non-placeholder) option values in the Domain <select>.
+
+        Same async gap as set_react_select_by_text above: the <select> mounts
+        before its options (PromptDomain enum values) arrive, so poll for more
+        than just the placeholder rather than reading immediately.
+        """
+        loc = (By.XPATH, AiModelsLocators.DOMAIN_SELECT)
+        el = self.wait_with_timeout(10).until(EC.presence_of_element_located(loc))
+        self.wait_with_timeout(10).until(lambda d: len(Select(el).options) > 1)
+        return [o.get_attribute("value") for o in Select(el).options if o.get_attribute("value")]

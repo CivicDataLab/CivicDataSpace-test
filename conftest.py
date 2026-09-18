@@ -327,6 +327,32 @@ def org_add_permission(test_credentials):
     return writable
 
 
+@pytest.fixture(scope="session")
+def backend_enum_labels():
+    """Labels the frontend shows for a backend GraphQL enum, sorted.
+
+    The frontend compiles enum values in at build time and labels each as its name
+    with underscores as spaces; this reads the same values live from the backend.
+    """
+    import requests
+
+    api = os.getenv("API_BASE_URL")
+    assert api, "API_BASE_URL is not set: cannot read backend enums"
+
+    def labels(enum_name: str) -> list[str]:
+        resp = requests.post(
+            f"{api.rstrip('/')}/api/graphql",
+            json={"query": '{__type(name:"%s"){enumValues{name}}}' % enum_name},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        enum_type = (resp.json().get("data") or {}).get("__type")
+        assert enum_type, f"Backend has no GraphQL enum {enum_name}"
+        return sorted(v["name"].replace("_", " ") for v in enum_type["enumValues"])
+
+    return labels
+
+
 #  ─────────────────────── Login Fixtures (Phase 12) ─────────────────────────────
 
 @pytest.fixture
