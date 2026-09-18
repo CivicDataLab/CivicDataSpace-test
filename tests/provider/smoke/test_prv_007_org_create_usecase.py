@@ -19,10 +19,18 @@ from pages.provider.organizations_page import OrganizationsPage
 @pytest.mark.functional
 # Not @pytest.mark.smoke: fails reproducibly under concurrent (-n 3) provider-smoke
 # CI runs (AssertionError: Summary mismatch, Found: '' - a race on the same worker
-# that also fails test_prv_006, in the same run). Org-collision with another
-# worker's account was ruled out as the cause - still failing after separating
-# TEST_EMAIL_3 onto its own org - so this needs its own investigation before it's
-# safe to gate default PR/push runs on. Runs on dispatch (-m "smoke or functional").
+# that also fails test_prv_006, in the same run).
+# Root cause found (DataSpaceBackend#199, fix in DataSpaceBackend PR #203):
+# addUseCase's auto-generated title has 1-second resolution and both title and
+# slug are globally unique, so two use cases created in the same second by any
+# concurrent worker collide - the mutation raises instead of returning a usable
+# record, so the newly-navigated-to usecase edit page is left in a broken state
+# and the summary field this test types into reads back empty. Not a
+# render/timing issue in the Quill editor - a genuine backend write race,
+# independent of the org-collision theory that was ruled out earlier.
+# Re-add @pytest.mark.smoke once #203 is merged and deployed to dev and this
+# test has been confirmed green under -n 3 concurrent load against dev.
+# Runs on dispatch (-m "smoke or functional").
 def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_credentials, org_add_permission):
     """
     Test Case ID: test_prv_007_org_create_usecase
