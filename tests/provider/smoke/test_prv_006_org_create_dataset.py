@@ -16,7 +16,12 @@ from pages.provider.create_dataset_page import CreateDatasetPage
 from pages.provider.organizations_page import OrganizationsPage
 
 @pytest.mark.functional
-@pytest.mark.smoke
+# Not @pytest.mark.smoke: fails reproducibly under concurrent (-n 3) provider-smoke
+# CI runs (3/3 attempts incl. reruns, "Timed out waiting for Metadata tab" at a
+# wait already bumped 30s->60s for this same reason). Org-collision with another
+# worker's account was ruled out as the cause - still failing after separating
+# TEST_EMAIL_3 onto its own org - so this needs its own investigation before it's
+# safe to gate default PR/push runs on. Runs on dispatch (-m "smoke or functional").
 def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_credentials, org_add_permission):
 
     """
