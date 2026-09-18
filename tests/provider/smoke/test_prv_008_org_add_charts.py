@@ -81,7 +81,7 @@ def test_prv_008_org_add_charts(driver, sample_logo_path, base_url, test_credent
     test_summary = f"Org Chart Test UseCase – {datetime.now().date()}"
     create_uc.enter_summary(test_summary)
     actual_summary = create_uc.get_summary_value()
-    assert actual_summary == test_summary + test_summary, (
+    assert actual_summary == test_summary, (
         f"Step 7a failure: Summary mismatch. Expected: '{test_summary}', Found: '{actual_summary}'."
     )
 
