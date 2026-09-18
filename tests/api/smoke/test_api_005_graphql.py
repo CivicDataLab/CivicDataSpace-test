@@ -159,3 +159,21 @@ def test_graphql_published_usecases_query(graphql_client):
         f"Expected 'publishedUseCases' in response, got: {data}"
     )
     assert isinstance(data["publishedUseCases"], list)
+
+
+@pytest.mark.api
+@pytest.mark.smoke
+@pytest.mark.parametrize(
+    "enum_name",
+    ["PromptTaskType", "PromptDomain", "TargetLanguage", "TargetModelType", "PromptFormat"],
+)
+def test_prompt_enums_the_frontend_builds_in_exist(anon_graphql_client, enum_name):
+    """The frontend compiles these enums in by name (DataSpaceFrontend#465).
+
+    If the backend renames or drops one, the frontend's codegen breaks and the
+    prompt dataset dropdowns lose their options.
+    """
+    data = anon_graphql_client.query('{__type(name:"%s"){enumValues{name}}}' % enum_name)
+    enum_type = data.get("__type")
+    assert enum_type, f"Backend has no GraphQL enum {enum_name}"
+    assert enum_type["enumValues"], f"Backend enum {enum_name} has no values"
