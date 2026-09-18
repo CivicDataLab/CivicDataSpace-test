@@ -65,173 +65,46 @@ class OrganizationsPage(BasePage):
         return self
 
     def click_add_new_dataset(self):
-        from pages.provider.create_dataset_page import CreateDatasetPage
         from locators.provider.create_dataset_locators import CreateDatasetLocators
 
-        # Wait for navigation to the dataset page
-        self.wait_with_timeout(15).until(
-            lambda d: '/dataset' in d.current_url
+        return self._create_dataset(
+            OrgLocators.ADD_NEW_DATASET_BTN, CreateDatasetLocators.DATA_DATASET_CARD, "dataset"
         )
-
-        # Locate and JS-click the button
-        btn = self.wait_with_timeout(15).until(
-            EC.presence_of_element_located(OrgLocators.ADD_NEW_DATASET_BTN),
-            message="Timed out waiting for the 'Add New Dataset' button"
-        )
-        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
-        self.driver.execute_script("arguments[0].click();", btn)
-
-        # Wait for the type-selection modal
-        self.wait_with_timeout(10).until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.MODAL_TITLE)),
-            message="Timed out waiting for 'Create New Dataset' modal to appear"
-        )
-
-        # Select "Data Dataset"
-        data_dataset_card = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.DATA_DATASET_CARD)),
-            message="Timed out waiting for 'Data Dataset' option to be clickable"
-        )
-        data_dataset_card.click()
-
-        # Confirm with "Create Dataset"
-        create_btn = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.CREATE_DATASET_BUTTON)),
-            message="Timed out waiting for 'Create Dataset' button to be clickable"
-        )
-        create_btn.click()
-
-        # Wait for metadata tab
-        # The create mutation plus the navigation it triggers is the slow step;
-        # 30s was not enough under concurrent load. The org flow does not land
-        # on an /edit URL, so wait on the tab itself rather than the URL.
-        self.wait_with_timeout(60).until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
-            message="Timed out waiting for Metadata tab to appear after creating dataset"
-        )
-
-        return CreateDatasetPage(self.driver)
 
     def click_add_new_prompt_dataset(self):
-        from pages.provider.create_dataset_page import CreateDatasetPage
         from locators.provider.create_dataset_locators import CreateDatasetLocators
 
-        self.wait_with_timeout(15).until(
-            lambda d: '/dataset' in d.current_url
+        return self._create_dataset(
+            OrgLocators.ADD_NEW_DATASET_BTN, CreateDatasetLocators.PROMPT_DATASET_CARD, "prompt dataset"
         )
-
-        btn = self.wait_with_timeout(15).until(
-            EC.presence_of_element_located(OrgLocators.ADD_NEW_DATASET_BTN),
-            message="Timed out waiting for the 'Add New Dataset' button"
-        )
-        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
-        self.driver.execute_script("arguments[0].click();", btn)
-
-        self.wait_with_timeout(10).until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.MODAL_TITLE)),
-            message="Timed out waiting for 'Create New Dataset' modal to appear"
-        )
-
-        prompt_card = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.PROMPT_DATASET_CARD)),
-            message="Timed out waiting for 'Prompt Dataset' option to be clickable"
-        )
-        prompt_card.click()
-
-        create_btn = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.CREATE_DATASET_BUTTON)),
-            message="Timed out waiting for 'Create Dataset' button to be clickable"
-        )
-        create_btn.click()
-
-        # The create mutation plus the navigation it triggers is the slow step;
-        # 30s was not enough under concurrent load. The org flow does not land
-        # on an /edit URL, so wait on the tab itself rather than the URL.
-        self.wait_with_timeout(60).until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
-            message="Timed out waiting for Metadata tab after creating prompt dataset"
-        )
-
-        return CreateDatasetPage(self.driver)
 
     def click_usecases_card(self):
-        """
-        Click the UseCases navigation link in the organization dashboard.
-
-        The organization dashboard has the same sidebar navigation as MyDashboard,
-        so this works identically.
-
-        Returns a UseCasesListPage instance.
-        """
+        """Open the org's UseCases section. Returns a UseCasesListPage."""
         from pages.provider.usecases_list_page import UseCasesListPage
         from locators.provider.usecases_list_page_locators import UseCaseListPageLocators
-        import time
 
-        # Wait for and JS-click the UseCases navigation link
-        usecases_link = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable(OrgLocators.USECASES_NAV_LINK),
-            message="Timed out waiting for the 'UseCases' link to be clickable"
-        )
-        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", usecases_link)
-        self.driver.execute_script("arguments[0].click();", usecases_link)
-
-        # Wait for navigation to usecases URL
-        self.wait_with_timeout(15).until(
-            lambda d: '/usecases' in d.current_url
-        )
-
+        self._open_sidebar_section(OrgLocators.USECASES_NAV_LINK, "/usecases", "UseCases")
         self.wait_with_timeout(15).until(
             EC.presence_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON),
             message="Timed out waiting for UseCases page to load"
         )
-
         return UseCasesListPage(self.driver)
 
     def click_collaboratives_card(self):
-        """
-        Click the Collaboratives navigation link in the organization dashboard.
+        """Open the org's Collaboratives section. Returns a CollaborativesListPage.
 
-        The organization dashboard has the same sidebar navigation as MyDashboard,
-        so this works identically.
-
-        Returns a CollaborativesListPage instance.
+        test_prv_011's CI screenshot shows the click leaving the page on Datasets.
+        The old fallback, any element containing 'Collaborative', also matched the
+        sidebar link itself, so the wait could pass without navigating.
         """
         from pages.provider.collaboratives_list_page import CollaborativesListPage
         from locators.provider.collaboratives_list_page_locators import CollaborativesListPageLocators
-        import time
 
-        # Wait for and click the Collaboratives navigation link
-        collaboratives_link = self.wait_with_timeout(15).until(
-            EC.element_to_be_clickable(OrgLocators.COLLABORATIVES_NAV_LINK),
-            message="Timed out waiting for the 'Collaboratives' link to be clickable"
+        self._open_sidebar_section(OrgLocators.COLLABORATIVES_NAV_LINK, "collaboratives", "Collaboratives")
+        self.wait_with_timeout(20).until(
+            EC.visibility_of_element_located(CollaborativesListPageLocators.ADD_NEW_COLLABORATIVE_BUTTON),
+            message="Timed out waiting for 'Add New Collaborative' button"
         )
-
-        # Scroll into view and click
-        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", collaboratives_link)
-        collaboratives_link.click()
-
-        # Give the page time to navigate
-        time.sleep(2)
-
-        # Wait for the Collaboratives page to load — try multiple indicators for resilience
-        from selenium.common.exceptions import TimeoutException
-        from selenium.webdriver.common.by import By
-        loaded = False
-        for locator in [
-            CollaborativesListPageLocators.ADD_NEW_COLLABORATIVE_BUTTON,
-            (By.XPATH, "//span[contains(normalize-space(),'Collaborative')]"),
-            (By.XPATH, "//*[contains(normalize-space(),'Collaborative')]"),
-        ]:
-            try:
-                self.wait_with_timeout(20).until(EC.visibility_of_element_located(locator))
-                loaded = True
-                break
-            except TimeoutException:
-                continue
-
-        if not loaded:
-            raise TimeoutException("Timed out waiting for Collaboratives page to load")
-
         return CollaborativesListPage(self.driver)
 
     def click_profile_card(self):

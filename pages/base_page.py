@@ -191,6 +191,119 @@ class BasePage:
             lambda d: text in d.current_url
         )
 
+    def _open_sidebar_section(self, link_locator, url_part: str, name: str) -> None:
+        """Click a dashboard sidebar link and wait until the URL actually changes.
+
+        A click sometimes lands before the Next.js router is ready and nothing
+        navigates: the link highlights but the page stays put (seen on the CI
+        runner for UseCases, Collaboratives, AI Models, Charts and Profile). So
+        confirm the URL moved, and click once more, re-found, if it didn't.
+        """
+        link = self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable(link_locator),
+            message=f"Timed out waiting for the '{name}' link to be clickable",
+        )
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", link)
+        self.driver.execute_script("arguments[0].click();", link)
+        try:
+            self.wait_with_timeout(8).until(lambda d: url_part in d.current_url)
+        except TimeoutException:
+            self.wait_with_timeout(10).until(EC.element_to_be_clickable(link_locator)).click()
+            self.wait_with_timeout(15).until(
+                lambda d: url_part in d.current_url,
+                message=f"Timed out waiting for the {name} page URL after retry click",
+            )
+
+    def type_into_rich_editor(self, locator, text: str) -> None:
+        """Type into a Quill editor and make sure the text stays.
+
+        Right after a record is created its editor can reset once, wiping what
+        was typed (test_prv_007's CI screenshot: Summary empty). Typing the text
+        twice used to paper over that; instead type once, watch it for a few
+        seconds, and type again if it was wiped.
+        """
+        import time
+
+        try:
+            self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=3)
+        except TimeoutException:
+            pass
+        for attempt in (1, 2):
+            self.wait_until_saved()
+            fld = self.wait.until(
+                EC.visibility_of_element_located(locator), message="Could not find the summary editor"
+            )
+            fld.click()
+            fld.send_keys(Keys.CONTROL + "a")
+            fld.send_keys(Keys.DELETE)
+            fld.send_keys(text)
+            deadline = time.monotonic() + 4
+            while time.monotonic() < deadline:
+                if self.driver.find_element(*locator).text != text:
+                    break
+                time.sleep(0.5)
+            else:
+                return
+        raise AssertionError(f"Editor kept losing typed text; now holds {self.driver.find_element(*locator).text!r}")
+
+    def _click_until(self, locator, landed, what: str) -> None:
+        """Click, and click once more if `landed` hasn't turned true within 5s."""
+        for attempt in (1, 2):
+            self.wait_with_timeout(10).until(EC.element_to_be_clickable(locator)).click()
+            try:
+                self.wait_with_timeout(5).until(landed)
+                return
+            except TimeoutException:
+                if attempt == 2:
+                    raise TimeoutException(f"Could not {what}: the click never took effect")
+
+    def _create_dataset(self, add_button_locator, card_xpath: str, kind: str):
+        """Open 'Create New Dataset', pick a type, create it; returns the editor.
+
+        A click that lands while the dialog is still settling is dropped. CI
+        screenshots show the dialog left open with the requested card unselected
+        (test_prv_006b), or with the card selected and nothing created
+        (test_prv_006). So each click is confirmed and repeated once if it didn't
+        take. Create counts as landed once its button goes aria-busy or the dialog
+        closes, so a slow create is never clicked twice.
+        """
+        from pages.provider.create_dataset_page import CreateDatasetPage
+        from locators.provider.create_dataset_locators import CreateDatasetLocators as L
+
+        self.wait_with_timeout(15).until(lambda d: "/dataset" in d.current_url)
+        btn = self.wait_with_timeout(15).until(
+            EC.presence_of_element_located(add_button_locator),
+            message="Timed out waiting for the 'Add New Dataset' button",
+        )
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
+        self.driver.execute_script("arguments[0].click();", btn)
+        self.wait_with_timeout(10).until(
+            EC.visibility_of_element_located((By.XPATH, L.MODAL_TITLE)),
+            message="Timed out waiting for 'Create New Dataset' modal to appear",
+        )
+
+        card = (By.XPATH, card_xpath)
+        create = (By.XPATH, L.CREATE_DATASET_BUTTON)
+
+        def card_selected(d):
+            cards = d.find_elements(*card)
+            return bool(cards) and "bg-surfaceSelected" in (cards[0].get_attribute("class") or "")
+
+        def create_landed(d):
+            buttons = d.find_elements(*create)
+            return not buttons or buttons[0].get_attribute("aria-busy") == "true"
+
+        self._click_until(card, card_selected, f"select the {kind} type")
+        self._click_until(create, create_landed, "click Create Dataset")
+
+        # The create mutation plus the navigation it triggers is the slow step;
+        # 30s was not enough under concurrent load.
+        self.wait_with_timeout(60).until(
+            EC.visibility_of_element_located((By.XPATH, L.TAB_METADATA)),
+            message=f"Timed out waiting for Metadata tab after creating {kind}",
+        )
+        return CreateDatasetPage(self.driver)
+
     def wait_with_timeout(self, timeout):
         """Create a one-off wait with custom timeout"""
         return WebDriverWait(self.driver, timeout)
