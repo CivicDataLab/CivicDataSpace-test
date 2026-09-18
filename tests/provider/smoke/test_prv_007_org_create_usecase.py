@@ -17,20 +17,21 @@ from pages.provider.create_usecase_page import CreateUsecasePage
 from pages.provider.organizations_page import OrganizationsPage
 
 @pytest.mark.functional
-# Not @pytest.mark.smoke: fails reproducibly under concurrent (-n 3) provider-smoke
-# CI runs (AssertionError: Summary mismatch, Found: '' - a race on the same worker
-# that also fails test_prv_006, in the same run).
-# Root cause found (DataSpaceBackend#199, fix in DataSpaceBackend PR #203):
-# addUseCase's auto-generated title has 1-second resolution and both title and
-# slug are globally unique, so two use cases created in the same second by any
-# concurrent worker collide - the mutation raises instead of returning a usable
-# record, so the newly-navigated-to usecase edit page is left in a broken state
-# and the summary field this test types into reads back empty. Not a
+@pytest.mark.smoke
+# Previously failed reproducibly under concurrent (-n 3) provider-smoke CI runs
+# (AssertionError: Summary mismatch, Found: '' - a race on the same worker that
+# also failed test_prv_006, in the same run). Root cause: addUseCase's
+# auto-generated title has 1-second resolution and both title and slug are
+# globally unique, so two use cases created in the same second by any
+# concurrent worker collided - the mutation raised instead of returning a
+# usable record, leaving the newly-navigated-to usecase edit page in a broken
+# state, so the summary field this test types into read back empty. Not a
 # render/timing issue in the Quill editor - a genuine backend write race,
-# independent of the org-collision theory that was ruled out earlier.
-# Re-add @pytest.mark.smoke once #203 is merged and deployed to dev and this
-# test has been confirmed green under -n 3 concurrent load against dev.
-# Runs on dispatch (-m "smoke or functional").
+# independent of the org-collision theory ruled out earlier. Fixed in
+# DataSpaceBackend PR #203 (retry-with-disambiguated-title/slug on collision),
+# merged and deployed to dev 2026-09-18. Re-added smoke after confirming green
+# under real -n 3 concurrent load against dev (0 reruns needed, vs failing
+# every attempt pre-fix).
 def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_credentials, org_add_permission):
     """
     Test Case ID: test_prv_007_org_create_usecase

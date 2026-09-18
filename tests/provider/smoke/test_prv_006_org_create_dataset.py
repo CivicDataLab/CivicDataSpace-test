@@ -16,19 +16,20 @@ from pages.provider.create_dataset_page import CreateDatasetPage
 from pages.provider.organizations_page import OrganizationsPage
 
 @pytest.mark.functional
-# Not @pytest.mark.smoke: fails reproducibly under concurrent (-n 3) provider-smoke
-# CI runs (3/3 attempts incl. reruns, "Timed out waiting for Metadata tab" at a
-# wait already bumped 30s->60s for this same reason, which did not help).
-# Root cause found (DataSpaceBackend#199, fix in DataSpaceBackend PR #203):
-# addDataset's auto-generated title has 1-second resolution and the derived
-# slug is globally unique, so two datasets created in the same second by any
-# concurrent worker collide - the mutation returns success:False with no
-# usable error, so CreateDatasetMutation.onSuccess never navigates and the
-# Metadata tab never appears. Not a timing/latency issue - a genuine write
-# race, independent of the org-collision theory that was ruled out earlier.
-# Re-add @pytest.mark.smoke once #203 is merged and deployed to dev and this
-# test has been confirmed green under -n 3 concurrent load against dev.
-# Runs on dispatch (-m "smoke or functional").
+@pytest.mark.smoke
+# Previously failed reproducibly under concurrent (-n 3) provider-smoke CI runs
+# (3/3 attempts incl. reruns, "Timed out waiting for Metadata tab" at a wait
+# already bumped 30s->60s for this same reason, which did not help). Root
+# cause: addDataset's auto-generated title has 1-second resolution and the
+# derived slug is globally unique, so two datasets created in the same second
+# by any concurrent worker collided - the mutation returned success:False with
+# no usable error, so CreateDatasetMutation.onSuccess never navigated and the
+# Metadata tab never appeared. Not a timing/latency issue - a genuine write
+# race, independent of the org-collision theory ruled out earlier. Fixed in
+# DataSpaceBackend PR #203 (retry-with-disambiguated-slug on collision),
+# merged and deployed to dev 2026-09-18. Re-added smoke after confirming green
+# under real -n 3 concurrent load against dev (0 reruns needed, vs 3/3
+# failures pre-fix).
 def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_credentials, org_add_permission):
 
     """
