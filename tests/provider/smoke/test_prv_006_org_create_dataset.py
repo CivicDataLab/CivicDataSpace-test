@@ -72,7 +72,7 @@ def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_cred
     )
 
     # Step 5: Select one of the orgs
-    select_org = org_dash.select_org()
+    select_org = org_dash.select_org(org_add_permission[0])
     assert isinstance(select_org, OrganizationsPage), (
         "test_prv_006: expected select_org() to return OrganizationsPage"
     )

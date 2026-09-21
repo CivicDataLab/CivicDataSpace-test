@@ -60,7 +60,7 @@ def test_prv_008_org_add_charts(driver, sample_logo_path, base_url, test_credent
     )
 
     # ─── Step 4: Select one of the organizations ─────────────────────────────────────
-    select_org = org_dash.select_org()
+    select_org = org_dash.select_org(org_add_permission[0])
     assert isinstance(select_org, OrganizationsPage), (
         "test_prv_008: expected select_org() to return OrganizationsPage"
     )

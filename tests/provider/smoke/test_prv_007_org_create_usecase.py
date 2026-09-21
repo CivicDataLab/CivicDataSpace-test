@@ -74,7 +74,7 @@ def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_cre
     )
 
     # ─── Step 4: Select one of the organizations ─────────────────────────────────────
-    select_org = org_dash.select_org()
+    select_org = org_dash.select_org(org_add_permission[0])
     assert isinstance(select_org, OrganizationsPage), (
         "test_prv_007: expected select_org() to return OrganizationsPage"
     )

@@ -63,7 +63,7 @@ def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover
     )
 
     # ─── Step 4: Select one of the organizations ─────────────────────────────────────
-    select_org = org_dash.select_org()
+    select_org = org_dash.select_org(org_add_permission[0])
     assert isinstance(select_org, OrganizationsPage), (
         "Step 4 failure: expected select_org() to return OrganizationsPage"
     )
