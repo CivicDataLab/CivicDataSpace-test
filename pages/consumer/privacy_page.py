@@ -2,18 +2,18 @@
 from locators.consumer.privacy_locators import PrivacyLocators
 from pages.base_page import BasePage
 
-PRIVACY_PATH = "/privacy-policy"
+PRIVACY_PATH = "/privacy"
 
 
 class PrivacyPage(BasePage):
-    """Interactions on the privacy policy page (/privacy-policy)."""
+    """Interactions on the privacy policy page (/privacy)."""
 
     def load(self, base_url: str):
         """
-        Navigate to the un-prefixed /privacy-policy path.
+        Navigate to the un-prefixed /privacy path.
 
-        The locale-prefixed /en/privacy-policy 307-redirects here, so
-        /privacy-policy is the canonical target.
+        The locale-prefixed /en/privacy 307-redirects here, so
+        /privacy is the canonical target.
         """
         self.visit(f"{base_url.rstrip('/')}{PRIVACY_PATH}")
         return self

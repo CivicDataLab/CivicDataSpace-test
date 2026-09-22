@@ -72,8 +72,8 @@ def test_TC_HOM_15_privacy_link_in_footer(driver):
     assert link.is_displayed(), "Privacy link is not visible in the footer"
 
     href = link.get_attribute("href") or ""
-    assert href.rstrip("/").endswith("/privacy-policy"), (
-        f"Privacy link points at {href!r}, expected a URL ending in /privacy-policy"
+    assert href.rstrip("/").endswith("/privacy"), (
+        f"Privacy link points at {href!r}, expected a URL ending in /privacy"
     )
 
 
