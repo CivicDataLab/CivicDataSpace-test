@@ -14,8 +14,17 @@ logger = logging.getLogger(__name__)
 
 class PublishersPage(BasePage):
     def is_loaded(self) -> bool:
-        """Wait for 'Our Publishers' header to be visible."""
-        return self.find(PublishersLocators.HEADER).is_displayed()
+        """Wait for 'Our Publishers' header to be visible.
+
+        The text is already in the SSR HTML, so this is normally fast -- but
+        the base 15s wait was seen timing out under real concurrent CI load
+        (test_con_008), the same class of issue already worked around
+        elsewhere in this suite (e.g. the 60s waits on the provider create
+        flows). Bumped rather than left at the default.
+        """
+        return self.wait_with_timeout(30).until(
+            EC.visibility_of_element_located(PublishersLocators.HEADER)
+        ).is_displayed()
 
     def _select_tab(self, locator: tuple, timeout: int = 10) -> None:
         """
