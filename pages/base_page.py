@@ -1,4 +1,5 @@
 # pages/base_page.py
+import os
 import platform
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -224,8 +225,16 @@ class BasePage:
         two useless timeout bumps here; the captured DOM is what settled both.
         """
         try:
-            self.driver.save_screenshot(f"{tag}_failure.png")
-            with open(f"{tag}_failure.html", "w", encoding="utf-8") as f:
+            # Key the filename to the test and xdist worker. A fixed name means
+            # each failure overwrites the previous one, and under -n the artifact
+            # you read can belong to a different test than the one that failed --
+            # which already sent one diagnosis down the wrong path.
+            current = os.environ.get("PYTEST_CURRENT_TEST", "")
+            test_id = current.split("::")[-1].split(" ")[0] or "unknown"
+            worker = os.environ.get("PYTEST_XDIST_WORKER", "gw0")
+            stem = f"{tag}_{test_id}_{worker}_failure"
+            self.driver.save_screenshot(f"{stem}.png")
+            with open(f"{stem}.html", "w", encoding="utf-8") as f:
                 f.write(self.driver.page_source)
         except Exception:
             pass
@@ -256,20 +265,19 @@ class BasePage:
             # are accepted silently while the visible editor stays blank (the
             # captured screenshot showed the placeholder still in place).
             fld = self.driver.find_element(*locator)
-            # focus(), not a JS click -- a click event does not move focus to a
-            # contenteditable, and a real click gets ElementClickIntercepted by
+            # Click, then focus. The click is what Quill needs: it tracks its own
+            # selection range and sets it on mousedown/click, and without a caret
+            # it silently discards everything send_keys types -- focus() alone
+            # focuses the node but leaves Quill with no insertion point.
+            # JS rather than a real click, which gets ElementClickIntercepted by
             # overlays (toast/tour) that are present but not yet gone.
-            self.driver.execute_script("arguments[0].focus();", fld)
-            focused = self.driver.execute_script(
-                "return document.activeElement === arguments[0];", fld
+            self.driver.execute_script(
+                "arguments[0].click(); arguments[0].focus();", fld
             )
             active = self.driver.execute_script(
                 "var a=document.activeElement;"
                 "return a ? a.tagName+'.'+(a.className||'') : 'none';"
             )
-            if not focused:
-                trace.append(f"attempt {attempt}: focus() did not take; activeElement={active}")
-                continue
             fld.send_keys(Keys.CONTROL + "a")
             fld.send_keys(Keys.DELETE)
             fld.send_keys(text)
