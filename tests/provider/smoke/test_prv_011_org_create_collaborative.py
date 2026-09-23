@@ -92,8 +92,8 @@ def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover
     test_summary = CollaborativeTestData.get_summary()
     create_collab.enter_summary(test_summary)
     actual_summary = create_collab.get_summary_value()
-    assert actual_summary == test_summary + test_summary, (
-        f"Step 8 failure: Summary mismatch. Expected: '{test_summary + test_summary}', Found: '{actual_summary}'."
+    assert actual_summary == test_summary, (
+        f"Step 8 failure: Summary mismatch. Expected: '{test_summary}', Found: '{actual_summary}'."
     )
     assert len(actual_summary) > 0, "Step 8 failure: Summary is empty"
 
