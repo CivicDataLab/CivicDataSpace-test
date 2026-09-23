@@ -85,7 +85,25 @@ def test_con_007_use_case_download(home, usecase_index, dataset_index):
 @pytest.mark.smoke
 def test_con_008_access_publishers_page(home):
     pb_page = home.go_to_publishers()
-    assert pb_page.is_loaded(), "Con_008: Publishers page failed to load"
+    try:
+        loaded = pb_page.is_loaded()
+    except Exception:
+        # Timing out here twice already (30s, then 60s waits) with no
+        # visible cause in the SSR HTML is what a client-side hydration
+        # failure looks like from the outside. Capture real evidence on
+        # the next failure instead of guessing at a third timeout bump.
+        driver = home.driver
+        driver.save_screenshot("test_con_008_failure.png")
+        with open("test_con_008_failure.html", "w", encoding="utf-8") as f:
+            f.write(driver.page_source)
+        try:
+            for entry in driver.get_log("browser"):
+                logger.error("browser console: %s", entry)
+        except Exception as log_exc:
+            logger.warning("could not read browser console log: %s", log_exc)
+        logger.error("test_con_008 failed at URL: %s", driver.current_url)
+        raise
+    assert loaded, "Con_008: Publishers page failed to load"
 
 @pytest.mark.parametrize(
     "tc_id,view",
