@@ -40,24 +40,7 @@ class CreateUsecasePage(BasePage):
         return self  # for method chaining
 
     def enter_summary(self, text: str):
-        # Try to wait for toast/overlay to disappear, but don't fail if they persist
-        try:
-            self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=3)
-        except TimeoutException:
-            pass  # Continue anyway
-
-        fld = self.wait.until(
-            EC.visibility_of_element_located(CreateUsecaseLocators.USECASE_SUMMARY_INPUT),
-            message="Could not find UseCase summary editor"
-        )
-        # For Quill editor (contenteditable div), clear using Ctrl+A then type
-        fld.click()
-        # Ctrl+A works cross-platform (Selenium maps to Cmd+A on Mac)
-        fld.send_keys(Keys.CONTROL + 'a')
-        fld.send_keys(Keys.DELETE)
-        fld.send_keys(text)
-        # Send text twice (application-specific behavior)
-        fld.send_keys(text)
+        self.type_into_rich_editor(CreateUsecaseLocators.USECASE_SUMMARY_INPUT, text)
         return self
 
     def enter_platform_url(self, url: str):

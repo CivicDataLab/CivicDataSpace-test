@@ -95,7 +95,7 @@ def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_cre
     test_summary = f"Automated Org UseCase Test – {datetime.now().date()}"
     create_uc.enter_summary(test_summary)
     actual_summary = create_uc.get_summary_value()
-    assert actual_summary == test_summary + test_summary, (
+    assert actual_summary == test_summary, (
         f"Step 7a failure: Summary mismatch. Expected: '{test_summary}', Found: '{actual_summary}'."
     )
 
