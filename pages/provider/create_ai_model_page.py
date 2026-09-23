@@ -89,19 +89,14 @@ class CreateAiModelPage(BasePage):
     # ── Metadata – text inputs ────────────────────────────────────────────────
 
     def enter_description(self, text: str) -> "CreateAiModelPage":
-        editor = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable((By.XPATH, AiModelsLocators.DESCRIPTION_EDITOR))
-        )
-        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", editor)
-        time.sleep(0.3)
-        self.driver.execute_script("arguments[0].click();", editor)
-        editor.send_keys(Keys.CONTROL + "a")
-        editor.send_keys(Keys.DELETE)
-        editor.send_keys(text)
-        # send_keys triggers Quill text-change → React onChange → setFormData queued.
-        # Wait for React to commit that microtask before blurring, otherwise onBlur
-        # fires handleSave() with stale formData.description === ''.
-        time.sleep(0.5)
+        # send_keys triggers Quill text-change -> React onChange -> setFormData
+        # queued; blurring before that microtask commits fires handleSave() with
+        # stale formData.description === '' (test_prv_012's CI screenshot: empty
+        # description, 100% reproducible). type_into_rich_editor already retypes
+        # once if the editor wipes what was typed, same fix as the summary fields.
+        editor_locator = (By.XPATH, AiModelsLocators.DESCRIPTION_EDITOR)
+        self.type_into_rich_editor(editor_locator, text)
+        editor = self.driver.find_element(*editor_locator)
         self.driver.execute_script("arguments[0].blur();", editor)
         time.sleep(0.3)
         self.wait_for_autosave(trigger_blur=False)
