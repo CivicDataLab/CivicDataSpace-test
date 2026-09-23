@@ -217,6 +217,41 @@ class BasePage:
         """Create a one-off wait with custom timeout"""
         return WebDriverWait(self.driver, timeout)
 
+    def type_into_rich_editor(self, locator, text: str) -> None:
+        """Type into a Quill editor and make sure the text stays.
+
+        Right after a record is created its editor can reset once, wiping what
+        was typed (test_prv_012's CI screenshot: description empty). Type once,
+        watch it for a few seconds, and type again if it was wiped -- more
+        reliable than typing twice and asserting doubled text.
+        """
+        import time
+
+        try:
+            self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=3)
+        except TimeoutException:
+            pass
+        for attempt in (1, 2):
+            self.wait_until_saved()
+            fld = self.wait.until(
+                EC.visibility_of_element_located(locator), message="Could not find the editor"
+            )
+            self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", fld)
+            # JS click, not fld.click() -- a real click gets ElementClickIntercepted
+            # by overlays (toast/tour) that are present but not yet gone.
+            self.driver.execute_script("arguments[0].click();", fld)
+            fld.send_keys(Keys.CONTROL + "a")
+            fld.send_keys(Keys.DELETE)
+            fld.send_keys(text)
+            deadline = time.monotonic() + 4
+            while time.monotonic() < deadline:
+                if self.driver.find_element(*locator).text != text:
+                    break
+                time.sleep(0.5)
+            else:
+                return
+        raise AssertionError(f"Editor kept losing typed text; now holds {self.driver.find_element(*locator).text!r}")
+
     def enter_date(self, locator, iso_date: str):
         """Set a <input type=date> to iso_date (YYYY-MM-DD) via the native JS setter.
 
