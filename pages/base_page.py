@@ -217,6 +217,19 @@ class BasePage:
         """Create a one-off wait with custom timeout"""
         return WebDriverWait(self.driver, timeout)
 
+    def save_failure_artifacts(self, tag: str) -> None:
+        """Dump a screenshot + DOM so a timeout says what was actually on screen.
+
+        Blank timeouts cost two wrong locator guesses on the publishers page and
+        two useless timeout bumps here; the captured DOM is what settled both.
+        """
+        try:
+            self.driver.save_screenshot(f"{tag}_failure.png")
+            with open(f"{tag}_failure.html", "w", encoding="utf-8") as f:
+                f.write(self.driver.page_source)
+        except Exception:
+            pass
+
     def type_into_rich_editor(self, locator, text: str) -> None:
         """Type into a Quill editor and make sure the text stays.
 
@@ -231,18 +244,52 @@ class BasePage:
             self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=3)
         except TimeoutException:
             pass
+        trace = []
         for attempt in (1, 2):
             self.wait_until_saved()
             fld = self.wait.until(
                 EC.visibility_of_element_located(locator), message="Could not find the editor"
             )
             self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", fld)
-            # JS click, not fld.click() -- a real click gets ElementClickIntercepted
-            # by overlays (toast/tour) that are present but not yet gone.
-            self.driver.execute_script("arguments[0].click();", fld)
+            # Re-find immediately before typing: React can swap the editor node
+            # between locating it and typing, and keys sent to the detached node
+            # are accepted silently while the visible editor stays blank (the
+            # captured screenshot showed the placeholder still in place).
+            fld = self.driver.find_element(*locator)
+            # focus(), not a JS click -- a click event does not move focus to a
+            # contenteditable, and a real click gets ElementClickIntercepted by
+            # overlays (toast/tour) that are present but not yet gone.
+            self.driver.execute_script("arguments[0].focus();", fld)
+            focused = self.driver.execute_script(
+                "return document.activeElement === arguments[0];", fld
+            )
+            active = self.driver.execute_script(
+                "var a=document.activeElement;"
+                "return a ? a.tagName+'.'+(a.className||'') : 'none';"
+            )
+            if not focused:
+                trace.append(f"attempt {attempt}: focus() did not take; activeElement={active}")
+                continue
             fld.send_keys(Keys.CONTROL + "a")
             fld.send_keys(Keys.DELETE)
             fld.send_keys(text)
+            trace.append(
+                f"attempt {attempt}: focused ok (activeElement={active}); "
+                f"text right after send_keys={self.driver.find_element(*locator).text!r}"
+            )
+            # Wait for the text to land before watching whether it stays. Under
+            # parallel load Quill can take a moment to commit, and polling
+            # straight away burned both attempts in milliseconds.
+            try:
+                self.wait_with_timeout(10).until(
+                    lambda d: d.find_element(*locator).text == text
+                )
+            except TimeoutException:
+                trace.append(
+                    f"attempt {attempt}: text never appeared within 10s; "
+                    f"holds {self.driver.find_element(*locator).text!r}"
+                )
+                continue
             deadline = time.monotonic() + 4
             while time.monotonic() < deadline:
                 if self.driver.find_element(*locator).text != text:
@@ -250,7 +297,11 @@ class BasePage:
                 time.sleep(0.5)
             else:
                 return
-        raise AssertionError(f"Editor kept losing typed text; now holds {self.driver.find_element(*locator).text!r}")
+        self.save_failure_artifacts("rich_editor")
+        raise AssertionError(
+            f"Editor kept losing typed text; now holds "
+            f"{self.driver.find_element(*locator).text!r}\n" + "\n".join(trace)
+        )
 
     def enter_date(self, locator, iso_date: str):
         """Set a <input type=date> to iso_date (YYYY-MM-DD) via the native JS setter.
