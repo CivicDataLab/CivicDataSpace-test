@@ -122,10 +122,14 @@ class OrganizationsPage(BasePage):
         # The create mutation plus the navigation it triggers is the slow step;
         # 30s was not enough under concurrent load. The org flow does not land
         # on an /edit URL, so wait on the tab itself rather than the URL.
-        self.wait_with_timeout(60).until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
-            message="Timed out waiting for Metadata tab to appear after creating dataset"
-        )
+        try:
+            self.wait_with_timeout(60).until(
+                EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
+                message="Timed out waiting for Metadata tab to appear after creating dataset"
+            )
+        except TimeoutException:
+            self.save_failure_artifacts("org_create_dataset_metadata_tab")
+            raise
 
         return CreateDatasetPage(self.driver)
 
@@ -164,10 +168,14 @@ class OrganizationsPage(BasePage):
         # The create mutation plus the navigation it triggers is the slow step;
         # 30s was not enough under concurrent load. The org flow does not land
         # on an /edit URL, so wait on the tab itself rather than the URL.
-        self.wait_with_timeout(60).until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
-            message="Timed out waiting for Metadata tab after creating prompt dataset"
-        )
+        try:
+            self.wait_with_timeout(60).until(
+                EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
+                message="Timed out waiting for Metadata tab after creating prompt dataset"
+            )
+        except TimeoutException:
+            self.save_failure_artifacts("org_create_prompt_dataset_metadata_tab")
+            raise
 
         return CreateDatasetPage(self.driver)
 
