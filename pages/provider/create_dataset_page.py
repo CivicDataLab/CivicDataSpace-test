@@ -340,9 +340,15 @@ class CreateDatasetPage(BasePage):
         Returns:
             True if we can successfully navigate to the Published tab, False otherwise
         """
-        # Wait for URL to change to drafts tab (confirms redirect after publish)
+        # Wait for the redirect away from the publish route (confirms publish
+        # succeeded). DataSpaceFrontend#471 switched the drafts/published tab
+        # to a silent default (nuqs `withDefault('drafts')`) instead of writing
+        # `?tab=drafts` into the URL, so the post-publish redirect
+        # (`router.push('/dashboard/.../dataset')`, no query string - see
+        # publish/page.tsx) never contains that substring anymore. Checking
+        # for the publish route disappearing is what's actually true post-#471.
         self.wait_with_timeout(10).until(
-            lambda d: "?tab=drafts" in d.current_url
+            lambda d: "/edit/publish" not in d.current_url
         )
 
         # Wait a moment for the UI to update after redirect
