@@ -72,6 +72,27 @@ gh pr diff $N --repo CivicDataLab/$SRC        # the actual diff
 If the PR isn't merged, stop and say so — this skill covers merged behaviour, not
 proposals.
 
+### Merged is not deployed — confirm the change is live before trusting dev
+
+Every product repo's deploy is smoke-gated with automatic rollback, so a merged PR can be
+**absent from dev**. DataSpaceFrontend#476 merged, its deploy failed the gate on unrelated
+`/datasets` and sitemap tests, rolled back, and dev kept serving the old page. Any test
+run against dev at that point proves nothing about the PR.
+
+```bash
+gh run list --repo CivicDataLab/$SRC --limit 10 \
+  --json workflowName,headBranch,headSha,conclusion,createdAt \
+  --jq '.[]|"\(.workflowName) [\(.headBranch)] \(.conclusion) \(.headSha[:8])"'
+gh run view <deploy-run-id> --repo CivicDataLab/$SRC --json jobs --jq '.jobs[]|"\(.name): \(.conclusion)"'
+```
+
+Look for the deploy run on the **merge SHA**, and for `rollback: success`. Then open the
+changed page in Playwright MCP and check that the new behaviour is actually there. `gh run list
+--branch dev` can list stale runs, so filter by SHA and don't trust that list alone.
+
+If dev is rolled back, say so, and don't redeploy on your own: it's a shared
+environment and the user's call. You can still verify locally (§6).
+
 ## 1. Which test repo
 
 | Source | Test repo |
