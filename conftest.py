@@ -83,13 +83,38 @@ def driver(request):
         "--disable-gpu",
         "--disable-dev-shm-usage",
         "--disable-extensions",
-        "--window-size=1920,1080",
+        # Headless pins a viewport; headed maximises to the real screen. Those
+        # are different widths and can land on different responsive breakpoints,
+        # so a layout bug can be headless-only. Overridable to test exactly that.
+        f"--window-size={os.getenv('WINDOW_SIZE', '1920,1080')}",
     ):
         opts.add_argument(flag)
 
     # Isolate user-data
     tmp_profile = tempfile.mkdtemp(prefix="chrome-user-data-")
     opts.add_argument(f"--user-data-dir={tmp_profile}")
+
+    # Kill Chrome's own password bubbles. The leak-detection dialog ("The
+    # password that you just used was found in a data breach") is BROWSER UI,
+    # not page content: it renders over the page and swallows clicks, while
+    # being invisible to page_source, the console log and the network log.
+    # That combination is what made test_prv_006 look impossible -- a modal
+    # whose button was unique, visible, enabled and correctly selected, with a
+    # clean console and no mutation ever sent. It also fires per PASSWORD, so
+    # it hit the accounts whose credentials are in a breach corpus and not
+    # others, which read as an account/org-specific failure that it never was.
+    opts.add_experimental_option(
+        "prefs",
+        {
+            "credentials_enable_service": False,
+            "profile.password_manager_enabled": False,
+            "profile.password_manager_leak_detection": False,
+        },
+    )
+    opts.add_argument("--disable-features=PasswordLeakDetection,AutofillServerCommunication")
+    opts.add_argument("--no-first-run")
+    opts.add_argument("--no-default-browser-check")
+    opts.add_argument("--disable-notifications")
 
     # Capture browser console logs (used by console-error assertions, e.g. GA smoke tests)
     # "performance" carries Chrome's Network.* events, which is the only way to
