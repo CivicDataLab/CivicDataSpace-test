@@ -53,11 +53,12 @@ def dashboards_by_usecase():
 
 @pytest.fixture(scope="module")
 def superset_usecase(dashboards_by_usecase):
-    for uc_id, dash in dashboards_by_usecase.items():
-        superset = [d for d in dash if _is_web_url(d["link"]) and "/superset/" in urlsplit(d["link"]).path]
-        if superset:
-            return uc_id, superset[0]
-    pytest.skip("No published use case links a Superset dashboard")
+    superset = [(uc_id, d) for uc_id, dash in dashboards_by_usecase.items() for d in dash
+                if _is_web_url(d["link"]) and "/superset/" in urlsplit(d["link"]).path]
+    if not superset:
+        pytest.skip("No published use case links a Superset dashboard")
+    # Prefer a link without standalone=1 so the test proves the frontend adds it.
+    return next((s for s in superset if "standalone" not in parse_qs(urlsplit(s[1]["link"]).query)), superset[0])
 
 
 @pytest.fixture
