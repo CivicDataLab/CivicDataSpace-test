@@ -20,7 +20,7 @@ from tests.data.test_data import CollaborativeTestData
 @pytest.mark.functional
 @pytest.mark.smoke
 @pytest.mark.timeout(360)
-def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover_image_path, base_url, test_credentials, writable_org):
+def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover_image_path, base_url, test_credentials, writable_org, sector_name):
     """
     Test Case ID: test_prv_011_org_create_collaborative
     Verify User is able to create a Collaborative end-to-end as an Organization provider.
@@ -127,14 +127,11 @@ def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover
         assert tag in selected_tags, f"Step 11 failure: Expected tag '{tag}' not found in selected tags: {selected_tags}"
 
     # ─── Step 12: Sectors ─────────────────────────────────────────────────────────────────────
-    create_collab.select_sectors(CollaborativeTestData.SECTORS)
+    create_collab.select_sectors([sector_name])
     selected_sectors = create_collab.get_selected_sectors()
-    assert CollaborativeTestData.SECTORS[0] in selected_sectors, (
-        f"Step 12 failure: Sector '{CollaborativeTestData.SECTORS[0]}' not selected correctly. Current sectors: {selected_sectors}"
+    assert sector_name in selected_sectors, (
+        f"Step 12 failure: Sector '{sector_name}' not selected correctly. Current sectors: {selected_sectors}"
     )
-    assert len(selected_sectors) > 0, "Step 12 failure: No sectors selected"
-    for sector in CollaborativeTestData.SECTORS:
-        assert sector in selected_sectors, f"Step 12 failure: Expected sector '{sector}' not found in selected sectors: {selected_sectors}"
 
     # ─── Step 13: Geography ───────────────────────────────────────────────────────────────────
     create_collab.select_geography(CollaborativeTestData.GEOGRAPHY)
