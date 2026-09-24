@@ -173,6 +173,24 @@ because they'd have collected nothing meaningful.
 Prefer one or two tests that would genuinely have caught the bug over broad coverage of
 everything the diff touched.
 
+### Find the affected pages, and run the tests that already cover them
+
+New tests are half the job. The other half is making sure the existing tests on the
+changed pages still pass:
+
+1. Get the route from the changed file's path, e.g.
+   `app/[locale]/(user)/usecases/[useCaseSlug]/` → `/usecases/<param>`. Check what the param
+   **really** is by loading one: that route is keyed by numeric id despite the folder
+   name, and a slug gives "Error Loading Use Case".
+2. Grep `locators/` and `pages/` for the route and the changed components, then grep
+   `tests/` for users of those Page Objects. That list is the affected set. Run it before and
+   after the change.
+3. **Check which data path each affected test actually takes.** `test_con_007` opens the
+   *first* use case, which had no dashboard, so it never reached the #476 change. When
+   the existing tests miss the changed path, walk that path in Playwright MCP on data
+   that hits it, and report the gap. For example: on a use case with a dashboard, does the
+   first dataset card below the new 640px iframe still receive clicks?
+
 ## 4. Get a clean checkout without touching the user's work
 
 *Local caller only — a cloud run already has a fresh clone and can branch normally.*
