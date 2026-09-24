@@ -318,6 +318,42 @@ never mutate the dev deployment to force a failure.
 If it passes before the feature exists, or passes with the assertion inverted, it isn't
 testing anything. Fix it or drop it.
 
+### Stronger proof for frontend PRs: run against the code before the change
+
+Flipping an assertion proves the check can fail. Running the test against the
+**parent commit** proves it catches this change. For DataSpaceFrontend, serve the app
+locally against the dev API (dev allows `http://localhost:*` CORS) and point the test
+at it:
+
+```bash
+git -C DataSpaceFrontend worktree add --detach <scratch>/fe <merge-sha>
+cd <scratch>/fe
+ln -s <DataSpaceFrontend>/node_modules node_modules
+# .env.local: NEXT_PUBLIC_BACKEND_GRAPHQL_URL / BACKEND_GRAPHQL_URL / NEXT_PUBLIC_BACKEND_URL
+#   -> https://dev.api.civicdataspace.in, NEXTAUTH_URL -> http://localhost:<port>,
+#   stub KEYCLOAK_* / NEXTAUTH_SECRET, SENTRY_FEATURE_ENABLED=false
+set -a && . ./.env.local && set +a && npx graphql-codegen --config ./config/codegen.ts
+npx next dev --webpack -p <port>          # background
+HOME_URL_DEV=http://localhost:<port> pytest <file>          # green at <merge-sha>
+git checkout -q <merge-sha>^1                                 # hot-reloads
+HOME_URL_DEV=http://localhost:<port> pytest <file>          # must go red
+git checkout -q <merge-sha>
+```
+
+Gotchas, each hit once:
+- `gql/generated/` is only partly committed, so you get `Can't resolve './gql'` until you run codegen.
+- Turbopack panics on a symlinked `node_modules` ("points out of the filesystem root"), so use `--webpack`.
+- With stub auth, the header nav doesn't render. Tests that start with a nav click
+  (`go_to_usecases()` etc.) fail locally for that reason alone, so run those against dev instead.
+- localhost is cross-site to `*.civicdataspace.in`. Superset's `session` cookie is
+  `SameSite=Lax`, so charts inside an embed fail locally with "CSRF session token is missing".
+  They render fine from `dev.civicdataspace.in`. Don't report it as a product bug from
+  localhost alone.
+- Playwright MCP only writes screenshots under the workspace root (`.playwright-mcp/`),
+  not the scratchpad.
+
+Put both runs in the PR body. Remove the worktree and stop the server when you're done.
+
 ### `skipped` is NOT `passed` — check the count, not the exit code
 
 `2 skipped` exits 0 and looks like success at a glance. It means your test never ran and
