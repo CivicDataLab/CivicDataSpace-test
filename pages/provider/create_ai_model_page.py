@@ -252,8 +252,7 @@ class CreateAiModelPage(BasePage):
         el.clear()
         el.send_keys(value)
 
-        xpath = f"//div[@role='option' and normalize-space(.)='{value}']"
-        opt = self.wait_with_timeout(10).until(EC.element_to_be_clickable((By.XPATH, xpath)))
+        opt = self.wait_for_option(el, value, timeout=10)
         try:
             opt.click()
         except Exception:
