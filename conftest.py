@@ -83,13 +83,38 @@ def driver(request):
         "--disable-gpu",
         "--disable-dev-shm-usage",
         "--disable-extensions",
-        "--window-size=1920,1080",
+        # Headless pins a viewport; headed maximises to the real screen. Those
+        # are different widths and can land on different responsive breakpoints,
+        # so a layout bug can be headless-only. Overridable to test exactly that.
+        f"--window-size={os.getenv('WINDOW_SIZE', '1920,1080')}",
     ):
         opts.add_argument(flag)
 
     # Isolate user-data
     tmp_profile = tempfile.mkdtemp(prefix="chrome-user-data-")
     opts.add_argument(f"--user-data-dir={tmp_profile}")
+
+    # Kill Chrome's own password bubbles. The leak-detection dialog ("The
+    # password that you just used was found in a data breach") is BROWSER UI,
+    # not page content: it renders over the page and swallows clicks, while
+    # being invisible to page_source, the console log and the network log.
+    # That combination is what made test_prv_006 look impossible -- a modal
+    # whose button was unique, visible, enabled and correctly selected, with a
+    # clean console and no mutation ever sent. It also fires per PASSWORD, so
+    # it hit the accounts whose credentials are in a breach corpus and not
+    # others, which read as an account/org-specific failure that it never was.
+    opts.add_experimental_option(
+        "prefs",
+        {
+            "credentials_enable_service": False,
+            "profile.password_manager_enabled": False,
+            "profile.password_manager_leak_detection": False,
+        },
+    )
+    opts.add_argument("--disable-features=PasswordLeakDetection,AutofillServerCommunication")
+    opts.add_argument("--no-first-run")
+    opts.add_argument("--no-default-browser-check")
+    opts.add_argument("--disable-notifications")
 
     # Capture browser console logs (used by console-error assertions, e.g. GA smoke tests)
     # "performance" carries Chrome's Network.* events, which is the only way to
@@ -209,6 +234,18 @@ def sample_cover_image_path():
         raise FileNotFoundError(f"Expected sample_profile_image.png at {cover_image_path}")
     return cover_image_path
 
+def _account_index() -> int:
+    """Which TEST_EMAIL_<n> slot this worker uses. gw0→1, gw1→2, gw2→3 …
+
+    A plain helper, not a fixture -- `writable_org` and `test_credentials` both
+    need it, and session-scoped fixtures cannot be called directly.
+    """
+    worker = os.getenv("PYTEST_XDIST_WORKER", "")
+    if worker.startswith("gw"):
+        return int(worker[2:]) + 1
+    return int(os.getenv("TEST_USER_INDEX", "1"))
+
+
 @pytest.fixture(scope="session")
 def test_credentials():
     """
@@ -219,11 +256,7 @@ def test_credentials():
     gw1 → TEST_EMAIL_2 / TEST_PASSWORD_2
     Falls back to TEST_USER_INDEX (or 1) when not running under xdist.
     """
-    worker = os.getenv("PYTEST_XDIST_WORKER", "")
-    if worker.startswith("gw"):
-        idx = int(worker[2:]) + 1          # gw0→1, gw1→2, gw2→3 …
-    else:
-        idx = int(os.getenv("TEST_USER_INDEX", "1"))
+    idx = _account_index()
 
     email = os.getenv(f"TEST_EMAIL_{idx}")
     password = os.getenv(f"TEST_PASSWORD_{idx}")
@@ -325,6 +358,57 @@ def org_add_permission(test_credentials):
             f"cannot run. Grant an admin role on an org to enable them."
         )
     return writable
+
+
+# One org per account, so two concurrent workers never write the same org row.
+# Verified live 2026-09-24: account 1 has canAdd on all three; account 2 on
+# "my test agency" + "test org 2"; account 3 on "test org name" only.
+# Override per slot with TEST_ORG_1 / TEST_ORG_2 / TEST_ORG_3.
+DEDICATED_ORG_BY_ACCOUNT = {
+    1: "my test agency",
+    2: "test org 2",
+    3: "test org name",
+}
+
+
+@pytest.fixture(scope="session")
+def writable_org(org_add_permission):
+    """The single organization this worker's account may write to.
+
+    Every org-scoped provider flow must go through this, not
+    `org_add_permission[0]` and not `select_org()`'s old hardcoded preference.
+    Both of those let two workers land on the SAME org concurrently:
+
+    - `select_org()` with no argument fell back to "my test agency", which
+      account 1 can write to, while account 2's `org_add_permission[0]` IS
+      "my test agency" -- so test_prv_009 (which edits the org profile) and
+      test_prv_006/007/011 (which create under it) ran against one org row at
+      the same time. That is CivicDataSpace-test#103.
+    - `org_add_permission[0]` is just whatever the permissions query returns
+      first; for account 1 that is "CivicDataLab", a real org rather than a
+      test one.
+
+    Skips loudly rather than silently colliding, because the provisioning this
+    depends on has already drifted twice.
+    """
+    idx = _account_index()
+    want = os.getenv(f"TEST_ORG_{idx}") or DEDICATED_ORG_BY_ACCOUNT.get(idx)
+
+    if want and want in org_add_permission:
+        return want
+
+    if want:
+        pytest.skip(
+            f"Account slot {idx} is meant to use '{want}' exclusively but has no "
+            f"canAdd on it (writable: {', '.join(org_add_permission)}). Grant an "
+            f"admin role on '{want}', or set TEST_ORG_{idx}."
+        )
+
+    # Unmapped slot (more workers than configured accounts): fall back, but
+    # prefer an org no other slot claims so we still do not collide.
+    claimed = set(DEDICATED_ORG_BY_ACCOUNT.values())
+    unclaimed = [o for o in org_add_permission if o not in claimed]
+    return unclaimed[0] if unclaimed else org_add_permission[0]
 
 
 @pytest.fixture(scope="session")

@@ -20,7 +20,7 @@ from tests.data.test_data import CollaborativeTestData
 @pytest.mark.functional
 @pytest.mark.smoke
 @pytest.mark.timeout(360)
-def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover_image_path, base_url, test_credentials, org_add_permission):
+def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover_image_path, base_url, test_credentials, writable_org):
     """
     Test Case ID: test_prv_011_org_create_collaborative
     Verify User is able to create a Collaborative end-to-end as an Organization provider.
@@ -63,7 +63,7 @@ def test_prv_011_org_create_collaborative(driver, sample_logo_path, sample_cover
     )
 
     # ─── Step 4: Select one of the organizations ─────────────────────────────────────
-    select_org = org_dash.select_org(org_add_permission[0])
+    select_org = org_dash.select_org(writable_org)
     assert isinstance(select_org, OrganizationsPage), (
         "Step 4 failure: expected select_org() to return OrganizationsPage"
     )

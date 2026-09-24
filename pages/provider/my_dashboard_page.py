@@ -93,10 +93,14 @@ class MyDashboardPage(BasePage):
         # Wait for the metadata tab to confirm we're inside the creation form
         # The create mutation plus the navigation it triggers is the slow step;
         # 30s was not enough under concurrent load.
-        self.wait_with_timeout(60).until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
-            message="Timed out waiting for Metadata tab to appear after creating dataset"
-        )
+        try:
+            self.wait_with_timeout(60).until(
+                EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
+                message="Timed out waiting for Metadata tab to appear after creating dataset"
+            )
+        except TimeoutException:
+            self.save_failure_artifacts("ind_create_dataset_metadata_tab")
+            raise
 
         return CreateDatasetPage(self.driver)
 
