@@ -16,7 +16,7 @@ from pages.provider.my_dashboard_page import MyDashboardPage
 from pages.provider.create_usecase_page import CreateUsecasePage
 
 @pytest.mark.functional
-def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url,test_credentials):
+def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url,test_credentials, sector_name):
     """
     Test Case ID: test_prv_003_ind_create_usecase
     Verify User is able to create a UseCase end-to-end as an Individual provider.
@@ -106,9 +106,9 @@ def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url,test_cred
     )
 
     # (6f) Sectors
-    create_uc.select_sectors(["Budgets"])
+    create_uc.select_sectors([sector_name])
     selected_sectors = create_uc.get_selected_sectors()
-    assert "Budgets" in selected_sectors, (
+    assert sector_name in selected_sectors, (
         f"Step 6f failure: Sector not selected correctly. Current sectors: {selected_sectors}"
     )
 

@@ -32,7 +32,7 @@ from pages.provider.organizations_page import OrganizationsPage
 # merged and deployed to dev 2026-09-18. Re-added smoke after confirming green
 # under real -n 3 concurrent load against dev (0 reruns needed, vs failing
 # every attempt pre-fix).
-def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_credentials, writable_org):
+def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_credentials, writable_org, sector_name):
     """
     Test Case ID: test_prv_007_org_create_usecase
     Verify User is able to create a UseCase end-to-end as an Organization provider.
@@ -123,9 +123,9 @@ def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_cre
     )
 
     # (7e) Sectors
-    create_uc.select_sectors(["Budgets"])
+    create_uc.select_sectors([sector_name])
     selected_sectors = create_uc.get_selected_sectors()
-    assert "Budgets" in selected_sectors, (
+    assert sector_name in selected_sectors, (
         f"Step 7e failure: Sector not selected correctly. Current sectors: {selected_sectors}"
     )
 

@@ -18,7 +18,7 @@ from pages.provider.organizations_page import OrganizationsPage
 
 @pytest.mark.functional
 @pytest.mark.xfail(reason="Charts feature isn't fully built yet", strict=False)
-def test_prv_008_org_add_charts(driver, sample_logo_path, base_url, test_credentials, writable_org):
+def test_prv_008_org_add_charts(driver, sample_logo_path, base_url, test_credentials, writable_org, sector_name):
     """
     Test Case ID: test_prv_008_org_add_charts
     Verify User is able to add charts through an Organization provider workflow.
@@ -109,9 +109,9 @@ def test_prv_008_org_add_charts(driver, sample_logo_path, base_url, test_credent
     )
 
     # (7e) Sectors
-    create_uc.select_sectors(["Budgets"])
+    create_uc.select_sectors([sector_name])
     selected_sectors = create_uc.get_selected_sectors()
-    assert "Budgets" in selected_sectors, (
+    assert sector_name in selected_sectors, (
         f"Step 7e failure: Sector not selected correctly. Current sectors: {selected_sectors}"
     )
 
