@@ -62,11 +62,11 @@ class CreateDatasetPage(BasePage):
 
     # ---- Metadata entry ----
     def enter_description(self, text: str):
-        fld = self.find((By.XPATH, CreateDatasetLocators.DESCRIPTION))
-        fld.click()
-        fld.send_keys(Keys.CONTROL + 'a')
-        fld.send_keys(Keys.DELETE)
-        fld.send_keys(text)
+        # Same Quill editor as the usecase/collaborative/ai-model summary fields,
+        # and the same failure: a plain send_keys can leave it empty, so
+        # test_prv_006 step 5a asserted description == '' . This was the one
+        # enter_description never converted when the others moved to the helper.
+        self.type_into_rich_editor((By.XPATH, CreateDatasetLocators.DESCRIPTION), text)
         return self
 
     def select_sectors(self, items: list[str]):
