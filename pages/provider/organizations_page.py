@@ -20,7 +20,7 @@ class OrganizationsPage(BasePage):
         """Check if the Organizations page is loaded (an org card is present)."""
         return self.find(self.ORG_CARD_ANY).is_displayed()
 
-    def select_org(self, org_name: str | None = None) -> "OrganizationsPage":
+    def select_org(self, org_name: str) -> "OrganizationsPage":
         """
         Select an organization to access its dashboard.
 
@@ -49,12 +49,18 @@ class OrganizationsPage(BasePage):
             message="Organizations list page did not load"
         )
 
-        locators = [(By.XPATH, "//a[contains(@href,'/dashboard/organization/')]")]
-        if org_name:
-            slug = org_name.lower().replace(" ", "-")
-            locators = [(By.XPATH, f'//a[@id="{slug}"]')] + locators
-        else:
-            locators = [OrgLocators.ORG_TEST] + locators
+        if not org_name:
+            raise ValueError(
+                "select_org() requires an org name -- use the `writable_org` "
+                "fixture. It used to fall back to 'my test agency', which two "
+                "accounts can both write to, so concurrent workers edited and "
+                "created under the same org row (CivicDataSpace-test#103)."
+            )
+
+        # Only the requested org. No "first available card" fallback: that is how
+        # a worker silently ended up on an org another worker was writing to.
+        slug = org_name.lower().replace(" ", "-")
+        locators = [(By.XPATH, f'//a[@id="{slug}"]')]
 
         org_el = None
         for locator in locators:
@@ -112,20 +118,13 @@ class OrganizationsPage(BasePage):
         data_dataset_card.click()
 
         # Confirm with "Create Dataset"
-        create_btn = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.CREATE_DATASET_BUTTON)),
-            message="Timed out waiting for 'Create Dataset' button to be clickable"
-        )
-        create_btn.click()
-
-        # Wait for metadata tab
-        # The create mutation plus the navigation it triggers is the slow step;
-        # 30s was not enough under concurrent load. The org flow does not land
-        # on an /edit URL, so wait on the tab itself rather than the URL.
+        # Retry the submit until the Metadata tab actually appears: a
+        # pre-hydration click on this button does nothing at all, silently.
         try:
-            self.wait_with_timeout(60).until(
+            self.click_until(
+                (By.XPATH, CreateDatasetLocators.CREATE_DATASET_BUTTON),
                 EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
-                message="Timed out waiting for Metadata tab to appear after creating dataset"
+                message="'Create Dataset' never took effect -- modal stayed open",
             )
         except TimeoutException:
             self.save_failure_artifacts("org_create_dataset_metadata_tab")

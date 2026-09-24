@@ -79,7 +79,7 @@ def test_prv_002_03_ind_sidebar_nav_visible(driver, base_url, test_credentials):
 
 
 @pytest.mark.smoke
-def test_prv_002_04_org_sidebar_nav_visible(driver, base_url, test_credentials):
+def test_prv_002_04_org_sidebar_nav_visible(driver, base_url, test_credentials, writable_org):
     """All sidebar nav items are visible on the Org dashboard after selecting an org."""
     prov_home = _login_as_provider(driver, base_url, test_credentials)
     assert isinstance(prov_home, ProviderHomePage), (
@@ -89,7 +89,7 @@ def test_prv_002_04_org_sidebar_nav_visible(driver, base_url, test_credentials):
     assert isinstance(org_page, OrganizationsPage), (
         f"Expected OrganizationsPage, got {type(org_page)}"
     )
-    org_page.select_org()
+    org_page.select_org(writable_org)
 
     sidebar_items = [
         ("Datasets",       OrgLocators.SIDEBAR_DATASETS),

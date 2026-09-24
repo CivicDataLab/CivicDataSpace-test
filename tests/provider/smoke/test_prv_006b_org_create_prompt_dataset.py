@@ -11,7 +11,7 @@ from pages.provider.create_dataset_page import CreateDatasetPage
 
 @pytest.mark.functional
 @pytest.mark.smoke
-def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, test_credentials, org_add_permission):
+def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, test_credentials, writable_org):
     """
     Test Case ID: test_prv_006b_org_create_prompt_dataset
     Verify a user can create a Prompt Dataset end-to-end from the Org Dashboard.
@@ -47,7 +47,7 @@ def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, t
         "test_prv_006b: goto_organizations() did not return OrganizationsPage"
     )
 
-    select_org = org_dash.select_org(org_add_permission[0])
+    select_org = org_dash.select_org(writable_org)
     assert isinstance(select_org, OrganizationsPage), (
         "test_prv_006b: select_org() did not return OrganizationsPage"
     )

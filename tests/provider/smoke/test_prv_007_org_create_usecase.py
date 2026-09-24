@@ -32,7 +32,7 @@ from pages.provider.organizations_page import OrganizationsPage
 # merged and deployed to dev 2026-09-18. Re-added smoke after confirming green
 # under real -n 3 concurrent load against dev (0 reruns needed, vs failing
 # every attempt pre-fix).
-def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_credentials, org_add_permission):
+def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_credentials, writable_org):
     """
     Test Case ID: test_prv_007_org_create_usecase
     Verify User is able to create a UseCase end-to-end as an Organization provider.
@@ -74,7 +74,7 @@ def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_cre
     )
 
     # ─── Step 4: Select one of the organizations ─────────────────────────────────────
-    select_org = org_dash.select_org(org_add_permission[0])
+    select_org = org_dash.select_org(writable_org)
     assert isinstance(select_org, OrganizationsPage), (
         "test_prv_007: expected select_org() to return OrganizationsPage"
     )

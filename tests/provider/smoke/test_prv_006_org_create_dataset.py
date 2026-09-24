@@ -30,7 +30,7 @@ from pages.provider.organizations_page import OrganizationsPage
 # merged and deployed to dev 2026-09-18. Re-added smoke after confirming green
 # under real -n 3 concurrent load against dev (0 reruns needed, vs 3/3
 # failures pre-fix).
-def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_credentials, org_add_permission):
+def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_credentials, writable_org):
 
     """
     Test Case ID: test_prv_002_ind_create_dataset
@@ -72,7 +72,7 @@ def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_cred
     )
 
     # Step 5: Select one of the orgs
-    select_org = org_dash.select_org(org_add_permission[0])
+    select_org = org_dash.select_org(writable_org)
     assert isinstance(select_org, OrganizationsPage), (
         "test_prv_006: expected select_org() to return OrganizationsPage"
     )
