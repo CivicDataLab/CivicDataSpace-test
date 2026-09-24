@@ -11,7 +11,7 @@ from pages.provider.create_dataset_page import CreateDatasetPage
 
 @pytest.mark.functional
 @pytest.mark.smoke
-def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, test_credentials, writable_org):
+def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, test_credentials, writable_org, sector_name):
     """
     Test Case ID: test_prv_006b_org_create_prompt_dataset
     Verify a user can create a Prompt Dataset end-to-end from the Org Dashboard.
@@ -72,9 +72,9 @@ def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, t
     )
 
     # 4b) Sectors
-    create_ds.select_sectors(["Budgets"])
-    assert "Budgets" in create_ds.get_selected_sectors(), (
-        "Step 4b: Sector 'Budgets' was not selected"
+    create_ds.select_sectors([sector_name])
+    assert sector_name in create_ds.get_selected_sectors(), (
+        f"Step 4b: Sector '{sector_name}' was not selected"
     )
 
     # 4c) Tags
