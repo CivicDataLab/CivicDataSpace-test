@@ -85,6 +85,9 @@ jobs:
       # Keycloak realm that dev and prod share.
       TEST_EMAIL_1:    ${{ secrets.TEST_EMAIL_1 }}
       TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+      # test_con_usecase_dashboards looks up which use cases link dashboards.
+      # Same resolution as api-smoke, so a prod readonly run reads prod data.
+      API_BASE_URL: ${{ inputs.api_base_url || vars.API_BASE_URL || 'https://dev.api.civicdataspace.in' }}
 
     steps:
       - uses: actions/checkout@v4

@@ -24,3 +24,9 @@ class UseCaseLocators:
     # Scoped to /download/resource/ so it targets the dataset file, not the
     # chart-image link (/download/chart/), which is a separate failing endpoint.
     DOWNLOAD_LINK = (By.XPATH, "//a[contains(@href, '/download/resource/')]")
+
+    # Use case detail page (/usecases/<id>): dashboards embedded as iframes (DataSpaceFrontend #476)
+    DETAIL_DATASETS_HEADING = (By.XPATH, "//main//*[normalize-space(text())='Datasets in this Use Case']")
+    DETAIL_DASHBOARDS_HEADING = (By.XPATH, "//main//*[normalize-space(text())='Dashboards Linked to this Use Case']")
+    DETAIL_DASHBOARD_IFRAME = (By.XPATH, "//main//iframe")
+    DETAIL_DASHBOARD_OPEN_LINK = (By.XPATH, "//main//a[normalize-space()='Open dashboard in a new tab']")
