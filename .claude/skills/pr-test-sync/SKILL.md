@@ -232,6 +232,27 @@ GraphQL client helper covering this area. Reuse it.
   filters don't route to will silently never run. Check `.github/workflows/ci.yml`'s
   `filters:` block and update it in the same PR if the path is new.
 
+### Pick test data at runtime, and pick the data that exercises the change
+
+Hardcoded ids break across dev and prod, and after a data merge. Find matching records
+through the public GraphQL API in a module-scoped fixture, and `pytest.skip` with the
+reason when none exist. Examples: "a published use case with a Superset dashboard", "one
+with no dashboards", "one whose dashboard links are all empty".
+
+When a feature has cases ("some use cases have dashboards, some don't"), parametrize
+over every case, including the one where nothing changed. That case guards the new code
+path, but it passes on the old code too, so prove it with the flipped assertion.
+
+**Prefer records that force the transformation to happen.** #476 adds `standalone=1` to
+Superset links. Mid-run, a use case's link was edited to already contain `standalone=1`,
+and the test kept passing without proving anything. The fixture now prefers a link
+*without* the param. Data you don't own can change under you, so re-check which record
+the fixture picks after any data edit.
+
+Browser jobs may not get the API URL. `consumer-smoke` had only `HOME_URL_DEV` until
+CivicDataSpace-test#122 added `API_BASE_URL` with api-smoke's expression. Check
+`run-smoke.yml`'s `env:` for your job before relying on a variable.
+
 ### Confirm your test is actually collected — under CI's real marker filter
 
 Existence in the file is not execution, and neither is local collection. Check both:
