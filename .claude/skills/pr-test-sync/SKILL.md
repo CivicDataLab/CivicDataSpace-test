@@ -453,6 +453,19 @@ Body must contain:
 
 **Draft only. Never `--ready`, never merge, never enable auto-merge.**
 
+### `readonly` tests: say when it's safe to merge
+
+The frontend **and** backend `main` deploys both call `run-smoke.yml@CI` with
+`suite: readonly` against the prod frontend. A `readonly` test for a feature that is
+only on `dev` passes on dev. But once merged into `CI`, the next prod deploy of *either*
+repo fails its gate and rolls back.
+
+Check `git merge-base --is-ancestor <merge-sha> origin/main` in the source repo. If the
+feature isn't on `main`, run the file read-only against prod
+(`HOME_URL_DEV=https://civicdataspace.in API_BASE_URL=https://api.datakeep.civicdays.in`).
+Paste the result and put **"merge only after #N is on prod"** at the top of the PR body.
+Don't drop `readonly` to work around this. Once the feature ships, prod needs the test too.
+
 ## 8. Don't duplicate
 
 Before any of the above:
