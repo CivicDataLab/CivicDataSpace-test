@@ -520,6 +520,21 @@ def pytest_runtest_makereport(item, call):
             # No WebDriver fixture → nothing to screenshot
             return
 
+        # The backend allows 1000 POST/hour per IP. Past that every page that
+        # needs data hangs, and the test dies as a blank TimeoutException that
+        # looks like a locator or load problem. Say so when that's the cause.
+        api = os.getenv("API_BASE_URL")
+        if api:
+            try:
+                status = requests.post(f"{api.rstrip('/')}/api/graphql",
+                                       json={"query": "{__typename}"}, timeout=10).status_code
+            except requests.RequestException:
+                status = None
+            if status == 429:
+                rep.sections.append(("backend rate limit",
+                                     f"{api} answered 429 when this test failed: the hourly POST "
+                                     "limit is spent, so this failure is probably not the test's fault."))
+
         # 2) Make sure ./screenshots exists
         screenshots_dir = Path(os.getcwd()) / "screenshots"
         screenshots_dir.mkdir(parents=True, exist_ok=True)
