@@ -437,6 +437,25 @@ def backend_enum_labels():
     return labels
 
 
+@pytest.fixture(scope="session")
+def sector_name():
+    """A sector that exists on the target backend, read live.
+
+    Sectors are admin-managed data, not code: the 2026-09-24 dev refresh from prod
+    dropped "Budgets", and every provider create flow that hardcoded it timed out
+    waiting for a dropdown option that no longer existed.
+    """
+    import requests
+
+    api = os.getenv("API_BASE_URL")
+    assert api, "API_BASE_URL is not set: cannot read backend sectors"
+    resp = requests.post(f"{api.rstrip('/')}/api/graphql", json={"query": "{ sectors { name } }"}, timeout=30)
+    resp.raise_for_status()
+    names = sorted(s["name"] for s in (resp.json().get("data") or {}).get("sectors") or [])
+    assert names, "Backend lists no sectors: provider create flows cannot pick one"
+    return names[0]
+
+
 #  ─────────────────────── Login Fixtures (Phase 12) ─────────────────────────────
 
 @pytest.fixture
