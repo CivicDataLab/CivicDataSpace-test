@@ -72,6 +72,27 @@ gh pr diff $N --repo CivicDataLab/$SRC        # the actual diff
 If the PR isn't merged, stop and say so — this skill covers merged behaviour, not
 proposals.
 
+### Merged is not deployed — confirm the change is live before trusting dev
+
+Every product repo's deploy is smoke-gated with automatic rollback, so a merged PR can be
+**absent from dev**. DataSpaceFrontend#476 merged, its deploy failed the gate on unrelated
+`/datasets` and sitemap tests, rolled back, and dev kept serving the old page. Any test
+run against dev at that point proves nothing about the PR.
+
+```bash
+gh run list --repo CivicDataLab/$SRC --limit 10 \
+  --json workflowName,headBranch,headSha,conclusion,createdAt \
+  --jq '.[]|"\(.workflowName) [\(.headBranch)] \(.conclusion) \(.headSha[:8])"'
+gh run view <deploy-run-id> --repo CivicDataLab/$SRC --json jobs --jq '.jobs[]|"\(.name): \(.conclusion)"'
+```
+
+Look for the deploy run on the **merge SHA**, and for `rollback: success`. Then open the
+changed page in Playwright MCP and check that the new behaviour is actually there. `gh run list
+--branch dev` can list stale runs, so filter by SHA and don't trust that list alone.
+
+If dev is rolled back, say so, and don't redeploy on your own: it's a shared
+environment and the user's call. You can still verify locally (§6).
+
 ## 1. Which test repo
 
 | Source | Test repo |
@@ -152,6 +173,24 @@ because they'd have collected nothing meaningful.
 Prefer one or two tests that would genuinely have caught the bug over broad coverage of
 everything the diff touched.
 
+### Find the affected pages, and run the tests that already cover them
+
+New tests are half the job. The other half is making sure the existing tests on the
+changed pages still pass:
+
+1. Get the route from the changed file's path, e.g.
+   `app/[locale]/(user)/usecases/[useCaseSlug]/` → `/usecases/<param>`. Check what the param
+   **really** is by loading one: that route is keyed by numeric id despite the folder
+   name, and a slug gives "Error Loading Use Case".
+2. Grep `locators/` and `pages/` for the route and the changed components, then grep
+   `tests/` for users of those Page Objects. That list is the affected set. Run it before and
+   after the change.
+3. **Check which data path each affected test actually takes.** `test_con_007` opens the
+   *first* use case, which had no dashboard, so it never reached the #476 change. When
+   the existing tests miss the changed path, walk that path in Playwright MCP on data
+   that hits it, and report the gap. For example: on a use case with a dashboard, does the
+   first dataset card below the new 640px iframe still receive clicks?
+
 ## 4. Get a clean checkout without touching the user's work
 
 *Local caller only — a cloud run already has a fresh clone and can branch normally.*
@@ -193,12 +232,67 @@ GraphQL client helper covering this area. Reuse it.
   filters don't route to will silently never run. Check `.github/workflows/ci.yml`'s
   `filters:` block and update it in the same PR if the path is new.
 
-### Confirm your test is actually collected
+### Pick test data at runtime, and pick the data that exercises the change
 
-Existence in the file is not execution. Always:
+Hardcoded ids break across dev and prod, and after a data merge. Find matching records
+through the public GraphQL API in a module-scoped fixture, and `pytest.skip` with the
+reason when none exist. Examples: "a published use case with a Superset dashboard", "one
+with no dashboards", "one whose dashboard links are all empty".
+
+When a feature has cases ("some use cases have dashboards, some don't"), parametrize
+over every case, including the one where nothing changed. That case guards the new code
+path, but it passes on the old code too, so prove it with the flipped assertion.
+
+**Prefer records that force the transformation to happen.** #476 adds `standalone=1` to
+Superset links. Mid-run, a use case's link was edited to already contain `standalone=1`,
+and the test kept passing without proving anything. The fixture now prefers a link
+*without* the param. Data you don't own can change under you, so re-check which record
+the fixture picks after any data edit.
+
+Browser jobs may not get the API URL. `consumer-smoke` had only `HOME_URL_DEV` until
+CivicDataSpace-test#122 added `API_BASE_URL` with api-smoke's expression. Check
+`run-smoke.yml`'s `env:` for your job before relying on a variable.
+
+### Confirm your test is actually collected — under CI's real marker filter
+
+Existence in the file is not execution, and neither is local collection. Check both:
 
 ```bash
-python -m pytest <file> --collect-only -q | grep <your_test_name>
+python -m pytest <file> --collect-only -q | grep <your_test_name>        # exists
+python -m pytest <dir> -m "<CI's filter>" --collect-only -q | grep <name>  # CI runs it
+```
+
+**Read the marker filter out of the workflow, don't guess it.** In
+`CivicDataSpace-test/.github/workflows/run-smoke.yml`:
+
+```yaml
+# pull_request           -> -m "smoke"
+# workflow_dispatch/call -> -m "smoke or functional"
+pytest tests/<domain>/smoke -m "${{ steps.markers.outputs.value }}" ...
+```
+
+Consequences, both real and both hit on live runs:
+
+- **`regression` is never selected on any event.** A test marked only
+  `api`+`regression` is silently deselected everywhere. It merges, shows a green
+  `api-smoke` check, and never runs again. This happened on `test-sync/DataSpaceBackend-pr136`:
+  the green check ran 23 pre-existing tests and zero of the two added. Anything that must
+  run in CI needs `smoke` (or `functional`, dispatch-only).
+- Only files under `tests/<domain>/smoke/` are collected at all — CI passes that directory
+  explicitly. A test elsewhere in the tree never runs regardless of its markers.
+
+A green check on your own PR is **not** evidence your test ran. Open the job log and find
+your test name in it, or check the passed-count moved by the number you added.
+
+### Pick the file number from the target branch, not the working tree
+
+`test_<domain>_<NNN>_<what>.py` numbering must be free **on the base branch you're
+targeting**. Listing the local working tree gives the wrong answer when it sits on an
+older branch — that produced a second `test_api_007_*` on a branch that already had
+007 and 008:
+
+```bash
+git ls-tree origin/<base> --name-only tests/<domain>/smoke/
 ```
 
 Real instance: `tests/consumer/smoke/test_components.py` has a `'''` at line 57 closing
@@ -224,6 +318,42 @@ never mutate the dev deployment to force a failure.
 If it passes before the feature exists, or passes with the assertion inverted, it isn't
 testing anything. Fix it or drop it.
 
+### Stronger proof for frontend PRs: run against the code before the change
+
+Flipping an assertion proves the check can fail. Running the test against the
+**parent commit** proves it catches this change. For DataSpaceFrontend, serve the app
+locally against the dev API (dev allows `http://localhost:*` CORS) and point the test
+at it:
+
+```bash
+git -C DataSpaceFrontend worktree add --detach <scratch>/fe <merge-sha>
+cd <scratch>/fe
+ln -s <DataSpaceFrontend>/node_modules node_modules
+# .env.local: NEXT_PUBLIC_BACKEND_GRAPHQL_URL / BACKEND_GRAPHQL_URL / NEXT_PUBLIC_BACKEND_URL
+#   -> https://dev.api.civicdataspace.in, NEXTAUTH_URL -> http://localhost:<port>,
+#   stub KEYCLOAK_* / NEXTAUTH_SECRET, SENTRY_FEATURE_ENABLED=false
+set -a && . ./.env.local && set +a && npx graphql-codegen --config ./config/codegen.ts
+npx next dev --webpack -p <port>          # background
+HOME_URL_DEV=http://localhost:<port> pytest <file>          # green at <merge-sha>
+git checkout -q <merge-sha>^1                                 # hot-reloads
+HOME_URL_DEV=http://localhost:<port> pytest <file>          # must go red
+git checkout -q <merge-sha>
+```
+
+Gotchas, each hit once:
+- `gql/generated/` is only partly committed, so you get `Can't resolve './gql'` until you run codegen.
+- Turbopack panics on a symlinked `node_modules` ("points out of the filesystem root"), so use `--webpack`.
+- With stub auth, the header nav doesn't render. Tests that start with a nav click
+  (`go_to_usecases()` etc.) fail locally for that reason alone, so run those against dev instead.
+- localhost is cross-site to `*.civicdataspace.in`. Superset's `session` cookie is
+  `SameSite=Lax`, so charts inside an embed fail locally with "CSRF session token is missing".
+  They render fine from `dev.civicdataspace.in`. Don't report it as a product bug from
+  localhost alone.
+- Playwright MCP only writes screenshots under the workspace root (`.playwright-mcp/`),
+  not the scratchpad.
+
+Put both runs in the PR body. Remove the worktree and stop the server when you're done.
+
 ### `skipped` is NOT `passed` — check the count, not the exit code
 
 `2 skipped` exits 0 and looks like success at a glance. It means your test never ran and
@@ -234,6 +364,22 @@ The auth fixtures are the usual cause. `_get_keycloak_token` in
 `CivicDataSpace-test/tests/api/conftest.py` turns a **401 into `pytest.skip(...)`**, not a
 failure — so any authenticated API test silently disappears when credentials are wrong,
 missing, or incomplete.
+
+**A 429 is the second cause, and it looks identical.** `DataSpaceBackend`'s
+`api/middleware/rate_limit.py` allows **1000 POST/hour per IP** (5000 GET), hardcoded, and
+GraphQL is POST. Exceed it and the org-permission fixture skips with
+`Could not resolve org permissions ... 429`. Re-running a suite a few times while
+iterating is enough to trip it, and every subsequent run then "passes" as skips.
+Probe before blaming code:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://dev.api.civicdataspace.in/api/graphql \
+  -H 'Content-Type: application/json' -d '{"query":"{__typename}"}'   # 200 = clear, 429 = throttled
+```
+
+It is a **fixed** window, so it clears at most 60 min after the window's first request —
+not 60 min after your last one. `RATE_LIMIT_WHITELIST_IPS` exists but is an exact
+string match on a set, so it cannot express CIDRs and is useless for GitHub-hosted runners.
 
 Most common instance, hit on this skill's second run: the realm's client is
 **confidential**, so ROPC needs `client_secret`. Omit it and everything skips:
@@ -307,6 +453,19 @@ Body must contain:
 
 **Draft only. Never `--ready`, never merge, never enable auto-merge.**
 
+### `readonly` tests: say when it's safe to merge
+
+The frontend **and** backend `main` deploys both call `run-smoke.yml@CI` with
+`suite: readonly` against the prod frontend. A `readonly` test for a feature that is
+only on `dev` passes on dev. But once merged into `CI`, the next prod deploy of *either*
+repo fails its gate and rolls back.
+
+Check `git merge-base --is-ancestor <merge-sha> origin/main` in the source repo. If the
+feature isn't on `main`, run the file read-only against prod
+(`HOME_URL_DEV=https://civicdataspace.in API_BASE_URL=https://api.datakeep.civicdays.in`).
+Paste the result and put **"merge only after #N is on prod"** at the top of the PR body.
+Don't drop `readonly` to work around this. Once the feature ships, prod needs the test too.
+
 ## 8. Don't duplicate
 
 Before any of the above:
@@ -345,6 +504,15 @@ them from fighting each other. Do not skip it.
   green CI run does not mean your new test executed.
 - `CivicDataSpace-test` executes from its `CI` branch. Its default branch (`main`) and
   `dev` do not run the workflows — see §7. Flag in the PR body which branch you targeted.
+- A green check on your PR does not mean your test ran. `regression`-only tests are
+  deselected by every event's marker filter here — see §5. Read the job log.
+- **A test that fails in CI but passes locally: change `-n` before you read a selector.**
+  Reproduce at CI's concurrency, then re-run the same failing set serially. Two runs
+  separate contention from code, and cost far less than a locator investigation.
+  Measured 2026-09-23 on provider smoke, same branch and same dev target: **4 failed at
+  `-n 3 --dist loadfile`, all 5 passed sequentially.** Several cycles went into DOM and
+  selector theories first; the variable that mattered was `-n`. `--reruns 2` does **not**
+  mask it — reruns were enabled and it still failed.
 - Suites share one dev backend with known concurrency limits. Never add a test that
   hammers it in parallel; the existing serialization in each repo's CI exists for a
   reason. This also means **concurrency/pool-exhaustion bugs are not reproducible here** —
