@@ -541,16 +541,11 @@ jobs:
 
       - name: Run provider smoke tests
         run: |
-          # Serial, deliberately. -n 3 matched the 3 test accounts, but these are
-          # write flows against a single shared dev backend and they contend on it.
-          # Measured 2026-09-23, same branch and target: 4 failed at -n 3, all 5 of
-          # the same tests passed sequentially. --reruns 2 did not rescue the
-          # parallel run. The failures looked like locator breakage (blank
-          # TimeoutExceptions, a Quill editor silently dropping send_keys) and were
-          # contention throughout.
-          # Cost: ~30 min serial vs ~8 flaky minutes. Revisit with -n 2 only with
-          # a measured pass rate, not by assumption.
-          pytest "${{ steps.markers.outputs.path }}" -m "${{ steps.markers.outputs.value }}" -v --json-report
+          # -n 3: matches the 3 configured test accounts, same reasoning as
+          # api-smoke above. --dist loadfile (pytest.ini) keeps the numbered
+          # provider flows in file order per worker, so each of the 3 accounts
+          # runs its own files start to finish rather than interleaving.
+          pytest "${{ steps.markers.outputs.path }}" -m "${{ steps.markers.outputs.value }}" -v --json-report -n 3
 
       - name: Upload screenshots
         if: always()
