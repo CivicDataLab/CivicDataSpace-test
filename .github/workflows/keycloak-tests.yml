@@ -190,7 +190,7 @@ jobs:
             python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
           s = json.load(open("report.json")).get("summary", {})
-          for k in ("total", "passed", "failed", "skipped", "error"):
+          for k in ("total", "passed", "failed", "xfailed", "skipped", "error"):
               if k in s:
                   print(f"- **{k}**: {s[k]}")
           PY
