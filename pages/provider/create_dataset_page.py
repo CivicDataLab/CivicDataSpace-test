@@ -25,10 +25,14 @@ class CreateDatasetPage(BasePage):
 
     # ---- Tab navigation ----
     def go_to_metadata_tab(self):
-        self.click((By.XPATH, CreateDatasetLocators.TAB_METADATA))
-        self.wait.until(EC.visibility_of_element_located(
-            (By.XPATH, CreateDatasetLocators.DESCRIPTION)
-        ))
+        # After "Dataset created successfully" the form can drop back to a full
+        # "Loading" render once more, so a tab that was clickable a moment ago gets
+        # covered mid-click (test_prv_002: ElementClickIntercepted). Retry until
+        # the Metadata form is actually showing.
+        self.click_until(
+            (By.XPATH, CreateDatasetLocators.TAB_METADATA),
+            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.DESCRIPTION)),
+        )
         return self
 
     def go_to_datafiles_tab(self):

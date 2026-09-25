@@ -15,7 +15,7 @@ from pages.provider.my_dashboard_page import MyDashboardPage
 from pages.provider.create_dataset_page import CreateDatasetPage
 
 @pytest.mark.functional
-def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url, test_credentials):
+def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url, test_credentials, sector_name):
 
     """
     Test Case ID: test_prv_002_ind_create_dataset
@@ -75,10 +75,10 @@ def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url, test_cred
     )
 
     # (5b) Sectors
-    create_ds.select_sectors(["Budgets"])
-    selected_sectors = create_ds.get_selected_sectors()  # e.g. returns ['Budgets']
-    assert "Budgets" in selected_sectors, (
-        f"Step 5b failure: Sector 'Budgets' was not selected; current selection = {selected_sectors}."
+    create_ds.select_sectors([sector_name])
+    selected_sectors = create_ds.get_selected_sectors()
+    assert sector_name in selected_sectors, (
+        f"Step 5b failure: Sector '{sector_name}' was not selected; current selection = {selected_sectors}."
     )
 
     # (5c) Tags

@@ -437,6 +437,25 @@ def backend_enum_labels():
     return labels
 
 
+@pytest.fixture(scope="session")
+def sector_name():
+    """A sector that exists on the target backend, read live.
+
+    Sectors are admin-managed data, not code: the 2026-09-24 dev refresh from prod
+    dropped "Budgets", and every provider create flow that hardcoded it timed out
+    waiting for a dropdown option that no longer existed.
+    """
+    import requests
+
+    api = os.getenv("API_BASE_URL")
+    assert api, "API_BASE_URL is not set: cannot read backend sectors"
+    resp = requests.post(f"{api.rstrip('/')}/api/graphql", json={"query": "{ sectors { name } }"}, timeout=30)
+    resp.raise_for_status()
+    names = sorted(s["name"] for s in (resp.json().get("data") or {}).get("sectors") or [])
+    assert names, "Backend lists no sectors: provider create flows cannot pick one"
+    return names[0]
+
+
 #  ─────────────────────── Login Fixtures (Phase 12) ─────────────────────────────
 
 @pytest.fixture
@@ -500,6 +519,21 @@ def pytest_runtest_makereport(item, call):
         if not driver_obj:
             # No WebDriver fixture → nothing to screenshot
             return
+
+        # The backend allows 1000 POST/hour per IP. Past that every page that
+        # needs data hangs, and the test dies as a blank TimeoutException that
+        # looks like a locator or load problem. Say so when that's the cause.
+        api = os.getenv("API_BASE_URL")
+        if api:
+            try:
+                status = requests.post(f"{api.rstrip('/')}/api/graphql",
+                                       json={"query": "{__typename}"}, timeout=10).status_code
+            except requests.RequestException:
+                status = None
+            if status == 429:
+                rep.sections.append(("backend rate limit",
+                                     f"{api} answered 429 when this test failed: the hourly POST "
+                                     "limit is spent, so this failure is probably not the test's fault."))
 
         # 2) Make sure ./screenshots exists
         screenshots_dir = Path(os.getcwd()) / "screenshots"

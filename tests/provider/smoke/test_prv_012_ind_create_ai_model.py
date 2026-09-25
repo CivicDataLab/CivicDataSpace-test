@@ -12,7 +12,7 @@ from pages.provider.create_ai_model_page import CreateAiModelPage
 
 @pytest.mark.functional
 @pytest.mark.smoke
-def test_prv_012_ind_create_ai_model(driver, base_url, test_credentials):
+def test_prv_012_ind_create_ai_model(driver, base_url, test_credentials, sector_name):
     """
     Test Case ID: test_prv_012_ind_create_ai_model
     Verify an Individual provider can create and publish an AI Model end-to-end.
@@ -85,7 +85,7 @@ def test_prv_012_ind_create_ai_model(driver, base_url, test_credentials):
     create_page.enter_intended_use("Text generation for automated data analysis")
 
     # (5d) Sectors
-    create_page.select_sectors(["Budgets"])
+    create_page.select_sectors([sector_name])
 
     # (5e) Tags
     create_page.select_tags(["Finance"])

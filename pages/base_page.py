@@ -142,6 +142,27 @@ class BasePage:
         # count as not displayed and would come back empty.
         return [o.get_attribute("textContent").strip() for o in options]
 
+    def wait_for_option(self, combo, option_text, timeout=30):
+        """Wait for a clickable role=option with exactly this text.
+
+        On timeout, name the options this combobox DID list. A blank
+        TimeoutException here made a missing sector ("Budgets", dropped by the
+        dev refresh) read as flakiness across five tests and every rerun.
+        """
+        xpath = f"//div[@role='option' and normalize-space(.)='{option_text}']"
+        try:
+            return self.wait_with_timeout(timeout).until(EC.element_to_be_clickable((By.XPATH, xpath)))
+        except TimeoutException:
+            # Other widgets (e.g. the Bhashini language list) keep role=option
+            # nodes in the DOM, so read only this input's listbox.
+            listbox = combo.get_attribute("aria-controls")
+            scope = f"//*[@id='{listbox}']" if listbox else ""
+            listed = [o.get_attribute("textContent").strip()
+                      for o in self.driver.find_elements(By.XPATH, f"{scope}//*[@role='option']")]
+            raise TimeoutException(
+                f"No option {option_text!r} after {timeout}s. Options listed (filtered by the typed text): {listed}"
+            ) from None
+
     def select_combobox_option(self, input_locator, option_text):
         """
         Generic combobox selection - click input, type, select option, close dropdown.
@@ -158,8 +179,7 @@ class BasePage:
 
         # Options are often populated by a GraphQL query on page load, so allow
         # the same 30s select_sdg_goals already uses for its option list.
-        xpath = f"//div[@role='option' and normalize-space(.)='{option_text}']"
-        opt = self.wait_with_timeout(30).until(EC.element_to_be_clickable((By.XPATH, xpath)))
+        opt = self.wait_for_option(combo, option_text, timeout=30)
 
         try:
             opt.click()
