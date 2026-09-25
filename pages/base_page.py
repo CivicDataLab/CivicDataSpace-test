@@ -242,6 +242,28 @@ class BasePage:
         """Create a one-off wait with custom timeout"""
         return WebDriverWait(self.driver, timeout)
 
+    def list_view_state(self, locators, timeout: int = 30) -> str:
+        """Which end state a drafts/published list page settled into.
+
+        `locators` needs EMPTY_DRAFTS_MESSAGE, EMPTY_PUBLISHED_MESSAGE and LIST_ROWS.
+        Returns 'drafts_empty', 'published_empty' or 'rows'.
+        """
+        states = {
+            "drafts_empty": locators.EMPTY_DRAFTS_MESSAGE,
+            "published_empty": locators.EMPTY_PUBLISHED_MESSAGE,
+            "rows": locators.LIST_ROWS,
+        }
+
+        def settled(d):
+            for name, loc in states.items():
+                if any(el.is_displayed() for el in d.find_elements(*loc)):
+                    return name
+            return False
+
+        return self.wait_with_timeout(timeout).until(
+            settled, message=f"List page never showed rows or an empty state: {self.driver.current_url}"
+        )
+
     def save_failure_artifacts(self, tag: str) -> None:
         """Dump a screenshot + DOM so a timeout says what was actually on screen.
 
