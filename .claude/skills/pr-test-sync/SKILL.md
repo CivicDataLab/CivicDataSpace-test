@@ -232,6 +232,28 @@ GraphQL client helper covering this area. Reuse it.
   filters don't route to will silently never run. Check `.github/workflows/ci.yml`'s
   `filters:` block and update it in the same PR if the path is new.
 
+### Reuse the helpers that keep `CivicDataSpace-test` failures readable
+
+A blank `TimeoutException` is the most expensive failure in these suites: it looks like
+load, a locator or flakiness all at once. The framework has helpers that turn common
+causes into readable messages. Use them instead of a raw `wait.until(...)` or `.click()`. `sector_name`, `wait_for_option` and the 429 report come from #128, so check that it has
+merged into your base:
+
+| Need | Use | What it prevents |
+|---|---|---|
+| Pick an option in a combobox | `select_combobox_option` → `wait_for_option(combo, text)` | Blank timeout on a missing option. You now get "No option 'X'. Options listed: [...]", scoped to that input's listbox (the Bhashini widget keeps its own `role=option` nodes in the DOM). |
+| Click something that may re-render or not be hydrated yet | `click_until(locator, condition)` | Swallowed or intercepted clicks. It retries native, then JS, until the expected effect shows. |
+| Admin-managed taxonomy (sectors, …) | `sector_name` fixture (live `{ sectors { name } }`) | Hardcoded values going stale after a data refresh |
+| A backend enum's labels | `backend_enum_labels(enum)` | Dropdown lists drifting from the backend |
+| Evidence when a wait fails | `save_failure_artifacts(tag)` | Screenshot, DOM and console, keyed by test and xdist worker |
+
+**Never hardcode admin-managed data.** Sectors, geographies, SDGs, tags and licences
+come from the database, not code. The 2026-09-24 dev←prod refresh removed the sector
+"Budgets", and 11 provider tests that hardcoded it went red on every push. CI was red
+on every PR, including ones that touched nothing near them (CivicDataSpace-test#128).
+Read these values live, or at least check them against the API when a data refresh
+happens.
+
 ### Pick test data at runtime, and pick the data that exercises the change
 
 Hardcoded ids break across dev and prod, and after a data merge. Find matching records
@@ -381,6 +403,20 @@ It is a **fixed** window, so it clears at most 60 min after the window's first r
 not 60 min after your last one. `RATE_LIMIT_WHITELIST_IPS` exists but is an exact
 string match on a set, so it cannot express CIDRs and is useless for GitHub-hosted runners.
 
+**Budget your browser runs, too.** Browser tests don't skip on a 429. They hang: the
+page that needs data never renders, and the test dies as a blank `TimeoutException`
+right after login (`goto_my_dashboard` / `goto_organizations`). Measured 2026-09-25 from
+one machine: about **three full provider runs** (`-m "smoke or functional"`, `-n 3`) plus
+a couple of targeted runs spent the hour, twice.
+- Probe before every run and after every unexplained failure.
+- Run the most important suite first, and batch the rest into one run instead of several
+  small ones.
+- While throttled, do non-API work: commits, PR body, notes.
+
+Since CivicDataSpace-test#128, a failed browser test gets a **"backend rate limit"**
+report section when `API_BASE_URL` answers 429 at failure time. If you see it, the
+failure isn't evidence about the code.
+
 Most common instance, hit on this skill's second run: the realm's client is
 **confidential**, so ROPC needs `client_secret`. Omit it and everything skips:
 
@@ -466,6 +502,15 @@ feature isn't on `main`, run the file read-only against prod
 Paste the result and put **"merge only after #N is on prod"** at the top of the PR body.
 Don't drop `readonly` to work around this. Once the feature ships, prod needs the test too.
 
+**If it got merged early anyway** (CivicDataSpace-test#122 went into `CI` the day before
+#476 reached prod), the hazard is live. Tell the user plainly:
+- Release the feature to prod first.
+- Until then, **any merge to DataSpaceBackend `main` triggers a prod deploy whose gate will
+  fail on your tests and roll back.** That includes its standing pile of dependabot PRs.
+
+Record it where the next session will see it (second brain), and keep the board card
+off `Done` until prod shows the feature.
+
 ## 8. Don't duplicate
 
 Before any of the above:
@@ -513,6 +558,25 @@ them from fighting each other. Do not skip it.
   `-n 3 --dist loadfile`, all 5 passed sequentially.** Several cycles went into DOM and
   selector theories first; the variable that mattered was `-n`. `--reruns 2` does **not**
   mask it — reruns were enabled and it still failed.
+- **The exception to the rule above:** if a test fails **at the same step on every
+  attempt**, reruns included, suspect data or a locator before contention. Contention
+  moves around between runs; stale data does not. On 2026-09-25, 5 provider tests failed
+  3 of 3 times at `select_combobox_option`, all at the sector step. The cause was the
+  sector "Budgets" having been deleted from dev, and serialising would have fixed nothing.
+  After any dev data refresh, check the tests' hardcoded values against the live API
+  first.
+- **Your PR's check is red on tests you didn't touch?** Compare it with recent `CI` push
+  runs (`gh run list --repo CivicDataLab/CivicDataSpace-test --limit 12`) before
+  investigating. If `CI` is red on the same tests, it's the base, not you. Say so in the
+  PR body, and fix the base in its own PR (#128 did this for #122 and #124), not
+  inside the test-sync PR.
+- **Read XPASS as well as FAIL.** `xfail(strict=False)` hides an XPASS in a green run,
+  so run with `-rxX` to see the reasons. The chart tests share one "feature not fully
+  built" xfail, yet `test_prv_008` XPASSes while `test_prv_004` XFAILs (#132). One of
+  them is wrong about the feature.
+- **The Bash tool is zsh.** `pytest $FILES` passes the whole list as *one* argument, so
+  pytest reports `no tests ran` (exit 5, easy to miss in a piped command). Use `${=FILES}`, or list the paths
+  inline, and check the collected count.
 - Suites share one dev backend with known concurrency limits. Never add a test that
   hammers it in parallel; the existing serialization in each repo's CI exists for a
   reason. This also means **concurrency/pool-exhaustion bugs are not reproducible here** —
