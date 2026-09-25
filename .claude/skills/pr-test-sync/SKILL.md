@@ -558,6 +558,25 @@ them from fighting each other. Do not skip it.
   `-n 3 --dist loadfile`, all 5 passed sequentially.** Several cycles went into DOM and
   selector theories first; the variable that mattered was `-n`. `--reruns 2` does **not**
   mask it — reruns were enabled and it still failed.
+- **The exception to the rule above:** if a test fails **at the same step on every
+  attempt**, reruns included, suspect data or a locator before contention. Contention
+  moves around between runs; stale data does not. On 2026-09-25, 5 provider tests failed
+  3 of 3 times at `select_combobox_option`, all at the sector step. The cause was the
+  sector "Budgets" having been deleted from dev, and serialising would have fixed nothing.
+  After any dev data refresh, check the tests' hardcoded values against the live API
+  first.
+- **Your PR's check is red on tests you didn't touch?** Compare it with recent `CI` push
+  runs (`gh run list --repo CivicDataLab/CivicDataSpace-test --limit 12`) before
+  investigating. If `CI` is red on the same tests, it's the base, not you. Say so in the
+  PR body, and fix the base in its own PR (#128 did this for #122 and #124), not
+  inside the test-sync PR.
+- **Read XPASS as well as FAIL.** `xfail(strict=False)` hides an XPASS in a green run,
+  so run with `-rxX` to see the reasons. The chart tests share one "feature not fully
+  built" xfail, yet `test_prv_008` XPASSes while `test_prv_004` XFAILs (#132). One of
+  them is wrong about the feature.
+- **The Bash tool is zsh.** `pytest $FILES` passes the whole list as *one* argument, so
+  pytest reports `no tests ran` (exit 5, easy to miss in a piped command). Use `${=FILES}`, or list the paths
+  inline, and check the collected count.
 - Suites share one dev backend with known concurrency limits. Never add a test that
   hammers it in parallel; the existing serialization in each repo's CI exists for a
   reason. This also means **concurrency/pool-exhaustion bugs are not reproducible here** —
