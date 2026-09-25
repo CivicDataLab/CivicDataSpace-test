@@ -502,6 +502,15 @@ feature isn't on `main`, run the file read-only against prod
 Paste the result and put **"merge only after #N is on prod"** at the top of the PR body.
 Don't drop `readonly` to work around this. Once the feature ships, prod needs the test too.
 
+**If it got merged early anyway** (CivicDataSpace-test#122 went into `CI` the day before
+#476 reached prod), the hazard is live. Tell the user plainly:
+- Release the feature to prod first.
+- Until then, **any merge to DataSpaceBackend `main` triggers a prod deploy whose gate will
+  fail on your tests and roll back.** That includes its standing pile of dependabot PRs.
+
+Record it where the next session will see it (second brain), and keep the board card
+off `Done` until prod shows the feature.
+
 ## 8. Don't duplicate
 
 Before any of the above:
