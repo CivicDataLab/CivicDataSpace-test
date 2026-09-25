@@ -232,6 +232,28 @@ GraphQL client helper covering this area. Reuse it.
   filters don't route to will silently never run. Check `.github/workflows/ci.yml`'s
   `filters:` block and update it in the same PR if the path is new.
 
+### Reuse the helpers that keep `CivicDataSpace-test` failures readable
+
+A blank `TimeoutException` is the most expensive failure in these suites: it looks like
+load, a locator or flakiness all at once. The framework has helpers that turn common
+causes into readable messages. Use them instead of a raw `wait.until(...)` or `.click()`. `sector_name`, `wait_for_option` and the 429 report come from #128, so check that it has
+merged into your base:
+
+| Need | Use | What it prevents |
+|---|---|---|
+| Pick an option in a combobox | `select_combobox_option` → `wait_for_option(combo, text)` | Blank timeout on a missing option. You now get "No option 'X'. Options listed: [...]", scoped to that input's listbox (the Bhashini widget keeps its own `role=option` nodes in the DOM). |
+| Click something that may re-render or not be hydrated yet | `click_until(locator, condition)` | Swallowed or intercepted clicks. It retries native, then JS, until the expected effect shows. |
+| Admin-managed taxonomy (sectors, …) | `sector_name` fixture (live `{ sectors { name } }`) | Hardcoded values going stale after a data refresh |
+| A backend enum's labels | `backend_enum_labels(enum)` | Dropdown lists drifting from the backend |
+| Evidence when a wait fails | `save_failure_artifacts(tag)` | Screenshot, DOM and console, keyed by test and xdist worker |
+
+**Never hardcode admin-managed data.** Sectors, geographies, SDGs, tags and licences
+come from the database, not code. The 2026-09-24 dev←prod refresh removed the sector
+"Budgets", and 11 provider tests that hardcoded it went red on every push. CI was red
+on every PR, including ones that touched nothing near them (CivicDataSpace-test#128).
+Read these values live, or at least check them against the API when a data refresh
+happens.
+
 ### Pick test data at runtime, and pick the data that exercises the change
 
 Hardcoded ids break across dev and prod, and after a data merge. Find matching records
