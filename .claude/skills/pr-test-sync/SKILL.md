@@ -403,6 +403,20 @@ It is a **fixed** window, so it clears at most 60 min after the window's first r
 not 60 min after your last one. `RATE_LIMIT_WHITELIST_IPS` exists but is an exact
 string match on a set, so it cannot express CIDRs and is useless for GitHub-hosted runners.
 
+**Budget your browser runs, too.** Browser tests don't skip on a 429. They hang: the
+page that needs data never renders, and the test dies as a blank `TimeoutException`
+right after login (`goto_my_dashboard` / `goto_organizations`). Measured 2026-09-25 from
+one machine: about **three full provider runs** (`-m "smoke or functional"`, `-n 3`) plus
+a couple of targeted runs spent the hour, twice.
+- Probe before every run and after every unexplained failure.
+- Run the most important suite first, and batch the rest into one run instead of several
+  small ones.
+- While throttled, do non-API work: commits, PR body, notes.
+
+Since CivicDataSpace-test#128, a failed browser test gets a **"backend rate limit"**
+report section when `API_BASE_URL` answers 429 at failure time. If you see it, the
+failure isn't evidence about the code.
+
 Most common instance, hit on this skill's second run: the realm's client is
 **confidential**, so ROPC needs `client_secret`. Omit it and everything skips:
 
