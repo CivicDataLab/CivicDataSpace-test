@@ -1,6 +1,6 @@
 ---
 name: pr-test-sync
-description: After a PR merges in a product repo, read the real diff, decide which test categories it warrants, write those tests in the matching test repo using existing page objects and fixtures, prove they can actually fail, and open a DRAFT PR for review. Use when a merge needs test coverage, or when catching up coverage for already-merged PRs. Never merges anything.
+description: After a PR merges in a product repo, read the real diff, decide which test categories it warrants, write those tests in the matching test repo using existing page objects and fixtures, prove they can actually fail, and open a DRAFT PR for review. Also pre-writes coverage for open dev PRs older than 72h that have none yet, gated with the pending_pr marker so it only runs in CI once the source PR merges. Use when a merge needs test coverage, when catching up coverage for already-merged PRs, or when sweeping stale open dev PRs. Never merges anything.
 ---
 
 # PR test sync
@@ -70,7 +70,8 @@ gh pr diff $N --repo CivicDataLab/$SRC        # the actual diff
 ```
 
 If the PR isn't merged, stop and say so — this skill covers merged behaviour, not
-proposals.
+proposals. **One exception:** an open `dev` PR older than 72h with no coverage yet goes
+through §9 instead.
 
 ### Merged is not deployed — confirm the change is live before trusting dev
 
@@ -523,10 +524,98 @@ gh pr list --repo CivicDataLab/$TEST_REPO --search "test-sync/$SRC-pr$N" --state
 If either exists, stop and report it. Re-running against the same source PR must
 no-op, not open a second PR.
 
+## 9. Open `dev` PRs older than 72h: pending coverage
+
+Some PRs sit open on `dev` for weeks. Write their coverage now, so it's reviewed and
+waiting when they merge. Each test is gated by the `pending_pr` marker and **skips in CI
+until GitHub reports the source PR merged**. After that it runs like any other test, with
+no follow-up edit needed.
+
+### Select
+
+```bash
+CUTOFF=$(date -u -v-72H +%FT%TZ 2>/dev/null || date -u -d '72 hours ago' +%FT%TZ)
+gh pr list --repo CivicDataLab/$SRC --base dev --state open --limit 100 \
+  --json number,createdAt,headRefOid,title \
+  --jq ".[] | select(.createdAt < \"$CUTOFF\") | \"\(.number) \(.headRefOid[:8]) \(.title)\""
+```
+
+Proceed with a PR **only if all of these hold**:
+
+1. Its base is `dev`, it's open, and it was created more than 72h ago.
+2. **It has no coverage yet.** §8 finds no branch and no PR, *and* no test-repo PR mentions
+   it: `gh pr list --repo CivicDataLab/$TEST_REPO --state all --search "$SRC $N in:title,body"`.
+   Read any hits. A mention isn't always coverage.
+3. §3 says it warrants tests. Dependabot bumps, CI, docs and lockfile PRs get nothing,
+   however old they are.
+
+Anything that fails a check: skip it and list it in the run report with the reason.
+
+### Precondition: the hook must be on the base
+
+```bash
+git show origin/<base>:conftest.py | grep -q _pending_pr_state || echo "hook missing: stop"
+```
+
+The hook is in each test repo's root `conftest.py` and registered in `pytest.ini`. It
+calls `GET /repos/<owner>/<repo>/pulls/<N>` once per PR per session, using
+`GH_PR_TOKEN`, falling back to `GITHUB_TOKEN`. If the hook is missing, the marker is
+unknown: `--strict-markers` repos fail collection, and CDS runs the test ungated. Stop.
+
+### Write it: what differs from the merged flow
+
+- **Same branch name**, `test-sync/$SRC-pr$N`. When the PR merges, the merged sweep's §8
+  check then sees the branch and no-ops instead of writing a second set.
+- **Diff at the PR head.** Put `headRefOid` in the PR body. The source PR can still
+  change. If its head has moved by review time, re-read the diff and re-verify.
+- **Every added test carries the marker**, e.g. `pytestmark = pytest.mark.pending_pr("DataSpaceFrontend#470")`
+  in a new file, or on each function. Use `"owner/Repo#N"` for repos outside CivicDataLab.
+- **Only add tests, never edit existing ones.** An edit can't be gated, so it would change
+  CI today for a PR that may never merge. If the change will break an existing test, name
+  that test in the PR body as "update when #N merges".
+- **Never `readonly`.** The gate opens on the merge to `dev`, but prod-deploy gates run
+  `readonly` (§7). A pending `readonly` test would fail every prod deploy until the feature
+  ships. List `readonly` as a follow-up in the PR body.
+- **The §5 collection check must show it collected and skipped.** Expect
+  `SKIPPED ... pending_pr $SRC#$N: not merged yet`. This is the one place a skip is correct.
+
+### Prove it (§6, adapted)
+
+The feature isn't on dev, so dev is the **red** run. Remove the marker locally, then:
+
+1. Run against dev: must fail, because the old behaviour is still live.
+2. For green, run against the PR head. For a frontend PR, use §6's local-serve method with
+   `gh pr checkout` / the head SHA in place of `<merge-sha>`, with `origin/dev` as the "before".
+   A backend PR usually can't be served locally. Label its green run
+   **`UNVERIFIED: PR not deployed anywhere`** and say what to run once it's on dev.
+3. Restore the marker, run once more, and confirm the skip reason.
+
+Paste all three outputs.
+
+### PR body additions
+
+At the top: **"Pending: covers open CivicDataLab/$SRC#$N (head `<sha>`). Skipped in CI
+until it merges. Safe to merge before it."** Title prefix: `[pending $SRC#$N]`.
+
+### Known edges, say them when they apply
+
+- **Merged isn't deployed.** The gate opens on merge. If dev's deploy then fails or rolls
+  back (§0), these tests go red on the old page. That's a real signal, not a flake.
+- **ParakhAI-Backend is private.** Without the `GH_PR_TOKEN` secret (a fine-grained PAT
+  with Pull requests: read), its tests skip with `could not read PR state (HTTP Error 404)`
+  even after merge. The same happens when ParakhAI-frontend's CD calls
+  `run-smoke.yml`, since the secret isn't passed there. Check for that skip reason after
+  the merge.
+- **The source PR gets closed without merging.** Its tests skip forever. Every sweep:
+  `git grep -n 'pending_pr(' origin/<base> -- tests` in each test repo, then check each ref's
+  state. Report closed-unmerged ones for deletion. Don't delete them yourself.
+
 ## How this gets triggered
 
 **Daily cron (live today).** The routine "Test-coverage sync: merged dev PRs → product
 test repos" runs weekdays at 03:30 and sweeps for merges in the last 24h (72h if none).
+The same run then does §9's sweep: open `dev` PRs older than 72h with no coverage. It
+also reports `pending_pr` refs whose source PR closed without merging.
 This is currently the only automatic path, so worst-case latency is about a day.
 
 **On merge (not wired yet).** A `RemoteTrigger` webhook trigger per source repo firing
