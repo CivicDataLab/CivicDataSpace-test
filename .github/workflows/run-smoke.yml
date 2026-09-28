@@ -72,6 +72,10 @@ on:
       KEYCLOAK_CLIENT_SECRET:
         required: false
 
+env:
+  # pending_pr marker (conftest.py) reads PR merge state from the GitHub API
+  GH_PR_TOKEN: ${{ github.token }}
+
 jobs:
   consumer-smoke:
     if: ${{ !inputs.only_provider }}

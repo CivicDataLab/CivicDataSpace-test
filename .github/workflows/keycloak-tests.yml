@@ -52,6 +52,10 @@ concurrency:
   group: keycloak-tests
   cancel-in-progress: false
 
+env:
+  # pending_pr marker (conftest.py) reads PR merge state from the GitHub API
+  GH_PR_TOKEN: ${{ github.token }}
+
 jobs:
   keycloak:
     name: Keycloak auth pages
