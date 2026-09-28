@@ -11,20 +11,26 @@
 # anything against dev -- and every assertion below happens to need nothing
 # else anyway, so there's no write-vs-read split to maintain per environment.
 #
-# Parametrized across both environments explicitly (ANALYTICS_URL_DEV /
-# ANALYTICS_URL_PROD, see conftest.py) rather than driven by a single
-# API_BASE_URL -- analytics has two fixed, always-both-relevant targets, not
-# one environment selected per CI run.
+# Targets come from ANALYTICS_TARGETS (comma-separated, default "dev"), not
+# API_BASE_URL. Product pipelines (frontend/backend deploys and PR gates) check
+# dev only, so a slow prod Superset can't fail or roll back their deploys: a prod
+# /login/ 504 rolled back a frontend dev deploy on 2026-09-28. dashboard-superset's
+# own deploy sets it to the environment it just deployed ("dev" or "prod").
+
+import os
 
 import pytest
 
 pytestmark = [pytest.mark.api, pytest.mark.smoke]
 
 
-@pytest.fixture(params=["dev", "prod"])
-def analytics_client(request, dev_analytics_client, prod_analytics_client):
-    """Runs the tests in this file against both environments, by name in -v output."""
-    return {"dev": dev_analytics_client, "prod": prod_analytics_client}[request.param]
+ANALYTICS_TARGETS = os.getenv("ANALYTICS_TARGETS", "dev").split(",")
+
+
+@pytest.fixture(params=ANALYTICS_TARGETS)
+def analytics_client(request):
+    """Runs the tests in this file against each target environment, by name in -v output."""
+    return request.getfixturevalue(f"{request.param}_analytics_client")
 
 
 def test_health_endpoint_returns_ok(analytics_client):
