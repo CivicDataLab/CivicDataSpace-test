@@ -11,20 +11,25 @@
 # anything against dev -- and every assertion below happens to need nothing
 # else anyway, so there's no write-vs-read split to maintain per environment.
 #
-# Targets come from ANALYTICS_TARGETS (comma-separated, default "dev"), not
-# API_BASE_URL. Product pipelines (frontend/backend deploys and PR gates) check
-# dev only, so a slow prod Superset can't fail or roll back their deploys: a prod
-# /login/ 504 rolled back a frontend dev deploy on 2026-09-28. dashboard-superset's
-# own deploy sets it to the environment it just deployed ("dev" or "prod").
+# Targets come from ANALYTICS_TARGETS (comma-separated). dashboard-superset's own
+# deploy sets it to the environment it just deployed ("dev" or "prod"), and its
+# prod run selects -m readonly, so only tests marked readonly ever hit prod.
+# Product pipelines (frontend/backend) don't set it: their dev runs check dev
+# Superset, and their prod (readonly) runs check none, so Superset can't fail or
+# roll back their deploys. A prod /login/ 504 rolled back a frontend dev deploy
+# on 2026-09-28.
 
 import os
+from urllib.parse import urlparse
 
 import pytest
 
 pytestmark = [pytest.mark.api, pytest.mark.smoke]
 
 
-ANALYTICS_TARGETS = os.getenv("ANALYTICS_TARGETS", "dev").split(",")
+_API_HOST = urlparse(os.getenv("API_BASE_URL", "")).hostname or ""
+_DEFAULT_TARGETS = "dev" if not _API_HOST or _API_HOST.startswith("dev.") else ""
+ANALYTICS_TARGETS = [t for t in os.getenv("ANALYTICS_TARGETS", _DEFAULT_TARGETS).split(",") if t]
 
 
 @pytest.fixture(params=ANALYTICS_TARGETS)
@@ -33,6 +38,7 @@ def analytics_client(request):
     return request.getfixturevalue(f"{request.param}_analytics_client")
 
 
+@pytest.mark.readonly  # GET only, safe against prod
 def test_health_endpoint_returns_ok(analytics_client):
     """Superset's built-in /health liveness check.
 
@@ -50,6 +56,7 @@ def test_health_endpoint_returns_ok(analytics_client):
     )
 
 
+@pytest.mark.readonly  # GET only, safe against prod
 def test_login_page_reports_keycloak_oauth(analytics_client):
     """The login page's bootstrap payload must advertise Keycloak OAuth.
 
@@ -84,6 +91,7 @@ def test_login_page_reports_keycloak_oauth(analytics_client):
     )
 
 
+@pytest.mark.readonly  # GET only, safe against prod
 def test_reports_the_deployed_superset_version(analytics_client):
     """The deployed build must actually be the v6 image, not a stale fallback.
 
