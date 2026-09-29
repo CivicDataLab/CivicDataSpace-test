@@ -211,6 +211,12 @@ class OrganizationsPage(BasePage):
 
         return UseCasesListPage(self.driver)
 
+    def click_charts_card(self):
+        """Open 'Add & Manage Charts'. The org sidebar matches MyDashboard's."""
+        from pages.provider.my_dashboard_page import MyDashboardPage
+
+        return MyDashboardPage(self.driver).click_charts_card()
+
     def click_collaboratives_card(self):
         """
         Click the Collaboratives navigation link in the organization dashboard.
