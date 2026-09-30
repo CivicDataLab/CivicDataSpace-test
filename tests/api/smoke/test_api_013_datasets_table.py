@@ -1,0 +1,149 @@
+# tests/api/smoke/test_api_013_datasets_table.py
+#
+# Covers the datasetsTable GraphQL query (DataSpaceBackend#215): a
+# filterable, sortable, paginated view over datasets for a dashboard table,
+# additive next to the existing `datasets` query.
+#
+# Not marked `readonly`: the query only exists on dev (DataSpaceBackend#215
+# has not reached main/prod yet — see git merge-base check in the PR body).
+# Running it against prod would error with "Cannot query field
+# 'datasetsTable'", not skip, so it must stay out of the readonly suite
+# until the feature ships to prod.
+
+import pytest
+
+pytestmark = [pytest.mark.api]
+
+
+# ─── Visibility: unauthenticated + includePublic ───────────────────────────
+
+@pytest.mark.smoke
+def test_anon_include_public_returns_published_datasets_only(anon_graphql_client):
+    """Not logged in + includePublic:true returns published datasets (only)."""
+    data = anon_graphql_client.query(
+        """
+        query {
+          datasetsTable(includePublic: true, limit: 5, offset: 0) {
+            totalItemsCount
+            statusCounts { status count }
+            data { id title status resourceCount }
+          }
+        }
+        """
+    )
+    table = data["datasetsTable"]
+    assert table["totalItemsCount"] > 0, "expected at least one published dataset on dev"
+    assert table["data"], "expected the first page to be non-empty"
+    for row in table["data"]:
+        assert row["status"] == "PUBLISHED", f"anon+includePublic leaked a non-public row: {row}"
+    statuses = {row["status"] for row in table["statusCounts"]}
+    assert statuses <= {"PUBLISHED"}, (
+        f"anon+includePublic statusCounts should only ever show PUBLISHED, got: {statuses}"
+    )
+
+
+@pytest.mark.smoke
+def test_anon_without_include_public_sees_nothing(anon_graphql_client):
+    """Not logged in, includePublic omitted (defaults false): no rows at all.
+
+    This is the privacy boundary the resolver's `_visible_datasets` enforces:
+    an anonymous caller only gets datasets when it explicitly opts in to the
+    public set. A regression here would mean the org/user-scoped case leaked
+    to anonymous callers, or the default flipped to public.
+    """
+    data = anon_graphql_client.query(
+        "{ datasetsTable(limit: 5, offset: 0) { totalItemsCount data { id } } }"
+    )
+    table = data["datasetsTable"]
+    assert table["totalItemsCount"] == 0, table
+    assert table["data"] == [], table
+
+
+# ─── Filtering ──────────────────────────────────────────────────────────────
+
+@pytest.mark.functional
+def test_title_icontains_filter_narrows_results(anon_graphql_client):
+    """An icontains title filter returns a subset whose titles match."""
+    unfiltered = anon_graphql_client.query(
+        "{ datasetsTable(includePublic: true, limit: 1) { totalItemsCount } }"
+    )["datasetsTable"]["totalItemsCount"]
+    if unfiltered == 0:
+        pytest.skip("no published datasets on dev to filter")
+
+    filtered = anon_graphql_client.query(
+        """
+        query {
+          datasetsTable(
+            includePublic: true
+            filters: [{field: "title", condition: "icontains", value: "a"}]
+            limit: 5
+          ) { totalItemsCount data { title } }
+        }
+        """
+    )["datasetsTable"]
+    assert filtered["totalItemsCount"] <= unfiltered, (
+        "a title filter should never return more rows than the unfiltered count"
+    )
+    for row in filtered["data"]:
+        assert "a" in row["title"].lower(), f"row doesn't match the icontains filter: {row}"
+
+
+@pytest.mark.functional
+def test_filtering_on_an_unknown_field_is_a_graphql_error(anon_graphql_client):
+    """A field outside the allowlist is rejected, naming the allowed fields.
+
+    Guards api/utils/qs_utils.py's allowlist — the mechanism that keeps a
+    table client from reaching arbitrary columns or relations.
+    """
+    payload = {
+        "query": (
+            '{ datasetsTable(includePublic: true, '
+            'filters: [{field: "not_a_real_field", condition: "exact", value: "x"}]) '
+            "{ totalItemsCount } }"
+        )
+    }
+    response = anon_graphql_client.session.post(anon_graphql_client.endpoint, json=payload)
+    response.raise_for_status()
+    body = response.json()
+    assert body.get("errors"), f"expected a GraphQL error, got: {body}"
+    message = body["errors"][0]["message"]
+    assert "not_a_real_field" in message, message
+    assert "Allowed fields" in message, message
+
+
+# ─── Shape: resourceCount and statusCounts ─────────────────────────────────
+
+@pytest.mark.regression
+def test_rows_carry_a_resource_count(anon_graphql_client):
+    """Every row exposes the new `resourceCount` field as a non-negative int."""
+    data = anon_graphql_client.query(
+        "{ datasetsTable(includePublic: true, limit: 5) { data { id resourceCount } } }"
+    )
+    rows = data["datasetsTable"]["data"]
+    if not rows:
+        pytest.skip("no published datasets on dev")
+    for row in rows:
+        assert isinstance(row["resourceCount"], int), row
+        assert row["resourceCount"] >= 0, row
+
+
+@pytest.mark.regression
+def test_status_counts_ignore_the_status_filter_itself(anon_graphql_client):
+    """statusCounts stays computed over every filter except `status`, so tab
+    labels don't change when switching tabs (all counts must still sum to
+    at least the filtered total)."""
+    unfiltered = anon_graphql_client.query(
+        "{ datasetsTable(includePublic: true) { statusCounts { status count } } }"
+    )["datasetsTable"]["statusCounts"]
+    filtered = anon_graphql_client.query(
+        """
+        { datasetsTable(includePublic: true,
+                         filters: [{field: "status", condition: "exact", value: "PUBLISHED"}]) {
+            statusCounts { status count }
+          } }
+        """
+    )["datasetsTable"]["statusCounts"]
+    assert unfiltered == filtered, (
+        "adding a status filter must not change statusCounts "
+        f"(unfiltered={unfiltered}, filtered={filtered})"
+    )
