@@ -197,6 +197,31 @@ def anon_graphql_client(api_base_url):
     return GraphQLClient(api_base_url)
 
 
+@pytest.fixture(scope="session")
+def graphql_client_for(api_base_url, keycloak_config):
+    """GraphQLClient logged in as TEST_EMAIL_<n>, for tests that need specific accounts.
+
+    `graphql_client` is whichever account this worker got; permission tests need
+    a known creator, a colleague and an outsider regardless of worker.
+    """
+    clients = {}
+
+    def get(n):
+        if n not in clients:
+            email, password = os.getenv(f"TEST_EMAIL_{n}"), os.getenv(f"TEST_PASSWORD_{n}")
+            if not (email and password):
+                pytest.skip(f"TEST_EMAIL_{n} / TEST_PASSWORD_{n} not set")
+            kc_token = _get_keycloak_token(
+                keycloak_config["url"], keycloak_config["realm"], keycloak_config["client_id"],
+                email, password, client_secret=keycloak_config.get("client_secret"),
+            )
+            token = _exchange_for_django_token(api_base_url, kc_token).json()["access"]
+            clients[n] = GraphQLClient(api_base_url, token=token)
+        return clients[n]
+
+    return get
+
+
 # ─── Frontend (DataSpaceFrontend) clients — used by sitemap/SEO tests ──────────
 #
 # Additional .env variables used here:
