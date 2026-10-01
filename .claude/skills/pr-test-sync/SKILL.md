@@ -209,6 +209,12 @@ git -C <test-repo> worktree remove <scratch>/wt --force
 
 Verify afterwards that the original tree is still on its branch with its changes intact.
 
+- In the local workspace, `CivicDataSpace-test` is a symlink, so a relative
+  `../wt` lands in `~/`, not next to the other repos. Pass an absolute worktree path.
+- Running tests locally: the conftest reads `HOME_URL_DEV` and `API_BASE_URL`, and
+  `load_dotenv` doesn't override variables that are already set. Pass both explicitly on
+  the command line, so a write test can't reach prod through a stale `.env`.
+
 ## 5. Write using what already exists
 
 The suites enforce a three-layer split:
@@ -331,8 +337,8 @@ A regression test that cannot fail is worthless, and a generated one gets no ben
 the doubt. Required, both directions:
 
 1. Run it against dev. Capture the real pass output.
-2. Flip the assertion to an intentionally wrong expected value. Run again. **Confirm
-   red.**
+2. Make it fail the way the regression would (see "Flipping the expected value is not
+   enough" below). Run again. **Confirm red, at the intended assertion.**
 3. Revert to the correct assertion. Confirm green.
 
 Paste both outputs in the PR body. This only ever touches the test's own assertions —
@@ -340,6 +346,28 @@ never mutate the dev deployment to force a failure.
 
 If it passes before the feature exists, or passes with the assertion inverted, it isn't
 testing anything. Fix it or drop it.
+
+### Flipping the expected value is not enough: simulate the regression
+
+A flipped expected value only shows the assertion is evaluated. It doesn't show the test
+catches the bug it names. On 2026-10-01, two of #150's six tests passed the flip but
+could never fail on a real regression:
+
+- A `title icontains "a"` filter matched 302 of 319 datasets and every first-page title,
+  and the check was `filtered <= total`. A resolver that ignored the filter passed.
+- `statusCounts` "ignores the status filter" was tested by filtering on `PUBLISHED`. An
+  anonymous caller only sees published rows, so the counts were identical either way.
+
+Before writing the assertion, check on live data that the correct and the broken
+behaviour actually produce different results. Pick a filter value that narrows the result
+(assert `0 < filtered < total`, never `<=`), and a value the caller can't see (`DRAFT`
+for an anonymous caller).
+
+For the red run, make the test receive what the broken code would return: drop the
+`filters:` argument to mimic an ignored filter, or overwrite the response field with the
+broken value. Then read the failure line. It must fail at the assertion you meant. The
+first attempt here failed with GraphQL's `Variable '$word' is never used` instead, which
+proves nothing.
 
 ### Stronger proof for frontend PRs: run against the code before the change
 
@@ -376,6 +404,27 @@ Gotchas, each hit once:
   not the scratchpad.
 
 Put both runs in the PR body. Remove the worktree and stop the server when you're done.
+
+### Stronger proof for backend PRs: prod still runs the code before the change
+
+Until a DataSpaceBackend change reaches `main`, the prod API is the pre-change code. For
+an **unauthenticated, read-only** test (public queries, introspection), running it
+against prod is a real parent-commit red, with no local server needed:
+
+```bash
+API_BASE_URL=https://api.datakeep.civicdays.in pytest <file> --tb=line   # must go red
+```
+
+- Read-only and anonymous only. Never send a mutation or an authenticated write to prod
+  (prod runs `readonly` tests only).
+- The prod API is `api.datakeep.civicdays.in`. `api.civicdataspace.in` doesn't resolve,
+  and a DNS or connection error is **not** a red. Every failure line must name the missing
+  field or the old behaviour.
+- Introspection is enabled on prod, so introspection-based tests can get a `readonly` copy
+  once the change ships.
+- Verified 2026-10-01: #151's tests failed on prod with `TypePublicationBlock.title
+  missing` and with the old input fields still `NON_NULL`. #150's failed on `Cannot query
+  field 'datasetsTable'`.
 
 ### `skipped` is NOT `passed` — check the count, not the exit code
 
@@ -661,8 +710,9 @@ them from fighting each other. Do not skip it.
   inside the test-sync PR.
 - **Read XPASS as well as FAIL.** `xfail(strict=False)` hides an XPASS in a green run,
   so run with `-rxX` to see the reasons. The chart tests share one "feature not fully
-  built" xfail, yet `test_prv_008` XPASSes while `test_prv_004` XFAILs (#132). One of
-  them is wrong about the feature.
+  built" xfail, yet `test_prv_008` XPASSed while `test_prv_004` XFAILed (#132). Both
+  were wrong: 004 used a dataset deleted from dev, and 008 never touched charts (fixed in
+  #148).
 - **The Bash tool is zsh.** `pytest $FILES` passes the whole list as *one* argument, so
   pytest reports `no tests ran` (exit 5, easy to miss in a piped command). Use `${=FILES}`, or list the paths
   inline, and check the collected count.
