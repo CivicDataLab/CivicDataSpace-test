@@ -337,8 +337,8 @@ A regression test that cannot fail is worthless, and a generated one gets no ben
 the doubt. Required, both directions:
 
 1. Run it against dev. Capture the real pass output.
-2. Flip the assertion to an intentionally wrong expected value. Run again. **Confirm
-   red.**
+2. Make it fail the way the regression would (see "Flipping the expected value is not
+   enough" below). Run again. **Confirm red, at the intended assertion.**
 3. Revert to the correct assertion. Confirm green.
 
 Paste both outputs in the PR body. This only ever touches the test's own assertions —
