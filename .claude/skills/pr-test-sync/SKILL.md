@@ -341,6 +341,28 @@ never mutate the dev deployment to force a failure.
 If it passes before the feature exists, or passes with the assertion inverted, it isn't
 testing anything. Fix it or drop it.
 
+### Flipping the expected value is not enough: simulate the regression
+
+A flipped expected value only shows the assertion is evaluated. It doesn't show the test
+catches the bug it names. On 2026-10-01, two of #150's six tests passed the flip but
+could never fail on a real regression:
+
+- A `title icontains "a"` filter matched 302 of 319 datasets and every first-page title,
+  and the check was `filtered <= total`. A resolver that ignored the filter passed.
+- `statusCounts` "ignores the status filter" was tested by filtering on `PUBLISHED`. An
+  anonymous caller only sees published rows, so the counts were identical either way.
+
+Before writing the assertion, check on live data that the correct and the broken
+behaviour actually produce different results. Pick a filter value that narrows the result
+(assert `0 < filtered < total`, never `<=`), and a value the caller can't see (`DRAFT`
+for an anonymous caller).
+
+For the red run, make the test receive what the broken code would return: drop the
+`filters:` argument to mimic an ignored filter, or overwrite the response field with the
+broken value. Then read the failure line. It must fail at the assertion you meant. The
+first attempt here failed with GraphQL's `Variable '$word' is never used` instead, which
+proves nothing.
+
 ### Stronger proof for frontend PRs: run against the code before the change
 
 Flipping an assertion proves the check can fail. Running the test against the
