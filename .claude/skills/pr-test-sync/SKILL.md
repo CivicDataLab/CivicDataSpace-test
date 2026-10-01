@@ -209,6 +209,12 @@ git -C <test-repo> worktree remove <scratch>/wt --force
 
 Verify afterwards that the original tree is still on its branch with its changes intact.
 
+- In the local workspace, `CivicDataSpace-test` is a symlink, so a relative
+  `../wt` lands in `~/`, not next to the other repos. Pass an absolute worktree path.
+- Running tests locally: the conftest reads `HOME_URL_DEV` and `API_BASE_URL`, and
+  `load_dotenv` doesn't override variables that are already set. Pass both explicitly on
+  the command line, so a write test can't reach prod through a stale `.env`.
+
 ## 5. Write using what already exists
 
 The suites enforce a three-layer split:
@@ -704,8 +710,9 @@ them from fighting each other. Do not skip it.
   inside the test-sync PR.
 - **Read XPASS as well as FAIL.** `xfail(strict=False)` hides an XPASS in a green run,
   so run with `-rxX` to see the reasons. The chart tests share one "feature not fully
-  built" xfail, yet `test_prv_008` XPASSes while `test_prv_004` XFAILs (#132). One of
-  them is wrong about the feature.
+  built" xfail, yet `test_prv_008` XPASSed while `test_prv_004` XFAILed (#132). Both
+  were wrong: 004 used a dataset deleted from dev, and 008 never touched charts (fixed in
+  #148).
 - **The Bash tool is zsh.** `pytest $FILES` passes the whole list as *one* argument, so
   pytest reports `no tests ran` (exit 5, easy to miss in a piped command). Use `${=FILES}`, or list the paths
   inline, and check the collected count.
