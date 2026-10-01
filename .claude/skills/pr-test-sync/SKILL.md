@@ -399,6 +399,27 @@ Gotchas, each hit once:
 
 Put both runs in the PR body. Remove the worktree and stop the server when you're done.
 
+### Stronger proof for backend PRs: prod still runs the code before the change
+
+Until a DataSpaceBackend change reaches `main`, the prod API is the pre-change code. For
+an **unauthenticated, read-only** test (public queries, introspection), running it
+against prod is a real parent-commit red, with no local server needed:
+
+```bash
+API_BASE_URL=https://api.datakeep.civicdays.in pytest <file> --tb=line   # must go red
+```
+
+- Read-only and anonymous only. Never send a mutation or an authenticated write to prod
+  (prod runs `readonly` tests only).
+- The prod API is `api.datakeep.civicdays.in`. `api.civicdataspace.in` doesn't resolve,
+  and a DNS or connection error is **not** a red. Every failure line must name the missing
+  field or the old behaviour.
+- Introspection is enabled on prod, so introspection-based tests can get a `readonly` copy
+  once the change ships.
+- Verified 2026-10-01: #151's tests failed on prod with `TypePublicationBlock.title
+  missing` and with the old input fields still `NON_NULL`. #150's failed on `Cannot query
+  field 'datasetsTable'`.
+
 ### `skipped` is NOT `passed` — check the count, not the exit code
 
 `2 skipped` exits 0 and looks like success at a glance. It means your test never ran and
