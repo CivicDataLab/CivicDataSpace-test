@@ -4,15 +4,14 @@
 # filterable, sortable, paginated view over datasets for a dashboard table,
 # additive next to the existing `datasets` query.
 #
-# Not marked `readonly`: the query only exists on dev (DataSpaceBackend#215
-# has not reached main/prod yet — see git merge-base check in the PR body).
-# Running it against prod would error with "Cannot query field
-# 'datasetsTable'", not skip, so it must stay out of the readonly suite
-# until the feature ships to prod.
+# `readonly`: anonymous reads only, so it also runs in the prod gate.
+# `deployed_pr` skips it wherever the backend doesn't serve #215 yet; on
+# prod before the release the query doesn't exist ("Cannot query field
+# 'datasetsTable'") and would fail every prod deploy instead.
 
 import pytest
 
-pytestmark = [pytest.mark.api]
+pytestmark = [pytest.mark.api, pytest.mark.readonly, pytest.mark.deployed_pr("DataSpaceBackend#215")]
 
 
 # ─── Visibility: unauthenticated + includePublic ───────────────────────────
