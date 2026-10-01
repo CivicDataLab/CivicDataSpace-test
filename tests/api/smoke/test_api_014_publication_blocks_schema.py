@@ -14,10 +14,13 @@
 # to support it. Introspection is unauthenticated and reflects the live
 # schema, so these checks are a genuine (if partial) red/green proof — not
 # a placeholder.
+#
+# `readonly` + `deployed_pr`: runs in the prod gate once prod serves #214,
+# and skips there until then (prod's schema doesn't have these fields yet).
 
 import pytest
 
-pytestmark = [pytest.mark.api]
+pytestmark = [pytest.mark.api, pytest.mark.readonly, pytest.mark.deployed_pr("DataSpaceBackend#214")]
 
 
 def _type_fields(anon_graphql_client, type_name):
