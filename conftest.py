@@ -599,23 +599,56 @@ import json as _json
 import urllib.request as _urlreq
 
 
-@_functools.lru_cache(maxsize=None)
-def _pending_pr_state(ref):
-    """Return None if `ref` ("Repo#N" or "owner/Repo#N") is merged, else a skip reason."""
-    repo, num = ref.split("#")
-    if "/" not in repo:
-        repo = f"CivicDataLab/{repo}"
-    req = _urlreq.Request(f"https://api.github.com/repos/{repo}/pulls/{num}",
+def _gh_get(repo, path):
+    req = _urlreq.Request(f"https://api.github.com/repos/{repo}/{path}",
                           headers={"Accept": "application/vnd.github+json"})
     token = os.getenv("GH_PR_TOKEN") or os.getenv("GITHUB_TOKEN")
     if token:
         req.add_header("Authorization", f"Bearer {token}")
+    with _urlreq.urlopen(req, timeout=10) as resp:
+        return _json.load(resp)
+
+
+def _split_ref(ref):
+    repo, num = ref.split("#")
+    return (repo if "/" in repo else f"CivicDataLab/{repo}"), num
+
+
+@_functools.lru_cache(maxsize=None)
+def _pending_pr_state(ref):
+    """Return None if `ref` ("Repo#N" or "owner/Repo#N") is merged, else a skip reason."""
+    repo, num = _split_ref(ref)
     try:
-        with _urlreq.urlopen(req, timeout=10) as resp:
-            merged = _json.load(resp).get("merged_at")
+        merged = _gh_get(repo, f"pulls/{num}").get("merged_at")
     except Exception as e:  # 404 on a private repo without GH_PR_TOKEN lands here too
         return f"pending_pr {ref}: could not read PR state ({e})"
     return None if merged else f"pending_pr {ref}: not merged yet"
+
+
+# --- deployed_pr: run only once the backend under test serves the PR's merge commit ---
+# Lets a readonly test for a dev-only backend change sit in the prod gate without
+# failing (and rolling back) every prod deploy until that change actually ships.
+@_functools.lru_cache(maxsize=None)
+def _deployed_pr_state(ref, api_base_url):
+    """Return None if API_BASE_URL's /health/ git_sha contains `ref`'s merge commit, else a skip reason."""
+    repo, num = _split_ref(ref)
+    if not api_base_url:
+        return f"deployed_pr {ref}: API_BASE_URL is not set"
+    try:
+        with _urlreq.urlopen(f"{api_base_url.rstrip('/')}/health/", timeout=15) as resp:
+            deployed = _json.load(resp).get("git_sha")
+        pr = _gh_get(repo, f"pulls/{num}")
+        if not pr.get("merged_at"):
+            return f"deployed_pr {ref}: not merged yet"
+        merge_sha = pr["merge_commit_sha"]
+        if not deployed:
+            return f"deployed_pr {ref}: {api_base_url}/health/ reports no git_sha"
+        status = _gh_get(repo, f"compare/{merge_sha}...{deployed}")["status"]
+    except Exception as e:
+        return f"deployed_pr {ref}: could not check ({e})"
+    if status in ("ahead", "identical"):
+        return None
+    return f"deployed_pr {ref}: {api_base_url} runs {deployed[:8]}, which doesn't include {merge_sha[:8]} yet"
 
 
 def pytest_collection_modifyitems(config, items):
@@ -623,5 +656,10 @@ def pytest_collection_modifyitems(config, items):
         marker = item.get_closest_marker("pending_pr")
         if marker:
             reason = _pending_pr_state(marker.args[0])
+            if reason:
+                item.add_marker(pytest.mark.skip(reason=reason))
+        marker = item.get_closest_marker("deployed_pr")
+        if marker:
+            reason = _deployed_pr_state(marker.args[0], os.getenv("API_BASE_URL", ""))
             if reason:
                 item.add_marker(pytest.mark.skip(reason=reason))
