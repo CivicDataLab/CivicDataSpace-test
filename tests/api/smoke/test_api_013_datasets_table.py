@@ -63,29 +63,41 @@ def test_anon_without_include_public_sees_nothing(anon_graphql_client):
 
 @pytest.mark.functional
 def test_title_icontains_filter_narrows_results(anon_graphql_client):
-    """An icontains title filter returns a subset whose titles match."""
-    unfiltered = anon_graphql_client.query(
-        "{ datasetsTable(includePublic: true, limit: 1) { totalItemsCount } }"
-    )["datasetsTable"]["totalItemsCount"]
-    if unfiltered == 0:
-        pytest.skip("no published datasets on dev to filter")
+    """An icontains title filter returns only matching rows, and fewer of them.
+
+    The word is taken from live titles and must be missing from at least one,
+    so a filter the resolver silently ignored could not pass.
+    """
+    page = anon_graphql_client.query(
+        "{ datasetsTable(includePublic: true, limit: 50) { totalItemsCount data { title } } }"
+    )["datasetsTable"]
+    titles = [row["title"].lower() for row in page["data"]]
+    word = next(
+        (w for t in titles for w in t.split()
+         if w.isalpha() and len(w) > 3 and any(w not in other for other in titles)),
+        None,
+    )
+    if word is None:
+        pytest.skip("no title word on dev that some datasets lack")
 
     filtered = anon_graphql_client.query(
         """
-        query {
+        query($word: String!) {
           datasetsTable(
             includePublic: true
-            filters: [{field: "title", condition: "icontains", value: "a"}]
-            limit: 5
+            filters: [{field: "title", condition: "icontains", value: $word}]
+            limit: 50
           ) { totalItemsCount data { title } }
         }
-        """
+        """,
+        {"word": word},
     )["datasetsTable"]
-    assert filtered["totalItemsCount"] <= unfiltered, (
-        "a title filter should never return more rows than the unfiltered count"
+    assert 0 < filtered["totalItemsCount"] < page["totalItemsCount"], (
+        f"filtering on {word!r} should narrow {page['totalItemsCount']} rows, "
+        f"got {filtered['totalItemsCount']}"
     )
     for row in filtered["data"]:
-        assert "a" in row["title"].lower(), f"row doesn't match the icontains filter: {row}"
+        assert word in row["title"].lower(), f"row doesn't match the icontains filter: {row}"
 
 
 @pytest.mark.functional
