@@ -141,21 +141,22 @@ def test_rows_carry_a_resource_count(anon_graphql_client):
 
 @pytest.mark.regression
 def test_status_counts_ignore_the_status_filter_itself(anon_graphql_client):
-    """statusCounts stays computed over every filter except `status`, so tab
-    labels don't change when switching tabs (all counts must still sum to
-    at least the filtered total)."""
-    unfiltered = anon_graphql_client.query(
-        "{ datasetsTable(includePublic: true) { statusCounts { status count } } }"
-    )["datasetsTable"]["statusCounts"]
-    filtered = anon_graphql_client.query(
-        """
-        { datasetsTable(includePublic: true,
-                         filters: [{field: "status", condition: "exact", value: "PUBLISHED"}]) {
-            statusCounts { status count }
-          } }
-        """
-    )["datasetsTable"]["statusCounts"]
-    assert unfiltered == filtered, (
+    """statusCounts is computed over every filter except `status`, so tab labels
+    don't change when switching tabs.
+
+    Filters on DRAFT: an anonymous caller only sees published datasets, so the
+    rows come back empty while the counts must still show them. Filtering on
+    PUBLISHED instead could not tell the two behaviours apart.
+    """
+    query = "{ datasetsTable(includePublic: true%s) { totalItemsCount statusCounts { status count } } }"
+    unfiltered = anon_graphql_client.query(query % "")["datasetsTable"]
+    if not unfiltered["statusCounts"]:
+        pytest.skip("no published datasets on dev")
+    drafts = anon_graphql_client.query(
+        query % ', filters: [{field: "status", condition: "exact", value: "DRAFT"}]'
+    )["datasetsTable"]
+    assert drafts["totalItemsCount"] == 0, f"the status filter should still apply to rows: {drafts}"
+    assert drafts["statusCounts"] == unfiltered["statusCounts"], (
         "adding a status filter must not change statusCounts "
-        f"(unfiltered={unfiltered}, filtered={filtered})"
+        f"(unfiltered={unfiltered['statusCounts']}, filtered={drafts['statusCounts']})"
     )
