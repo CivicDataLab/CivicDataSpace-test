@@ -547,9 +547,18 @@ only on `dev` passes on dev. But once merged into `CI`, the next prod deploy of 
 repo fails its gate and rolls back.
 
 Check `git merge-base --is-ancestor <merge-sha> origin/main` in the source repo. If the
-feature isn't on `main`, run the file read-only against prod
-(`HOME_URL_DEV=https://civicdataspace.in API_BASE_URL=https://api.datakeep.civicdays.in`).
-Paste the result and put **"merge only after #N is on prod"** at the top of the PR body.
+feature isn't on `main`:
+
+- **Backend change, API test:** mark it `readonly` **and**
+  `deployed_pr("DataSpaceBackend#N")` (conftest.py, on `CI` since #155). It skips
+  wherever `API_BASE_URL`'s `/health/` `git_sha` doesn't contain the PR's merge commit,
+  and switches on by itself once prod serves the change. That makes it safe to merge
+  now. Prove both sides: it runs on dev, and on prod it skips with
+  `runs <sha>, which doesn't include <merge-sha> yet`. #150/#151 were gated this way.
+- **Frontend change, or a test the marker can't gate:** run the file read-only against
+  prod (`HOME_URL_DEV=https://civicdataspace.in API_BASE_URL=https://api.datakeep.civicdays.in`),
+  paste the result, and put **"merge only after #N is on prod"** at the top of the PR body.
+
 Don't drop `readonly` to work around this. Once the feature ships, prod needs the test too.
 
 **If it got merged early anyway** (CivicDataSpace-test#122 went into `CI` the day before
