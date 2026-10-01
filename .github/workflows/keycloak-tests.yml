@@ -93,8 +93,12 @@ jobs:
           repository: CivicDataLab/CivicDataSpace-test
           # Same reasoning as run-smoke.yml: check out this repo's own code when the
           # run originates here, and the CI branch when another repo called us.
+          # main only registers this workflow (workflow_dispatch/repository_dispatch
+          # need it on the default branch) and has none of the tests, so a run
+          # started on main tests CI too.
           ref: >-
             ${{ github.repository == 'CivicDataLab/CivicDataSpace-test'
+                && github.ref_name != 'main'
                 && (github.event.pull_request.head.sha || github.sha)
                 || 'CI' }}
 
