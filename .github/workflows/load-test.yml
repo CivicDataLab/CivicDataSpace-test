@@ -1,0 +1,176 @@
+# Distributed load test against CivicDataSpace dev (DataSpace#268).
+#
+# The backend rate-limits per IP (1000 non-GET requests an hour), so one load
+# machine only ever measures the limiter. This spreads the load over many
+# GitHub-hosted runners, each with its own IP and its share of the users:
+# about 20 shards keep every IP under its budget for one full 1 -> 100 ramp.
+#
+#   plan   -> picks a common start time a few minutes ahead and the shard list
+#   health -> polls /health/ every 15s for the whole run
+#   shard  -> one Locust process per runner (load/, see common.py)
+#   report -> merges every request into one per-step table (load/aggregate.py)
+#
+# Dev only (common.py refuses anything else). Manual, one run at a time.
+# Runs started on main check out CI, where load/ lives.
+
+name: Load Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "dev" to confirm this loads dev.civicdataspace.in'
+        required: true
+        type: string
+      scenario:
+        description: 'consumer (anonymous browsing) or provider (dataset creation)'
+        type: choice
+        options: [consumer, provider]
+        default: consumer
+      shards:
+        description: 'Parallel runners, each with its own IP (max 20)'
+        type: number
+        default: 20
+      steps:
+        description: 'Total concurrent users per step, across all shards'
+        type: string
+        default: '1,5,10,25,50,100'
+      step_seconds:
+        description: 'Seconds per step'
+        type: number
+        default: 180
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-test
+  cancel-in-progress: false
+
+env:
+  LEAD_SECONDS: 300  # time for every runner to start before the common start
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.p.outputs.shards }}
+      start_at: ${{ steps.p.outputs.start_at }}
+      duration: ${{ steps.p.outputs.duration }}
+    steps:
+      - id: p
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          SHARDS: ${{ inputs.shards }}
+          STEPS: ${{ inputs.steps }}
+          STEP_SECONDS: ${{ inputs.step_seconds }}
+        run: |
+          set -euo pipefail
+          [ "$CONFIRM" = "dev" ] || { echo "::error::confirm must be 'dev'"; exit 1; }
+          [ "$SHARDS" -ge 1 ] && [ "$SHARDS" -le 20 ] || { echo "::error::shards must be 1-20"; exit 1; }
+          n_steps=$(echo "$STEPS" | tr ',' '\n' | grep -c .)
+          {
+            echo "shards=$(python3 -c "import json;print(json.dumps(list(range($SHARDS))))")"
+            echo "start_at=$(( $(date +%s) + LEAD_SECONDS ))"
+            echo "duration=$(( n_steps * STEP_SECONDS ))"
+          } >> "$GITHUB_OUTPUT"
+
+  health:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - env:
+          START_AT: ${{ needs.plan.outputs.start_at }}
+          DURATION: ${{ needs.plan.outputs.duration }}
+        run: |
+          end=$(( START_AT + DURATION + 60 ))
+          while [ "$(date +%s)" -lt "$end" ]; do
+            echo "$(date -u +%H:%M:%S) $(curl -s -o /dev/null -w '%{http_code} %{time_total}' -m 30 https://dev.api.civicdataspace.in/health/)" >> health.log
+            sleep 15
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: health
+          path: health.log
+
+  shard:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    env:
+      LOAD_SHARDS: ${{ inputs.shards }}
+      LOAD_SHARD_INDEX: ${{ matrix.shard }}
+      LOAD_START_AT: ${{ needs.plan.outputs.start_at }}
+      LOAD_STEPS: ${{ inputs.steps }}
+      LOAD_STEP_SECONDS: ${{ inputs.step_seconds }}
+      LOAD_RAW_CSV: out/raw_${{ matrix.shard }}.csv
+      KEYCLOAK_URL: ${{ vars.KEYCLOAK_URL || 'https://auth.civicdatalab.in' }}
+      KEYCLOAK_REALM: ${{ vars.KEYCLOAK_REALM || 'DataSpace' }}
+      KEYCLOAK_CLIENT_ID: ${{ vars.KEYCLOAK_CLIENT_ID || 'dataspace' }}
+      KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+      TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
+      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+      TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_2 }}
+      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
+      TEST_EMAIL_3: ${{ secrets.TEST_EMAIL_3 }}
+      TEST_PASSWORD_3: ${{ secrets.TEST_PASSWORD_3 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name != 'main' && github.sha || 'CI' }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -q -r load/requirements.txt
+      - name: Record this runner's IP
+        run: |
+          mkdir -p load/out
+          ip=$(curl -s -m 15 https://api.ipify.org || echo unknown)
+          echo "$ip" > "load/out/ip_${{ matrix.shard }}.txt"
+          echo "shard ${{ matrix.shard }} runs from $ip"
+      - name: Run Locust (this shard's share of each step)
+        working-directory: load
+        run: |
+          # One account per shard keeps Keycloak (shared with prod) to ~20 logins.
+          export LOAD_ACCOUNTS=$(( LOAD_SHARD_INDEX % 3 + 1 ))
+          # Locust exits non-zero when any request failed; the report judges the run.
+          locust -f "locustfile_${{ inputs.scenario }}.py" --headless --only-summary \
+            > "out/log_${{ matrix.shard }}.txt" 2>&1 || true
+          grep -E '^\[(SHARD|429|STOP|SUMMARY|CLEANUP)' "out/log_${{ matrix.shard }}.txt" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shard-${{ matrix.shard }}
+          path: load/out/
+
+  report:
+    needs: [plan, shard, health]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name != 'main' && github.sha || 'CI' }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: results
+      - name: Merge every shard's requests
+        run: |
+          {
+            echo "## Load test: ${{ inputs.scenario }}, steps ${{ inputs.steps }} users, ${{ inputs.step_seconds }}s each, ${{ inputs.shards }} runners"
+            echo
+            python load/aggregate.py results
+            echo
+            echo "**/health/ during the run:** $(cut -d' ' -f2 results/health/health.log | sort | uniq -c | tr '\n' ' ')"
+            grep -h '^\[STOP\]' results/shard-*/log_*.txt | sed 's/^/- /' | head -20
+          } | tee report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: report
+          path: report.md
