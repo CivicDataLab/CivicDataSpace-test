@@ -37,23 +37,33 @@ def main(folder):
     for r in rows:
         steps[int(r["step_users"])].append(r)
 
-    print("| Users | Requests | Req/s | p50 | p95 | p99 | 429s | Other failures |")
-    print("|---|---|---|---|---|---|---|---|")
+    shards = len({r["shard"] for r in rows})
+    print("| Users | Shards active | Requests | Req/s | p50 | p95 | p99 | 429s | Other failures |")
+    print("|---|---|---|---|---|---|---|---|---|")
     clean = None
+    partial = []
     for users in sorted(steps):
         rs = steps[users]
+        active = len({r["shard"] for r in rs})
+        expected = min(users, shards)
+        if active < expected:
+            partial.append(users)
         ts = [float(r["ts"]) for r in rs]
         span = max(max(ts) - min(ts), 1)
         ok = sorted(float(r["ms"]) for r in rs if r["outcome"] == "ok")
         n429 = sum(r["outcome"] == "429" for r in rs)
         nfail = sum(r["outcome"] == "fail" for r in rs)
-        if n429 == 0 and nfail <= 0.05 * len(rs):
+        if n429 == 0 and nfail <= 0.05 * len(rs) and active >= expected:
             clean = users
-        print(f"| {users} | {len(rs)} | {len(rs) / span:.1f} | {ms(pct(ok, 50))} | {ms(pct(ok, 95))} | "
-              f"{ms(pct(ok, 99))} | {n429} | {nfail} |")
+        mark = "" if active >= expected else " ⚠️"
+        print(f"| {users}{mark} | {active}/{expected} | {len(rs)} | {len(rs) / span:.1f} | {ms(pct(ok, 50))} | "
+              f"{ms(pct(ok, 95))} | {ms(pct(ok, 99))} | {n429} | {nfail} |")
+    if partial:
+        print(f"\n⚠️ Steps {partial}: fewer shards than expected were running (shards stop themselves when "
+              "p95 > 5s or errors > 5% hold for 15s, or started late), so these rows are not that many users.")
 
     if clean is not None:
-        print(f"\n**Slowest calls at {clean} users** (highest step without 429s):\n")
+        print(f"\n**Slowest calls at {clean} users** (highest step with every shard running and no 429s):\n")
         by_name = defaultdict(list)
         for r in steps[clean]:
             if r["outcome"] == "ok":
