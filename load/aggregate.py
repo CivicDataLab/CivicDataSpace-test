@@ -48,15 +48,19 @@ def main(folder):
         expected = min(users, shards)
         if active < expected:
             partial.append(users)
-        ts = [float(r["ts"]) for r in rs]
-        span = max(max(ts) - min(ts), 1)
+        # Requests/s summed per shard over each shard's own time in the step: a shard
+        # that ran the step late (queued runner) mustn't stretch everyone's span.
+        per_shard = defaultdict(list)
+        for r in rs:
+            per_shard[r["shard"]].append(float(r["ts"]))
+        rps = sum(len(t) / max(max(t) - min(t), 1) for t in per_shard.values())
         ok = sorted(float(r["ms"]) for r in rs if r["outcome"] == "ok")
         n429 = sum(r["outcome"] == "429" for r in rs)
         nfail = sum(r["outcome"] == "fail" for r in rs)
         if n429 == 0 and nfail <= 0.05 * len(rs) and active >= expected:
             clean = users
         mark = "" if active >= expected else " ⚠️"
-        print(f"| {users}{mark} | {active}/{expected} | {len(rs)} | {len(rs) / span:.1f} | {ms(pct(ok, 50))} | "
+        print(f"| {users}{mark} | {active}/{expected} | {len(rs)} | {rps:.1f} | {ms(pct(ok, 50))} | "
               f"{ms(pct(ok, 95))} | {ms(pct(ok, 99))} | {n429} | {nfail} |")
     if partial:
         print(f"\n⚠️ Steps {partial}: fewer shards than expected were running (shards stop themselves when "
