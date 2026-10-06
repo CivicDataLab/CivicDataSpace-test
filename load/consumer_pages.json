@@ -1,0 +1,222 @@
+{
+ "dataset_ids": [
+  "fa2570a0-ee85-4e45-b2ca-e1b881ccece3",
+  "f9725ad8-f55a-481a-8906-84999d32c0e5",
+  "737f51b1-5fa3-48ff-8d7f-4e85739c9dad",
+  "a3ba09c9-a4d1-440c-b748-5635cb42b866",
+  "df5f4a6e-9115-4d49-8ee6-d5d2da0fec55",
+  "f41b8b02-e153-419f-b821-ebc66025f072",
+  "8f0f26d9-5147-42ae-9220-0a6ec9b81da0",
+  "9c994a5a-92d2-46cb-8139-1b3e9a0d97dd",
+  "decec4bd-842d-4994-8f76-9c7bd6a99b0a"
+ ],
+ "pages": {
+  "home": {
+   "page": "/en",
+   "calls": [
+    {
+     "method": "GET",
+     "path": "/api/search/dataset/?sort=recent&size=5&page=1&sort=recent"
+    },
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "query StatsList {\n  stats {\n    totalUsers\n    totalPublishedDatasets\n    totalPublishers\n    totalPublishedUsecases\n    totalOrganizations\n  }\n}",
+      "variables": {},
+      "operationName": "StatsList"
+     }
+    },
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "query TopUseCases($filters: UseCaseFilter, $pagination: OffsetPaginationInput) {\n  publishedUseCases(filters: $filters, pagination: $pagination) {\n    id\n    title\n    summary\n    slug\n    datasetCount\n    isIndividualUsecase\n    user {\n      fullName\n      profilePicture {\n        url\n      }\n    }\n    organization {\n      name\n      logo {\n        url\n      }\n    }\n    logo {\n      path\n    }\n    geographies {\n      id\n      name\n      code\n    }\n    metadata {\n      metadataItem {\n        id\n        label\n        dataType\n      }\n      id\n      value\n    }\n    publishers {\n      logo {\n        path\n      }\n      name\n    }\n    sectors {\n      id\n      name\n    }\n    created\n    modified\n    website\n    contactEmail\n  }\n}",
+      "variables": {
+       "filters": {
+        "status": "PUBLISHED"
+       },
+       "pagination": {
+        "limit": 6
+       }
+      },
+      "operationName": "TopUseCases"
+     }
+    },
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "query SectorsList {\n  activeSectors {\n    id\n    name\n    description\n    slug\n    datasetCount\n  }\n}",
+      "variables": {},
+      "operationName": "SectorsList"
+     }
+    }
+   ]
+  },
+  "datasets": {
+   "page": "/en/datasets",
+   "calls": [
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "\n                query {\n                  geographies {\n                    id\n                    name\n                    code\n                    type\n                    parentId {\n                      id\n                      name\n                      type\n                    }\n                  }\n                }\n              "
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/api/search/dataset/?&size=9&page=1&sort=recent"
+    },
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "\n                query {\n                  geographies {\n                    id\n                    name\n                    code\n                    type\n                    parentId {\n                      id\n                      name\n                      type\n                    }\n                  }\n                }\n              "
+     }
+    },
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "\n                query {\n                  geographies {\n                    id\n                    name\n                    code\n                    type\n                    parentId {\n                      id\n                      name\n                      type\n                    }\n                  }\n                }\n              "
+     }
+    },
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "\n                query {\n                  geographies {\n                    id\n                    name\n                    code\n                    type\n                    parentId {\n                      id\n                      name\n                      type\n                    }\n                  }\n                }\n              "
+     }
+    }
+   ]
+  },
+  "usecases": {
+   "page": "/en/usecases",
+   "calls": [
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "\n                query {\n                  geographies {\n                    id\n                    name\n                    code\n                    type\n                    parentId {\n                      id\n                      name\n                      type\n                    }\n                  }\n                }\n              "
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/api/search/usecase/?&size=9&page=1&sort=recent"
+    },
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "\n                query {\n                  geographies {\n                    id\n                    name\n                    code\n                    type\n                    parentId {\n                      id\n                      name\n                      type\n                    }\n                  }\n                }\n              "
+     }
+    },
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "\n                query {\n                  geographies {\n                    id\n                    name\n                    code\n                    type\n                    parentId {\n                      id\n                      name\n                      type\n                    }\n                  }\n                }\n              "
+     }
+    },
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "\n                query {\n                  geographies {\n                    id\n                    name\n                    code\n                    type\n                    parentId {\n                      id\n                      name\n                      type\n                    }\n                  }\n                }\n              "
+     }
+    }
+   ]
+  },
+  "publishers": {
+   "page": "/en/publishers",
+   "calls": [
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "query PublishersList {\n  getPublishers {\n    __typename\n    ... on TypeOrganization {\n      name\n      id\n      description\n      logo {\n        url\n      }\n      membersCount\n      publishedUseCasesCount\n      publishedDatasetsCount\n    }\n    ... on TypeUser {\n      fullName\n      id\n      bio\n      profilePicture {\n        url\n      }\n      publishedUseCasesCount\n      publishedDatasetsCount\n    }\n  }\n}",
+      "variables": {},
+      "operationName": "PublishersList"
+     }
+    }
+   ]
+  },
+  "dataset": {
+   "page": "/datasets/{dataset_id}",
+   "calls": [
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "query ChartDetailsQuery($datasetId: UUID!) {\n  getChartData(datasetId: $datasetId) {\n    __typename\n    ... on TypeResourceChart {\n      chartType\n      description\n      id\n      name\n      chart {\n        options\n      }\n    }\n    ... on TypeResourceChartImage {\n      name\n      id\n      description\n      image {\n        name\n        path\n        url\n      }\n    }\n  }\n}",
+      "variables": {
+       "datasetId": "{dataset_id}"
+      },
+      "operationName": "ChartDetailsQuery"
+     }
+    },
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "query datasetResources($datasetId: UUID!) {\n  datasetResources(datasetId: $datasetId) {\n    id\n    created\n    modified\n    type\n    name\n    description\n    previewData {\n      columns\n      rows\n    }\n    noOfEntries\n    previewEnabled\n    schema {\n      fieldName\n      id\n      format\n      description\n    }\n    fileDetails {\n      format\n      size\n    }\n  }\n}",
+      "variables": {
+       "datasetId": "{dataset_id}"
+      },
+      "operationName": "datasetResources"
+     }
+    },
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "query getSimilarDataset($datasetId: UUID!) {\n  getDataset(datasetId: $datasetId) {\n    id\n    title\n    similarDatasets {\n      downloadCount\n      id\n      title\n      tags {\n        id\n        value\n      }\n      description\n      created\n      modified\n      isIndividualDataset\n      user {\n        fullName\n        id\n        profilePicture {\n          url\n        }\n      }\n      metadata {\n        metadataItem {\n          id\n          label\n          dataType\n        }\n        value\n      }\n      geographies {\n        name\n      }\n      license\n      resources {\n        id\n        created\n        modified\n        type\n        name\n        description\n      }\n      organization {\n        name\n        logo {\n          url\n        }\n        slug\n        id\n      }\n      sectors {\n        name\n      }\n      formats\n    }\n  }\n}",
+      "variables": {
+       "datasetId": "{dataset_id}"
+      },
+      "operationName": "getSimilarDataset"
+     }
+    },
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "query getDataset($datasetId: UUID!) {\n  getDataset(datasetId: $datasetId) {\n    tags {\n      id\n      value\n    }\n    id\n    downloadCount\n    title\n    description\n    created\n    modified\n    isIndividualDataset\n    user {\n      fullName\n      id\n      profilePicture {\n        url\n      }\n    }\n    metadata {\n      metadataItem {\n        id\n        label\n        dataType\n      }\n      value\n    }\n    license\n    resources {\n      id\n      created\n      modified\n      type\n      name\n      description\n    }\n    organization {\n      name\n      logo {\n        url\n      }\n      slug\n      id\n    }\n    sectors {\n      name\n    }\n    geographies {\n      id\n      name\n      code\n      type\n      parentId {\n        id\n        name\n        type\n      }\n    }\n    formats\n  }\n}",
+      "variables": {
+       "datasetId": "{dataset_id}"
+      },
+      "operationName": "getDataset"
+     }
+    }
+   ]
+  },
+  "usecase": {
+   "page": "/en/usecases/302",
+   "calls": [
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "query UseCasedetails($pk: ID!) {\n  useCase(pk: $pk) {\n    id\n    title\n    summary\n    created\n    startedOn\n    isIndividualUsecase\n    user {\n      fullName\n      email\n      id\n      profilePicture {\n        url\n      }\n    }\n    organization {\n      name\n      slug\n      id\n      contactEmail\n      logo {\n        url\n      }\n    }\n    website\n    metadata {\n      metadataItem {\n        id\n        label\n        dataType\n      }\n      id\n      value\n    }\n    sectors {\n      id\n      name\n    }\n    geographies {\n      id\n      name\n      code\n      type\n      parentId {\n        id\n        name\n        type\n      }\n    }\n    sdgs {\n      id\n      code\n      name\n    }\n    runningStatus\n    tags {\n      id\n      value\n    }\n    publishers {\n      name\n      contactEmail\n      logo {\n        url\n      }\n    }\n    platformUrl\n    logo {\n      name\n      path\n    }\n    datasets {\n      title\n      id\n      isIndividualDataset\n      user {\n        fullName\n        id\n        profilePicture {\n          url\n        }\n      }\n      downloadCount\n      description\n      organization {\n        name\n        logo {\n          url\n        }\n      }\n      metadata {\n        metadataItem {\n          id\n          label\n          dataType\n        }\n        id\n        value\n      }\n      sectors {\n        name\n      }\n      geographies {\n        id\n        name\n        code\n        type\n      }\n      modified\n    }\n    contactEmail\n    status\n    slug\n    modified\n    contributors {\n      id\n      fullName\n      profilePicture {\n        url\n      }\n    }\n    supportingOrganizations {\n      id\n      slug\n      name\n      logo {\n        url\n      }\n    }\n    partnerOrganizations {\n      id\n      slug\n      name\n      logo {\n        url\n      }\n    }\n  }\n}",
+      "variables": {
+       "pk": "302"
+      },
+      "operationName": "UseCasedetails"
+     }
+    },
+    {
+     "method": "POST",
+     "path": "/api/graphql",
+     "body": {
+      "query": "query usecaseDashboards($usecaseId: Int!) {\n  usecaseDashboards(usecaseId: $usecaseId) {\n    id\n    name\n    link\n  }\n}",
+      "variables": {
+       "usecaseId": 302
+      },
+      "operationName": "usecaseDashboards"
+     }
+    }
+   ]
+  }
+ }
+}
