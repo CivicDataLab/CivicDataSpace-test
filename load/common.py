@@ -7,7 +7,13 @@
 # 1000 non-GET requests per hour per IP, so a single load machine reaches the
 # limiter early. 429s are counted separately so the report can show where it
 # starts. Once tripped, this machine's IP stays throttled for up to an hour.
+#
+# Sharded runs (.github/workflows/load-test.yml): LOAD_SHARDS processes on
+# different runners each take their share of every step (LOAD_SHARD_INDEX),
+# wait for a common LOAD_START_AT (epoch seconds) so the steps line up, and log
+# every request to LOAD_RAW_CSV so aggregate.py can compute exact percentiles.
 
+import csv
 import os
 import time
 
@@ -25,6 +31,15 @@ MAX_P95_MS = float(os.getenv("LOAD_MAX_P95_MS", "5000"))
 STEPS = [int(n) for n in os.getenv("LOAD_STEPS", "1,5,10,25,50,100").split(",")]
 STEP_SECONDS = int(os.getenv("LOAD_STEP_SECONDS", "180"))
 STOP_AFTER = int(os.getenv("LOAD_STOP_AFTER", "3"))
+SHARDS = int(os.getenv("LOAD_SHARDS", "1"))
+SHARD_INDEX = int(os.getenv("LOAD_SHARD_INDEX", "0"))
+START_AT = float(os.getenv("LOAD_START_AT", "0"))
+RAW_CSV = os.getenv("LOAD_RAW_CSV")
+
+
+def share(users):
+    """This shard's part of a step's total users (the remainder goes to the lowest indexes)."""
+    return users // SHARDS + (1 if SHARD_INDEX < users % SHARDS else 0)
 
 rate_limited = {"count": 0, "first_at_users": None}
 
@@ -65,13 +80,37 @@ def _current_users():
 
 
 class SteppedRamp(LoadTestShape):
-    """Hold each user count in LOAD_STEPS for LOAD_STEP_SECONDS, then stop."""
+    """Hold each user count in LOAD_STEPS for LOAD_STEP_SECONDS (this shard's share), then stop."""
 
     def tick(self):
         step = int(self.get_run_time() // STEP_SECONDS)
         if step >= len(STEPS):
             return None
-        return STEPS[step], max(1, STEPS[step])
+        users = share(STEPS[step])
+        return users, max(1, users)
+
+
+_raw = {"file": None, "writer": None, "t0": None}
+
+
+@events.request.add_listener
+def _log_request(request_type, name, response_time, exception, **_):
+    if not _raw["writer"]:
+        return
+    elapsed = time.time() - _raw["t0"]
+    step = min(int(elapsed // STEP_SECONDS), len(STEPS) - 1)
+    outcome = "ok" if exception is None else ("429" if "429" in str(exception) else "fail")
+    _raw["writer"].writerow([f"{time.time():.3f}", STEPS[step], SHARD_INDEX, name, f"{response_time:.1f}", outcome,
+                             "" if exception is None else str(exception)[:120]])
+
+
+@events.test_start.add_listener
+def _open_raw(**_):
+    _raw["t0"] = time.time()
+    if RAW_CSV:
+        _raw["file"] = open(RAW_CSV, "w", newline="")
+        _raw["writer"] = csv.writer(_raw["file"])
+        _raw["writer"].writerow(["ts", "step_users", "shard", "name", "ms", "outcome", "error"])
 
 
 @events.init.add_listener
@@ -79,6 +118,10 @@ def _start_watchdog(environment, **_):
     _runner["env"] = environment
     if environment.runner is None:
         return
+    if START_AT:
+        wait = START_AT - time.time()
+        print(f"[SHARD {SHARD_INDEX}/{SHARDS}] waiting {max(0, wait):.0f}s for the common start")
+        time.sleep(max(0, wait))
 
     def watch():
         # A breach must hold for STOP_AFTER consecutive checks (5s apart): Locust's
@@ -110,5 +153,7 @@ def _start_watchdog(environment, **_):
 
 @events.quitting.add_listener
 def _summary(environment, **_):
+    if _raw["file"]:
+        _raw["file"].close()
     print(f"[SUMMARY] 429 responses: {rate_limited['count']}; first seen at "
           f"{rate_limited['first_at_users']} concurrent users")
