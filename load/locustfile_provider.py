@@ -44,7 +44,9 @@ def _login(n):
 
 @events.test_start.add_listener
 def _tokens(**_):
-    tokens.extend(_login(n) for n in (1, 2, 3) if os.getenv(f"TEST_EMAIL_{n}"))
+    # LOAD_ACCOUNTS (e.g. "2") limits the logins, so 20 shards cost ~20 Keycloak logins, not 60.
+    accounts = [int(n) for n in os.getenv("LOAD_ACCOUNTS", "1,2,3").split(",")]
+    tokens.extend(_login(n) for n in accounts if os.getenv(f"TEST_EMAIL_{n}"))
     assert tokens, "no TEST_EMAIL_<n> credentials in .env"
 
 
