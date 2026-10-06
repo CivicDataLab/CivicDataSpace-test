@@ -7,6 +7,8 @@
 import json
 import uuid
 
+import pytest
+
 RESULT = "success errors { fieldErrors { field messages } nonFieldErrors }"
 PDF_BYTES = (
     b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj "
@@ -144,3 +146,27 @@ def org_slug(client, name):
     slug = next((o["slug"] for o in orgs if o["name"] == name), None)
     assert slug, f"organization {name!r} not found"
     return slug
+
+
+def unpublish(client, publication_id, org=None):
+    return mutate(
+        client, "unpublishPublication",
+        "mutation($id: UUID!){ unpublishPublication(publicationId:$id){ %s data { id status } } }" % RESULT,
+        {"id": publication_id}, org,
+    )
+
+
+def complete_fields(client):
+    """Every field publishing needs, with live resource type / sector / geography ids."""
+    lookups = gql(client, "{ resourceTypes { id } activeSectors(pagination: {limit: 1}) { id } geographies { id } }")["data"]
+    if not lookups["resourceTypes"]:
+        pytest.skip("no active resource types on this backend, so nothing can be published (DataSpaceBackend#217)")
+    return {
+        "title": unique_title("publish test"),
+        "description": "Publication API test",
+        "authors": ["A. Author"],
+        "publicationDate": "2024-01-01",
+        "resourceTypeId": lookups["resourceTypes"][0]["id"],
+        "sectorIds": [lookups["activeSectors"][0]["id"]],
+        "geographyIds": [int(lookups["geographies"][0]["id"])],
+    }
