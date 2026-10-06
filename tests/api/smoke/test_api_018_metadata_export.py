@@ -15,7 +15,6 @@
 # Not covered here (left for a credentialed, authenticated run): exporting a
 # caller's own DRAFT dataset, and the `report=1` unmapped-field report.
 
-import re
 import uuid
 
 import pytest
@@ -26,10 +25,11 @@ pytestmark = [pytest.mark.api, pytest.mark.readonly, pytest.mark.deployed_pr("Da
 @pytest.fixture(scope="module")
 def published_dataset_id(anon_graphql_client):
     """id of any published dataset on the target backend, read live."""
-    data = anon_graphql_client.query(
-        "{ datasetsTable(includePublic: true, limit: 1, offset: 0) { data { id } } }"
-    )
-    rows = data["datasetsTable"]["data"]
+    # `datasets`, not `datasetsTable` (#215): it exists on every backend, so on one
+    # without #211 the tests below fail at their own assertions, not in setup.
+    rows = anon_graphql_client.query(
+        "{ datasets(includePublic: true, pagination: {limit: 1}) { id } }"
+    )["datasets"]
     if not rows:
         pytest.skip("no published dataset on this backend to export")
     return rows[0]["id"]
