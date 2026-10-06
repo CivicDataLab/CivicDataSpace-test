@@ -24,6 +24,7 @@ MAX_FAIL_RATIO = float(os.getenv("LOAD_MAX_FAIL_RATIO", "0.05"))
 MAX_P95_MS = float(os.getenv("LOAD_MAX_P95_MS", "5000"))
 STEPS = [int(n) for n in os.getenv("LOAD_STEPS", "1,5,10,25,50,100").split(",")]
 STEP_SECONDS = int(os.getenv("LOAD_STEP_SECONDS", "180"))
+STOP_AFTER = int(os.getenv("LOAD_STOP_AFTER", "3"))
 
 rate_limited = {"count": 0, "first_at_users": None}
 
@@ -80,6 +81,10 @@ def _start_watchdog(environment, **_):
         return
 
     def watch():
+        # A breach must hold for STOP_AFTER consecutive checks (5s apart): Locust's
+        # "current" p95 covers ~10s, so at low request rates one slow call would
+        # otherwise stop the whole run (it did, 2026-10-06, on a single 10s request).
+        breaches = 0
         while True:
             time.sleep(5)
             stats = environment.stats.total
@@ -91,7 +96,10 @@ def _start_watchdog(environment, **_):
                 reason = f"fail ratio {stats.fail_ratio:.1%} > {MAX_FAIL_RATIO:.0%}"
             elif p95 > MAX_P95_MS:
                 reason = f"current p95 {p95:.0f}ms > {MAX_P95_MS:.0f}ms"
-            if reason:
+            breaches = breaches + 1 if reason else 0
+            if reason and breaches < STOP_AFTER:
+                print(f"[WARN] {reason} at {environment.runner.user_count} users ({breaches}/{STOP_AFTER})")
+            if reason and breaches >= STOP_AFTER:
                 print(f"\n[STOP] {reason} at {environment.runner.user_count} users "
                       f"(429s so far: {rate_limited['count']}, first at {rate_limited['first_at_users']} users)")
                 environment.runner.quit()
