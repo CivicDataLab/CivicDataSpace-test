@@ -34,6 +34,10 @@ def check(response, label):
         rate_limited["count"] += 1
         if rate_limited["first_at_users"] is None:
             rate_limited["first_at_users"] = _current_users()
+            # nginx answers with an HTML page; the Django limiter with an empty body.
+            source = "nginx" if b"nginx" in response.content.lower() else "app (Django limiter)"
+            print(f"[429] first one at {_current_users()} users on {response.request.method} "
+                  f"{response.url.split('?')[0]}: from {source}, Server={response.headers.get('Server')}")
         response.failure("429 rate limited")
     elif not 200 <= response.status_code < 300:
         response.failure(f"HTTP {response.status_code}")
