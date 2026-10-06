@@ -6,8 +6,8 @@
 # about 20 shards keep every IP under its budget for one full 1 -> 100 ramp.
 #
 #   plan   -> picks a common start time a few minutes ahead and the shard list
-#   health -> polls /health/ every 15s for the whole run
-#   shard  -> one Locust process per runner (load/, see common.py)
+#   shard  -> one Locust process per runner (load/, see common.py); shard 0
+#             also polls /health/ every 15s
 #   report -> merges every request into one per-step table (load/aggregate.py)
 #
 # Dev only (common.py refuses anything else). Manual, one run at a time.
@@ -75,25 +75,6 @@ jobs:
             echo "duration=$(( n_steps * STEP_SECONDS ))"
           } >> "$GITHUB_OUTPUT"
 
-  health:
-    needs: plan
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    steps:
-      - env:
-          START_AT: ${{ needs.plan.outputs.start_at }}
-          DURATION: ${{ needs.plan.outputs.duration }}
-        run: |
-          end=$(( START_AT + DURATION + 60 ))
-          while [ "$(date +%s)" -lt "$end" ]; do
-            echo "$(date -u +%H:%M:%S) $(curl -s -o /dev/null -w '%{http_code} %{time_total}' -m 30 https://dev.api.civicdataspace.in/health/)" >> health.log
-            sleep 15
-          done
-      - uses: actions/upload-artifact@v4
-        with:
-          name: health
-          path: health.log
-
   shard:
     needs: plan
     runs-on: ubuntu-latest
@@ -136,7 +117,18 @@ jobs:
           echo "shard ${{ matrix.shard }} runs from $ip"
       - name: Run Locust (this shard's share of each step)
         working-directory: load
+        env:
+          DURATION: ${{ needs.plan.outputs.duration }}
         run: |
+          # Shard 0 also polls /health/ every 15s. A separate job would be a 21st
+          # parallel job, over the org's limit of 20, and one shard would start late.
+          if [ "$LOAD_SHARD_INDEX" = 0 ]; then
+            ( end=$(( LOAD_START_AT + DURATION + 60 ))
+              while [ "$(date +%s)" -lt "$end" ]; do
+                echo "$(date -u +%H:%M:%S) $(curl -s -o /dev/null -w '%{http_code} %{time_total}' -m 30 https://dev.api.civicdataspace.in/health/)" >> out/health.log
+                sleep 15
+              done ) &
+          fi
           # One account per shard keeps Keycloak (shared with prod) to ~20 logins.
           export LOAD_ACCOUNTS=$(( LOAD_SHARD_INDEX % 3 + 1 ))
           # Locust exits non-zero when any request failed; the report judges the run.
@@ -150,7 +142,7 @@ jobs:
           path: load/out/
 
   report:
-    needs: [plan, shard, health]
+    needs: [plan, shard]
     if: always() && needs.plan.result == 'success'
     runs-on: ubuntu-latest
     steps:
@@ -167,7 +159,7 @@ jobs:
             echo
             python load/aggregate.py results
             echo
-            echo "**/health/ during the run:** $(cut -d' ' -f2 results/health/health.log | sort | uniq -c | tr '\n' ' ')"
+            echo "**/health/ during the run:** $(cut -d' ' -f2 results/shard-0/health.log | sort | uniq -c | tr '\n' ' ')"
             grep -h '^\[STOP\]' results/shard-*/log_*.txt | sed 's/^/- /' | head -20
           } | tee report.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
