@@ -596,6 +596,7 @@ def pytest_sessionfinish(session, exitstatus):
 # --- pending_pr: tests written for an open product PR run only once it merges ---
 import functools as _functools
 import json as _json
+import time as _time
 import urllib.request as _urlreq
 
 
@@ -633,10 +634,18 @@ def _pending_pr_state(ref):
 # and the commit of that workflow's latest successful push run on the PR's base
 # branch counts as deployed. branch="main" overrides that branch, for a dev PR
 # whose test asserts on prod.
-def _last_deployed_sha(repo, workflow, branch):
-    # Filtered client-side: the API's own status=success filter returns stale runs.
-    runs = _gh_get(repo, f"actions/workflows/{workflow}/runs?branch={branch}&event=push&per_page=20")
-    return next((r["head_sha"] for r in runs["workflow_runs"] if r["conclusion"] == "success"), None)
+def _last_deployed_sha(repo, workflow, branch, since):
+    # The runs list is intermittently served from a weeks-old snapshot, more often
+    # with event=/status= filters, so those are applied client-side and a list
+    # with no run created since `since` (the PR merge) is re-read before trusting it.
+    for _ in range(3):
+        runs = _gh_get(repo, f"actions/workflows/{workflow}/runs?branch={branch}&per_page=20")["workflow_runs"]
+        if runs and runs[0]["created_at"] >= since:
+            break
+        _time.sleep(2)
+    return next(
+        (r["head_sha"] for r in runs if r["event"] == "push" and r["conclusion"] == "success"), None
+    )
 
 
 @_functools.lru_cache(maxsize=None)
@@ -653,7 +662,7 @@ def _deployed_pr_state(ref, api_base_url, workflow=None, branch=None):
         if workflow:
             branch = branch or pr["base"]["ref"]
             where = f"{workflow} on {branch}"
-            deployed = _last_deployed_sha(repo, workflow, branch)
+            deployed = _last_deployed_sha(repo, workflow, branch, pr["merged_at"])
         else:
             where = api_base_url
             with _urlreq.urlopen(f"{api_base_url.rstrip('/')}/health/", timeout=15) as resp:
