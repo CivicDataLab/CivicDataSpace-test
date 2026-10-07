@@ -106,7 +106,7 @@ def test_search_finds_published_publications_but_never_drafts(owner, api_base_ur
         pub.delete(owner, data["id"])
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#225: fuzzy query over 4-gram titles misses words longer than ~6 letters")
+@pytest.mark.deployed_pr("DataSpaceBackend#231")
 def test_search_finds_a_published_title_by_a_long_word(owner, api_base_url):
     fields = pub.complete_fields(owner)
     data = pub.create(owner, **{**fields, "title": f"Mangrove resilience {fields['title'].split()[-1]}"})
