@@ -91,10 +91,7 @@ def _found(api_base_url, query, publication_id, tries=6):
 
 
 def test_search_finds_published_publications_but_never_drafts(owner, api_base_url):
-    """A word in the description: absent from search while a draft, present once published.
-
-    Uses the description because title search is broken for long words (#225).
-    """
+    """A word in the description: absent from search while a draft, present once published."""
     fields = pub.complete_fields(owner)
     word = "zq" + fields["title"].split()[-1]
     data = pub.create(owner, **{**fields, "description": f"Search check {word}"})
