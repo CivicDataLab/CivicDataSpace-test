@@ -79,6 +79,31 @@ def _assert_index_shape(index_xml, base_url):
         )
 
 
+# ─── dev must not be indexed ──────────────────────────────────────────────────
+
+@pytest.mark.api
+@pytest.mark.seo
+@pytest.mark.pending_pr("DataSpaceFrontend#493")
+def test_dev_sends_noindex_header(dev_frontend_client):
+    """Every dev page must carry X-Robots-Tag: noindex so search engines drop it."""
+    resp = dev_frontend_client.get("/")
+    tag = resp.headers.get("X-Robots-Tag", "")
+    assert "noindex" in tag, f"dev / missing X-Robots-Tag noindex, got: {tag!r}"
+
+
+@pytest.mark.api
+@pytest.mark.seo
+@pytest.mark.pending_pr("DataSpaceFrontend#493")
+def test_dev_sitemap_is_disabled(dev_frontend_client):
+    """dev /sitemap.xml must 404 and robots.txt must not advertise a sitemap."""
+    resp = dev_frontend_client.get("/sitemap.xml")
+    assert resp.status_code == 404, f"dev sitemap.xml should be 404, got {resp.status_code}"
+
+    robots = dev_frontend_client.get("/robots.txt")
+    assert robots.status_code == 200, f"robots.txt failed ({robots.status_code}): {robots.text}"
+    assert "Sitemap:" not in robots.text, f"dev robots.txt still advertises a sitemap:\n{robots.text}"
+
+
 # ─── prod structural checks (no prod backend configured to cross-check counts) ─
 
 @pytest.mark.api
