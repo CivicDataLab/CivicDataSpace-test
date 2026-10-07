@@ -255,6 +255,10 @@ jobs:
       # correct out of the box, overridable without a code change.
       ANALYTICS_URL_DEV: ${{ vars.ANALYTICS_URL_DEV || 'https://dev.analytics.civicdataspace.in' }}
       ANALYTICS_URL_PROD: ${{ vars.ANALYTICS_URL_PROD || 'https://analytics.civicdataspace.in' }}
+      # Same reasoning for the prod sitemap/SEO checks in test_api_006: without
+      # these every test_prod_* there skips and prod indexing goes unchecked.
+      HOME_URL_PROD: ${{ vars.HOME_URL_PROD || 'https://civicdataspace.in' }}
+      API_BASE_URL_PROD: ${{ vars.API_BASE_URL_PROD || 'https://api.datakeep.civicdays.in' }}
 
       # Without these the keycloak_config fixture skips, and every
       # authenticated API test skips with it -- a green run that asserted

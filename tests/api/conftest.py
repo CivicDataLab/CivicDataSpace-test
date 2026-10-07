@@ -225,8 +225,9 @@ def graphql_client_for(api_base_url, keycloak_config):
 # ─── Frontend (DataSpaceFrontend) clients — used by sitemap/SEO tests ──────────
 #
 # Additional .env variables used here:
-#   HOME_URL_DEV  - Frontend base URL for the dev environment
-#   HOME_URL_PROD - Frontend base URL for the production environment
+#   HOME_URL_DEV      - Frontend base URL for the dev environment
+#   HOME_URL_PROD     - Frontend base URL for the production environment
+#   API_BASE_URL_PROD - Prod backend base URL, for prod sitemap count cross-checks
 
 @pytest.fixture(scope="session")
 def frontend_base_url_dev():
@@ -297,3 +298,24 @@ def dev_analytics_client(analytics_base_url_dev):
 def prod_analytics_client(analytics_base_url_prod):
     """Unauthenticated APIClient pointed at the prod analytics (Superset) instance."""
     return APIClient(analytics_base_url_prod)
+
+
+@pytest.fixture(scope="session")
+def api_base_url_prod():
+    """Prod backend base URL. Skips if not set."""
+    url = os.getenv("API_BASE_URL_PROD")
+    if not url:
+        pytest.skip("API_BASE_URL_PROD not set — skipping prod backend cross-checks")
+    return url.rstrip("/")
+
+
+@pytest.fixture(scope="session")
+def anon_api_client_prod(api_base_url_prod):
+    """Unauthenticated REST APIClient against the prod backend."""
+    return APIClient(api_base_url_prod)
+
+
+@pytest.fixture(scope="session")
+def anon_graphql_client_prod(api_base_url_prod):
+    """Unauthenticated GraphQLClient against the prod backend."""
+    return GraphQLClient(api_base_url_prod)

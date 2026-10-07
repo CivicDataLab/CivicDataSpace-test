@@ -1,16 +1,12 @@
 # tests/api/smoke/test_api_006_seo_sitemap.py
 #
-# Verify sitemap.xml / robots.txt structure, and that each dynamic child
-# sitemap's <url> count matches the live backend count.
+# Prod: verify sitemap.xml / robots.txt structure and that pages are indexable.
+# Dev: verify the site is hidden from search engines (DataSpaceFrontend#493):
+# no sitemap, no Sitemap line in robots.txt, and an X-Robots-Tag noindex header.
 #
-# Regression this guards: a prior bug swallowed GraphQL errors internally in
-# the sitemap route handlers and silently defaulted the affected child
-# sitemap to 0 urls instead of surfacing the failure.
-#
-# Backend cross-checks (GraphQL/REST count comparisons) only run against the
-# environment API_BASE_URL actually points to (dev — see tests/api/conftest.py).
-# Prod frontend coverage below is limited to structural/HTTP-level checks
-# that don't require a prod backend URL, since none is configured in .env.
+# Each prod child sitemap's <url> count is cross-checked against the live prod
+# backend (API_BASE_URL_PROD). Regression this guards: a prior bug swallowed
+# GraphQL errors in the sitemap route handlers and silently served 0 urls.
 
 import re
 import xml.etree.ElementTree as ET
@@ -39,14 +35,9 @@ EXPECTED_SITEMAP_ENTITIES = [
 
 EXPECTED_STATIC_PATHS = ["", "/datasets", "/usecases", "/collaboratives", "/publishers", "/sectors", "/about-us"]
 
-AI_MODELS_QUERY = "query{aiModels(filters:{isPublic:true,status:ACTIVE}){id}}"
-PUBLISHED_USE_CASES_QUERY = "query{publishedUseCases{id}}"
-PUBLISHED_COLLABORATIVES_QUERY = "query{publishedCollaboratives{id}}"
-ACTIVE_SECTORS_QUERY = "query{activeSectors{id}}"
 PUBLISHERS_QUERY = (
     "query{getPublishers{__typename ... on TypeOrganization{id} ... on TypeUser{id}}}"
 )
-
 
 def _sitemap_locs(xml_text):
     """<sitemap><loc> entries from a sitemapindex document."""
@@ -76,12 +67,7 @@ def _child_pages(index_xml, base_url):
 
 
 def _all_entity_urls(client, index_xml, base_url, entity):
-    """
-    Every <url><loc> across ALL of an entity's child sitemaps.
-
-    Counting only page 1 under-reports whenever the entity spans more than one
-    page, which is the normal case on dev.
-    """
+    """Every <url><loc> across ALL of an entity's child sitemaps."""
     locs = []
     for page in _child_pages(index_xml, base_url).get(entity, []):
         resp = client.get(f"/sitemap/{entity}-{page}.xml")
@@ -90,6 +76,12 @@ def _all_entity_urls(client, index_xml, base_url, entity):
         )
         locs.extend(_url_locs(resp.text))
     return locs
+
+
+def _dataset_search_total(api_client):
+    resp = api_client.get("/api/search/dataset/", params={"sort": "recent", "size": 1, "page": 1})
+    assert resp.status_code == 200, f"dataset search failed ({resp.status_code}): {resp.text}"
+    return resp.json().get("total")
 
 
 def _assert_index_shape(index_xml, base_url):
@@ -109,205 +101,42 @@ def _assert_index_shape(index_xml, base_url):
         )
 
 
-# ─── sitemap.xml index (dev) ──────────────────────────────────────────────────
+# ─── dev must not be indexed ──────────────────────────────────────────────────
 
 @pytest.mark.api
 @pytest.mark.seo
-def test_sitemap_index_returns_200(dev_frontend_client):
-    """GET /sitemap.xml should return 200."""
+@pytest.mark.deployed_pr("DataSpaceFrontend#493", workflow="deploy-Dataspace.yml")
+def test_dev_sends_noindex_header(dev_frontend_client):
+    """Every dev page must carry X-Robots-Tag: noindex so search engines drop it."""
+    resp = dev_frontend_client.get("/")
+    tag = resp.headers.get("X-Robots-Tag", "")
+    assert "noindex" in tag, f"dev / missing X-Robots-Tag noindex, got: {tag!r}"
+
+
+@pytest.mark.api
+@pytest.mark.seo
+@pytest.mark.deployed_pr("DataSpaceFrontend#493", workflow="deploy-Dataspace.yml")
+def test_dev_sitemap_is_disabled(dev_frontend_client):
+    """dev /sitemap.xml must 404 and robots.txt must not advertise a sitemap."""
     resp = dev_frontend_client.get("/sitemap.xml")
-    assert resp.status_code == 200, f"sitemap.xml failed ({resp.status_code}): {resp.text}"
+    assert resp.status_code == 404, f"dev sitemap.xml should be 404, got {resp.status_code}"
 
-
-@pytest.mark.api
-@pytest.mark.seo
-def test_sitemap_index_lists_expected_children(dev_frontend_client, frontend_base_url_dev):
-    """
-    sitemap.xml must start with static.xml, then cover every expected entity
-    with contiguously numbered pages starting at 1.
-    """
-    resp = dev_frontend_client.get("/sitemap.xml")
-    assert resp.status_code == 200
-    _assert_index_shape(resp.text, frontend_base_url_dev)
-
-
-@pytest.mark.api
-@pytest.mark.seo
-def test_sitemap_legacy_main_redirects_to_index(dev_frontend_client):
-    """GET /sitemap/main.xml (legacy path) must 308-redirect to /sitemap.xml."""
-    resp = dev_frontend_client.get("/sitemap/main.xml", allow_redirects=False)
-    assert resp.status_code == 308, f"Expected 308, got {resp.status_code}"
-    assert resp.headers.get("Location", "").endswith("/sitemap.xml"), (
-        f"Unexpected redirect target: {resp.headers.get('Location')}"
-    )
-
-
-# ─── static.xml (dev) ──────────────────────────────────────────────────────────
-
-@pytest.mark.api
-@pytest.mark.seo
-def test_sitemap_static_urls_match_expected(dev_frontend_client, frontend_base_url_dev):
-    """static.xml must contain exactly the 7 expected static page URLs."""
-    resp = dev_frontend_client.get("/sitemap/static.xml")
-    assert resp.status_code == 200, f"static.xml failed ({resp.status_code}): {resp.text}"
-    locs = _url_locs(resp.text)
-    expected = [f"{frontend_base_url_dev}{path}" for path in EXPECTED_STATIC_PATHS]
-    assert locs == expected, f"static.xml URLs mismatch.\nGot:      {locs}\nExpected: {expected}"
-
-
-# ─── robots.txt (dev) ──────────────────────────────────────────────────────────
-
-@pytest.mark.api
-@pytest.mark.seo
-def test_robots_txt_references_sitemap(dev_frontend_client, frontend_base_url_dev):
-    """robots.txt must contain a 'Sitemap: {base}/sitemap.xml' line."""
-    resp = dev_frontend_client.get("/robots.txt")
-    assert resp.status_code == 200, f"robots.txt failed ({resp.status_code}): {resp.text}"
-    expected_line = f"Sitemap: {frontend_base_url_dev}/sitemap.xml"
-    assert expected_line in resp.text, f"robots.txt missing '{expected_line}':\n{resp.text}"
-
-
-# ─── dynamic sitemap counts vs. live backend (dev only) ───────────────────────
-# API_BASE_URL in .env points at the dev backend, so these cross-checks can
-# only be verified end-to-end against dev.
-
-@pytest.mark.api
-@pytest.mark.seo
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "DataSpaceFrontend#455 (closed won't-fix): on dev every aimodels-N.xml serves an "
-        "empty urlset while the index advertises 5 pages, so all 21 public/active AI models "
-        "are missing. Accepted because dev does not need SEO; prod is unaffected (15 urls) "
-        "because it is unpaginated. strict=True on purpose — if this ever XPASSes, either "
-        "dev was fixed or prod-like pagination changed, and both are worth knowing."
-    ),
-)
-def test_sitemap_aimodels_count_matches_backend(dev_frontend_client, anon_graphql_client, frontend_base_url_dev):
-    """Total aimodels sitemap urls must equal live count of public/active AI models."""
-    index = dev_frontend_client.get("/sitemap.xml")
-    assert index.status_code == 200
-    locs = _all_entity_urls(dev_frontend_client, index.text, frontend_base_url_dev, "aimodels")
-    backend_count = len(anon_graphql_client.query(AI_MODELS_QUERY).get("aiModels") or [])
-    assert len(locs) == backend_count, (
-        f"aimodels sitemaps have {len(locs)} urls across all pages, "
-        f"backend has {backend_count} public/active AI models"
-    )
-
-
-@pytest.mark.api
-@pytest.mark.seo
-def test_sitemap_usecases_count_matches_backend(dev_frontend_client, anon_graphql_client, frontend_base_url_dev):
-    """Total usecases sitemap urls must equal live publishedUseCases count."""
-    index = dev_frontend_client.get("/sitemap.xml")
-    assert index.status_code == 200
-    locs = _all_entity_urls(dev_frontend_client, index.text, frontend_base_url_dev, "usecases")
-    backend_count = len(anon_graphql_client.query(PUBLISHED_USE_CASES_QUERY).get("publishedUseCases") or [])
-    assert len(locs) == backend_count, (
-        f"usecases sitemaps have {len(locs)} urls across all pages, "
-        f"backend has {backend_count} published use cases"
-    )
-
-
-@pytest.mark.api
-@pytest.mark.seo
-def test_sitemap_collaboratives_count_matches_backend(dev_frontend_client, anon_graphql_client, frontend_base_url_dev):
-    """Total collaboratives sitemap urls must equal live publishedCollaboratives count."""
-    index = dev_frontend_client.get("/sitemap.xml")
-    assert index.status_code == 200
-    locs = _all_entity_urls(dev_frontend_client, index.text, frontend_base_url_dev, "collaboratives")
-    backend_count = len(
-        anon_graphql_client.query(PUBLISHED_COLLABORATIVES_QUERY).get("publishedCollaboratives") or []
-    )
-    assert len(locs) == backend_count, (
-        f"collaboratives sitemaps have {len(locs)} urls across all pages, "
-        f"backend has {backend_count} published collaboratives"
-    )
-
-
-@pytest.mark.api
-@pytest.mark.seo
-def test_sitemap_sectors_count_matches_backend(dev_frontend_client, anon_graphql_client, frontend_base_url_dev):
-    """Total sectors sitemap urls must equal live activeSectors count."""
-    index = dev_frontend_client.get("/sitemap.xml")
-    assert index.status_code == 200
-    locs = _all_entity_urls(dev_frontend_client, index.text, frontend_base_url_dev, "sectors")
-    backend_count = len(anon_graphql_client.query(ACTIVE_SECTORS_QUERY).get("activeSectors") or [])
-    assert len(locs) == backend_count, (
-        f"sectors sitemaps have {len(locs)} urls across all pages, "
-        f"backend has {backend_count} active sectors"
-    )
-
-
-@pytest.mark.api
-@pytest.mark.seo
-def test_sitemap_organizations_and_users_counts_match_backend(
-    dev_frontend_client, anon_graphql_client, frontend_base_url_dev
-):
-    """Total organizations/users sitemap urls must equal getPublishers split by __typename."""
-    index = dev_frontend_client.get("/sitemap.xml")
-    assert index.status_code == 200
-
-    org_locs = _all_entity_urls(dev_frontend_client, index.text, frontend_base_url_dev, "organizations")
-    user_locs = _all_entity_urls(dev_frontend_client, index.text, frontend_base_url_dev, "users")
-
-    publishers = anon_graphql_client.query(PUBLISHERS_QUERY).get("getPublishers") or []
-    org_backend_count = sum(1 for p in publishers if p.get("__typename") == "TypeOrganization")
-    user_backend_count = sum(1 for p in publishers if p.get("__typename") == "TypeUser")
-
-    assert len(org_locs) == org_backend_count, (
-        f"organizations sitemaps have {len(org_locs)} urls across all pages, "
-        f"backend has {org_backend_count} organizations"
-    )
-    assert len(user_locs) == user_backend_count, (
-        f"users sitemaps have {len(user_locs)} urls across all pages, "
-        f"backend has {user_backend_count} users"
-    )
-
-
-@pytest.mark.api
-@pytest.mark.seo
-def _dataset_search_total(anon_api_client):
-    resp = anon_api_client.get(
-        "/api/search/dataset/", params={"sort": "recent", "size": 1, "page": 1}
-    )
-    assert resp.status_code == 200, f"dataset search failed ({resp.status_code}): {resp.text}"
-    return resp.json().get("total")
-
-
-@pytest.mark.api
-@pytest.mark.smoke
-@pytest.mark.seo
-def test_sitemap_datasets_count_matches_backend(dev_frontend_client, anon_api_client, frontend_base_url_dev):
-    """
-    Total datasets sitemap urls must match the REST dataset search '.total'.
-
-    Crawling ~28 child sitemaps takes several seconds and each one is a separate
-    backend query, so a provider test creating or removing a dataset mid-crawl
-    shifts the answer. Bracket the crawl with a total read before and after and
-    require the url count to land inside that window: when the data is quiet the
-    two reads are equal and this is an exact assertion, and when it is moving the
-    test reports drift instead of failing on a race.
-    """
-    total_before = _dataset_search_total(anon_api_client)
-
-    index = dev_frontend_client.get("/sitemap.xml")
-    assert index.status_code == 200
-    locs = _all_entity_urls(dev_frontend_client, index.text, frontend_base_url_dev, "datasets")
-
-    total_after = _dataset_search_total(anon_api_client)
-    low, high = min(total_before, total_after), max(total_before, total_after)
-
-    assert len(set(locs)) == len(locs), (
-        f"datasets sitemaps contain {len(locs) - len(set(locs))} duplicate url(s) across pages"
-    )
-    assert low <= len(locs) <= high, (
-        f"datasets sitemaps have {len(locs)} urls across all pages, outside the backend "
-        f"search total window [{low}, {high}] measured around the crawl"
-    )
+    robots = dev_frontend_client.get("/robots.txt")
+    assert robots.status_code == 200, f"robots.txt failed ({robots.status_code}): {robots.text}"
+    assert "Sitemap:" not in robots.text, f"dev robots.txt still advertises a sitemap:\n{robots.text}"
 
 
 # ─── prod structural checks (no prod backend configured to cross-check counts) ─
+
+@pytest.mark.api
+@pytest.mark.seo
+def test_prod_is_indexable(prod_frontend_client):
+    """prod must never send the noindex header that dev gets."""
+    resp = prod_frontend_client.get("/")
+    assert resp.status_code == 200, f"prod / failed ({resp.status_code})"
+    tag = resp.headers.get("X-Robots-Tag", "")
+    assert "noindex" not in tag, f"prod / is marked noindex: {tag!r}"
+
 
 @pytest.mark.api
 @pytest.mark.seo
@@ -356,3 +185,75 @@ def test_prod_robots_txt_references_sitemap(prod_frontend_client, frontend_base_
     assert resp.status_code == 200, f"prod robots.txt failed ({resp.status_code}): {resp.text}"
     expected_line = f"Sitemap: {frontend_base_url_prod}/sitemap.xml"
     assert expected_line in resp.text, f"prod robots.txt missing '{expected_line}':\n{resp.text}"
+
+
+# ─── prod sitemap counts vs. live prod backend ────────────────────────────────
+
+@pytest.mark.api
+@pytest.mark.seo
+@pytest.mark.parametrize("entity, query, key", [
+    pytest.param(
+        "aimodels", "query{aiModels(filters:{isPublic:true,status:ACTIVE}){id}}", "aiModels",
+        # prod serves 0 aimodels urls until the numeric-id fix ships to prod
+        marks=pytest.mark.deployed_pr("DataSpaceFrontend#495", workflow="deploy-Dataspace.yml", branch="main"),
+    ),
+    ("usecases", "query{publishedUseCases{id}}", "publishedUseCases"),
+    ("collaboratives", "query{publishedCollaboratives{id}}", "publishedCollaboratives"),
+    ("sectors", "query{activeSectors{id}}", "activeSectors"),
+])
+def test_prod_sitemap_count_matches_backend(
+    entity, query, key, prod_frontend_client, frontend_base_url_prod, anon_graphql_client_prod
+):
+    """Total <entity> sitemap urls on prod must equal the live prod backend count."""
+    index = prod_frontend_client.get("/sitemap.xml")
+    assert index.status_code == 200
+    locs = _all_entity_urls(prod_frontend_client, index.text, frontend_base_url_prod, entity)
+    backend_count = len(anon_graphql_client_prod.query(query).get(key) or [])
+    assert len(locs) == backend_count, (
+        f"prod {entity} sitemaps have {len(locs)} urls, prod backend has {backend_count}"
+    )
+
+
+@pytest.mark.api
+@pytest.mark.seo
+def test_prod_sitemap_organizations_and_users_counts_match_backend(
+    prod_frontend_client, frontend_base_url_prod, anon_graphql_client_prod
+):
+    """prod organizations/users sitemap urls must equal getPublishers split by __typename."""
+    index = prod_frontend_client.get("/sitemap.xml")
+    assert index.status_code == 200
+    publishers = anon_graphql_client_prod.query(PUBLISHERS_QUERY).get("getPublishers") or []
+    for entity, typename in (("organizations", "TypeOrganization"), ("users", "TypeUser")):
+        locs = _all_entity_urls(prod_frontend_client, index.text, frontend_base_url_prod, entity)
+        backend_count = sum(1 for p in publishers if p.get("__typename") == typename)
+        assert len(locs) == backend_count, (
+            f"prod {entity} sitemaps have {len(locs)} urls, prod backend has {backend_count}"
+        )
+
+
+@pytest.mark.api
+@pytest.mark.seo
+def test_prod_sitemap_datasets_count_matches_backend(
+    prod_frontend_client, frontend_base_url_prod, anon_api_client_prod
+):
+    """
+    prod datasets sitemap urls must match the prod REST dataset search '.total'.
+
+    The total is read before and after the crawl, and the url count must land
+    inside that window, so a dataset published mid-crawl reports drift instead
+    of failing on a race.
+    """
+    total_before = _dataset_search_total(anon_api_client_prod)
+    index = prod_frontend_client.get("/sitemap.xml")
+    assert index.status_code == 200
+    locs = _all_entity_urls(prod_frontend_client, index.text, frontend_base_url_prod, "datasets")
+    total_after = _dataset_search_total(anon_api_client_prod)
+    low, high = min(total_before, total_after), max(total_before, total_after)
+
+    assert len(set(locs)) == len(locs), (
+        f"prod datasets sitemaps contain {len(locs) - len(set(locs))} duplicate url(s)"
+    )
+    assert low <= len(locs) <= high, (
+        f"prod datasets sitemaps have {len(locs)} urls, outside the backend search "
+        f"total window [{low}, {high}] measured around the crawl"
+    )
