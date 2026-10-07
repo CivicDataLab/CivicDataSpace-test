@@ -91,10 +91,7 @@ def _found(api_base_url, query, publication_id, tries=6):
 
 
 def test_search_finds_published_publications_but_never_drafts(owner, api_base_url):
-    """A word in the description: absent from search while a draft, present once published.
-
-    Uses the description because title search is broken for long words (#225).
-    """
+    """A word in the description: absent from search while a draft, present once published."""
     fields = pub.complete_fields(owner)
     word = "zq" + fields["title"].split()[-1]
     data = pub.create(owner, **{**fields, "description": f"Search check {word}"})
@@ -106,7 +103,7 @@ def test_search_finds_published_publications_but_never_drafts(owner, api_base_ur
         pub.delete(owner, data["id"])
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#225: fuzzy query over 4-gram titles misses words longer than ~6 letters")
+@pytest.mark.deployed_pr("DataSpaceBackend#231")
 def test_search_finds_a_published_title_by_a_long_word(owner, api_base_url):
     fields = pub.complete_fields(owner)
     data = pub.create(owner, **{**fields, "title": f"Mangrove resilience {fields['title'].split()[-1]}"})
