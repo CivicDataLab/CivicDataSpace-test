@@ -625,30 +625,45 @@ def _pending_pr_state(ref):
     return None if merged else f"pending_pr {ref}: not merged yet"
 
 
-# --- deployed_pr: run only once the backend under test serves the PR's merge commit ---
-# Lets a readonly test for a dev-only backend change sit in the prod gate without
+# --- deployed_pr: run only once the environment under test serves the PR's merge commit ---
+# Lets a readonly test for a dev-only change sit in the prod gate without
 # failing (and rolling back) every prod deploy until that change actually ships.
+# Backend PRs read the live commit from API_BASE_URL's /health/ git_sha. Repos
+# whose app reports no commit (DataSpaceFrontend) pass workflow="<deploy file>",
+# and the commit of that workflow's latest successful push run on the PR's base
+# branch counts as deployed.
+def _last_deployed_sha(repo, workflow, branch):
+    # Filtered client-side: the API's own status=success filter returns stale runs.
+    runs = _gh_get(repo, f"actions/workflows/{workflow}/runs?branch={branch}&event=push&per_page=20")
+    return next((r["head_sha"] for r in runs["workflow_runs"] if r["conclusion"] == "success"), None)
+
+
 @_functools.lru_cache(maxsize=None)
-def _deployed_pr_state(ref, api_base_url):
-    """Return None if API_BASE_URL's /health/ git_sha contains `ref`'s merge commit, else a skip reason."""
+def _deployed_pr_state(ref, api_base_url, workflow=None):
+    """Return None if the environment under test runs a commit containing `ref`'s merge commit, else a skip reason."""
     repo, num = _split_ref(ref)
-    if not api_base_url:
+    if not workflow and not api_base_url:
         return f"deployed_pr {ref}: API_BASE_URL is not set"
     try:
-        with _urlreq.urlopen(f"{api_base_url.rstrip('/')}/health/", timeout=15) as resp:
-            deployed = _json.load(resp).get("git_sha")
         pr = _gh_get(repo, f"pulls/{num}")
         if not pr.get("merged_at"):
             return f"deployed_pr {ref}: not merged yet"
         merge_sha = pr["merge_commit_sha"]
+        if workflow:
+            where = f"{workflow} on {pr['base']['ref']}"
+            deployed = _last_deployed_sha(repo, workflow, pr["base"]["ref"])
+        else:
+            where = api_base_url
+            with _urlreq.urlopen(f"{api_base_url.rstrip('/')}/health/", timeout=15) as resp:
+                deployed = _json.load(resp).get("git_sha")
         if not deployed:
-            return f"deployed_pr {ref}: {api_base_url}/health/ reports no git_sha"
+            return f"deployed_pr {ref}: {where} reports no deployed commit"
         status = _gh_get(repo, f"compare/{merge_sha}...{deployed}")["status"]
     except Exception as e:
         return f"deployed_pr {ref}: could not check ({e})"
     if status in ("ahead", "identical"):
         return None
-    return f"deployed_pr {ref}: {api_base_url} runs {deployed[:8]}, which doesn't include {merge_sha[:8]} yet"
+    return f"deployed_pr {ref}: {where} last deployed {deployed[:8]}, which doesn't include {merge_sha[:8]} yet"
 
 
 def pytest_collection_modifyitems(config, items):
@@ -660,6 +675,8 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(pytest.mark.skip(reason=reason))
         marker = item.get_closest_marker("deployed_pr")
         if marker:
-            reason = _deployed_pr_state(marker.args[0], os.getenv("API_BASE_URL", ""))
+            reason = _deployed_pr_state(
+                marker.args[0], os.getenv("API_BASE_URL", ""), marker.kwargs.get("workflow")
+            )
             if reason:
                 item.add_marker(pytest.mark.skip(reason=reason))
