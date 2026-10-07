@@ -65,17 +65,20 @@ def test_title_icontains_filter_narrows_results(anon_graphql_client):
     """An icontains title filter returns only matching rows, and fewer of them.
 
     The word is taken from live titles and must be missing from at least one,
-    so a filter the resolver silently ignored could not pass.
+    so a filter the resolver silently ignored could not pass. It is the word
+    shared by the most titles: a one-off word can belong to a dataset another
+    worker deletes between the two queries (test_api_func_001's
+    "API Automated Test Dataset" did, leaving 0 rows for "automated").
     """
     page = anon_graphql_client.query(
         "{ datasetsTable(includePublic: true, limit: 50) { totalItemsCount data { title } } }"
     )["datasetsTable"]
     titles = [row["title"].lower() for row in page["data"]]
-    word = next(
-        (w for t in titles for w in t.split()
-         if w.isalpha() and len(w) > 3 and any(w not in other for other in titles)),
-        None,
-    )
+    hits = {
+        w: sum(w in t for t in titles)
+        for t in titles for w in t.split() if w.isalpha() and len(w) > 3
+    }
+    word = max((w for w in hits if hits[w] < len(titles)), key=lambda w: (hits[w], w), default=None)
     if word is None:
         pytest.skip("no title word on dev that some datasets lack")
 
