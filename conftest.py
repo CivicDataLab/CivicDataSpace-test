@@ -631,7 +631,8 @@ def _pending_pr_state(ref):
 # Backend PRs read the live commit from API_BASE_URL's /health/ git_sha. Repos
 # whose app reports no commit (DataSpaceFrontend) pass workflow="<deploy file>",
 # and the commit of that workflow's latest successful push run on the PR's base
-# branch counts as deployed.
+# branch counts as deployed. branch="main" overrides that branch, for a dev PR
+# whose test asserts on prod.
 def _last_deployed_sha(repo, workflow, branch):
     # Filtered client-side: the API's own status=success filter returns stale runs.
     runs = _gh_get(repo, f"actions/workflows/{workflow}/runs?branch={branch}&event=push&per_page=20")
@@ -639,7 +640,7 @@ def _last_deployed_sha(repo, workflow, branch):
 
 
 @_functools.lru_cache(maxsize=None)
-def _deployed_pr_state(ref, api_base_url, workflow=None):
+def _deployed_pr_state(ref, api_base_url, workflow=None, branch=None):
     """Return None if the environment under test runs a commit containing `ref`'s merge commit, else a skip reason."""
     repo, num = _split_ref(ref)
     if not workflow and not api_base_url:
@@ -650,8 +651,9 @@ def _deployed_pr_state(ref, api_base_url, workflow=None):
             return f"deployed_pr {ref}: not merged yet"
         merge_sha = pr["merge_commit_sha"]
         if workflow:
-            where = f"{workflow} on {pr['base']['ref']}"
-            deployed = _last_deployed_sha(repo, workflow, pr["base"]["ref"])
+            branch = branch or pr["base"]["ref"]
+            where = f"{workflow} on {branch}"
+            deployed = _last_deployed_sha(repo, workflow, branch)
         else:
             where = api_base_url
             with _urlreq.urlopen(f"{api_base_url.rstrip('/')}/health/", timeout=15) as resp:
@@ -676,7 +678,8 @@ def pytest_collection_modifyitems(config, items):
         marker = item.get_closest_marker("deployed_pr")
         if marker:
             reason = _deployed_pr_state(
-                marker.args[0], os.getenv("API_BASE_URL", ""), marker.kwargs.get("workflow")
+                marker.args[0], os.getenv("API_BASE_URL", ""),
+                marker.kwargs.get("workflow"), marker.kwargs.get("branch"),
             )
             if reason:
                 item.add_marker(pytest.mark.skip(reason=reason))
