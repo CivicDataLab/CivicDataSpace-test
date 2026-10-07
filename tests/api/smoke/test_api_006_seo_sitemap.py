@@ -108,6 +108,16 @@ def test_dev_sitemap_is_disabled(dev_frontend_client):
 
 @pytest.mark.api
 @pytest.mark.seo
+def test_prod_is_indexable(prod_frontend_client):
+    """prod must never send the noindex header that dev gets."""
+    resp = prod_frontend_client.get("/")
+    assert resp.status_code == 200, f"prod / failed ({resp.status_code})"
+    tag = resp.headers.get("X-Robots-Tag", "")
+    assert "noindex" not in tag, f"prod / is marked noindex: {tag!r}"
+
+
+@pytest.mark.api
+@pytest.mark.seo
 def test_prod_sitemap_index_returns_200(prod_frontend_client):
     """GET /sitemap.xml on prod should return 200."""
     resp = prod_frontend_client.get("/sitemap.xml")
