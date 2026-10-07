@@ -83,7 +83,7 @@ def _assert_index_shape(index_xml, base_url):
 
 @pytest.mark.api
 @pytest.mark.seo
-@pytest.mark.pending_pr("DataSpaceFrontend#493")
+@pytest.mark.deployed_pr("DataSpaceFrontend#493", workflow="deploy-Dataspace.yml")
 def test_dev_sends_noindex_header(dev_frontend_client):
     """Every dev page must carry X-Robots-Tag: noindex so search engines drop it."""
     resp = dev_frontend_client.get("/")
@@ -93,7 +93,7 @@ def test_dev_sends_noindex_header(dev_frontend_client):
 
 @pytest.mark.api
 @pytest.mark.seo
-@pytest.mark.pending_pr("DataSpaceFrontend#493")
+@pytest.mark.deployed_pr("DataSpaceFrontend#493", workflow="deploy-Dataspace.yml")
 def test_dev_sitemap_is_disabled(dev_frontend_client):
     """dev /sitemap.xml must 404 and robots.txt must not advertise a sitemap."""
     resp = dev_frontend_client.get("/sitemap.xml")
