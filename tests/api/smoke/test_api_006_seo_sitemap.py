@@ -4,9 +4,9 @@
 # Dev: verify the site is hidden from search engines (DataSpaceFrontend#493):
 # no sitemap, no Sitemap line in robots.txt, and an X-Robots-Tag noindex header.
 #
-# Dev sitemap <url> counts used to be cross-checked against the backend here;
-# those checks went away with the dev sitemap. Prod has no backend URL
-# configured in .env, so it only gets structural/HTTP-level checks.
+# Each prod child sitemap's <url> count is cross-checked against the live prod
+# backend (API_BASE_URL_PROD). Regression this guards: a prior bug swallowed
+# GraphQL errors in the sitemap route handlers and silently served 0 urls.
 
 import re
 import xml.etree.ElementTree as ET
@@ -35,6 +35,10 @@ EXPECTED_SITEMAP_ENTITIES = [
 
 EXPECTED_STATIC_PATHS = ["", "/datasets", "/usecases", "/collaboratives", "/publishers", "/sectors", "/about-us"]
 
+PUBLISHERS_QUERY = (
+    "query{getPublishers{__typename ... on TypeOrganization{id} ... on TypeUser{id}}}"
+)
+
 def _sitemap_locs(xml_text):
     """<sitemap><loc> entries from a sitemapindex document."""
     root = ET.fromstring(xml_text)
@@ -60,6 +64,24 @@ def _child_pages(index_xml, base_url):
         if m:
             pages.setdefault(m.group(1), []).append(int(m.group(2)))
     return {k: sorted(v) for k, v in pages.items()}
+
+
+def _all_entity_urls(client, index_xml, base_url, entity):
+    """Every <url><loc> across ALL of an entity's child sitemaps."""
+    locs = []
+    for page in _child_pages(index_xml, base_url).get(entity, []):
+        resp = client.get(f"/sitemap/{entity}-{page}.xml")
+        assert resp.status_code == 200, (
+            f"{entity}-{page}.xml failed ({resp.status_code}): {resp.text}"
+        )
+        locs.extend(_url_locs(resp.text))
+    return locs
+
+
+def _dataset_search_total(api_client):
+    resp = api_client.get("/api/search/dataset/", params={"sort": "recent", "size": 1, "page": 1})
+    assert resp.status_code == 200, f"dataset search failed ({resp.status_code}): {resp.text}"
+    return resp.json().get("total")
 
 
 def _assert_index_shape(index_xml, base_url):
@@ -163,3 +185,75 @@ def test_prod_robots_txt_references_sitemap(prod_frontend_client, frontend_base_
     assert resp.status_code == 200, f"prod robots.txt failed ({resp.status_code}): {resp.text}"
     expected_line = f"Sitemap: {frontend_base_url_prod}/sitemap.xml"
     assert expected_line in resp.text, f"prod robots.txt missing '{expected_line}':\n{resp.text}"
+
+
+# ─── prod sitemap counts vs. live prod backend ────────────────────────────────
+
+@pytest.mark.api
+@pytest.mark.seo
+@pytest.mark.parametrize("entity, query, key", [
+    pytest.param(
+        "aimodels", "query{aiModels(filters:{isPublic:true,status:ACTIVE}){id}}", "aiModels",
+        # prod serves 0 aimodels urls until the numeric-id fix ships to prod
+        marks=pytest.mark.deployed_pr("DataSpaceFrontend#495", workflow="deploy-Dataspace.yml", branch="main"),
+    ),
+    ("usecases", "query{publishedUseCases{id}}", "publishedUseCases"),
+    ("collaboratives", "query{publishedCollaboratives{id}}", "publishedCollaboratives"),
+    ("sectors", "query{activeSectors{id}}", "activeSectors"),
+])
+def test_prod_sitemap_count_matches_backend(
+    entity, query, key, prod_frontend_client, frontend_base_url_prod, anon_graphql_client_prod
+):
+    """Total <entity> sitemap urls on prod must equal the live prod backend count."""
+    index = prod_frontend_client.get("/sitemap.xml")
+    assert index.status_code == 200
+    locs = _all_entity_urls(prod_frontend_client, index.text, frontend_base_url_prod, entity)
+    backend_count = len(anon_graphql_client_prod.query(query).get(key) or [])
+    assert len(locs) == backend_count, (
+        f"prod {entity} sitemaps have {len(locs)} urls, prod backend has {backend_count}"
+    )
+
+
+@pytest.mark.api
+@pytest.mark.seo
+def test_prod_sitemap_organizations_and_users_counts_match_backend(
+    prod_frontend_client, frontend_base_url_prod, anon_graphql_client_prod
+):
+    """prod organizations/users sitemap urls must equal getPublishers split by __typename."""
+    index = prod_frontend_client.get("/sitemap.xml")
+    assert index.status_code == 200
+    publishers = anon_graphql_client_prod.query(PUBLISHERS_QUERY).get("getPublishers") or []
+    for entity, typename in (("organizations", "TypeOrganization"), ("users", "TypeUser")):
+        locs = _all_entity_urls(prod_frontend_client, index.text, frontend_base_url_prod, entity)
+        backend_count = sum(1 for p in publishers if p.get("__typename") == typename)
+        assert len(locs) == backend_count, (
+            f"prod {entity} sitemaps have {len(locs)} urls, prod backend has {backend_count}"
+        )
+
+
+@pytest.mark.api
+@pytest.mark.seo
+def test_prod_sitemap_datasets_count_matches_backend(
+    prod_frontend_client, frontend_base_url_prod, anon_api_client_prod
+):
+    """
+    prod datasets sitemap urls must match the prod REST dataset search '.total'.
+
+    The total is read before and after the crawl, and the url count must land
+    inside that window, so a dataset published mid-crawl reports drift instead
+    of failing on a race.
+    """
+    total_before = _dataset_search_total(anon_api_client_prod)
+    index = prod_frontend_client.get("/sitemap.xml")
+    assert index.status_code == 200
+    locs = _all_entity_urls(prod_frontend_client, index.text, frontend_base_url_prod, "datasets")
+    total_after = _dataset_search_total(anon_api_client_prod)
+    low, high = min(total_before, total_after), max(total_before, total_after)
+
+    assert len(set(locs)) == len(locs), (
+        f"prod datasets sitemaps contain {len(locs) - len(set(locs))} duplicate url(s)"
+    )
+    assert low <= len(locs) <= high, (
+        f"prod datasets sitemaps have {len(locs)} urls, outside the backend search "
+        f"total window [{low}, {high}] measured around the crawl"
+    )
