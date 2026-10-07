@@ -596,7 +596,6 @@ def pytest_sessionfinish(session, exitstatus):
 # --- pending_pr: tests written for an open product PR run only once it merges ---
 import functools as _functools
 import json as _json
-import time as _time
 import urllib.request as _urlreq
 
 
@@ -629,43 +628,31 @@ def _pending_pr_state(ref):
 # --- deployed_pr: run only once the environment under test serves the PR's merge commit ---
 # Lets a readonly test for a dev-only change sit in the prod gate without
 # failing (and rolling back) every prod deploy until that change actually ships.
-# Backend PRs read the live commit from API_BASE_URL's /health/ git_sha. Repos
-# whose app reports no commit (DataSpaceFrontend) pass workflow="<deploy file>",
-# and the commit of that workflow's latest successful push run on the PR's base
-# branch counts as deployed. branch="main" overrides that branch, for a dev PR
-# whose test asserts on prod.
-def _last_deployed_sha(repo, workflow, branch, since):
-    # The runs list is intermittently served from a weeks-old snapshot, more often
-    # with event=/status= filters, so those are applied client-side and a list
-    # with no run created since `since` (the PR merge) is re-read before trusting it.
-    for _ in range(3):
-        runs = _gh_get(repo, f"actions/workflows/{workflow}/runs?branch={branch}&per_page=20")["workflow_runs"]
-        if runs and runs[0]["created_at"] >= since:
-            break
-        _time.sleep(2)
-    return next(
-        (r["head_sha"] for r in runs if r["event"] == "push" and r["conclusion"] == "success"), None
-    )
+# Backend PRs read the live commit from API_BASE_URL's /health/ git_sha.
+# Frontend PRs pass site="HOME_URL_DEV" (or "HOME_URL_PROD"), and the live commit
+# is that site's X-Git-Sha header (DataSpaceFrontend#496).
+def _site_sha(url):
+    req = _urlreq.Request(url, method="HEAD")
+    with _urlreq.urlopen(req, timeout=15) as resp:
+        return resp.headers.get("X-Git-Sha")
 
 
 @_functools.lru_cache(maxsize=None)
-def _deployed_pr_state(ref, api_base_url, workflow=None, branch=None):
+def _deployed_pr_state(ref, api_base_url, site=None):
     """Return None if the environment under test runs a commit containing `ref`'s merge commit, else a skip reason."""
     repo, num = _split_ref(ref)
-    if not workflow and not api_base_url:
-        return f"deployed_pr {ref}: API_BASE_URL is not set"
+    where = os.getenv(site, "") if site else api_base_url
+    if not where:
+        return f"deployed_pr {ref}: {site or 'API_BASE_URL'} is not set"
     try:
         pr = _gh_get(repo, f"pulls/{num}")
         if not pr.get("merged_at"):
             return f"deployed_pr {ref}: not merged yet"
         merge_sha = pr["merge_commit_sha"]
-        if workflow:
-            branch = branch or pr["base"]["ref"]
-            where = f"{workflow} on {branch}"
-            deployed = _last_deployed_sha(repo, workflow, branch, pr["merged_at"])
+        if site:
+            deployed = _site_sha(where)
         else:
-            where = api_base_url
-            with _urlreq.urlopen(f"{api_base_url.rstrip('/')}/health/", timeout=15) as resp:
+            with _urlreq.urlopen(f"{where.rstrip('/')}/health/", timeout=15) as resp:
                 deployed = _json.load(resp).get("git_sha")
         if not deployed:
             return f"deployed_pr {ref}: {where} reports no deployed commit"
@@ -674,7 +661,7 @@ def _deployed_pr_state(ref, api_base_url, workflow=None, branch=None):
         return f"deployed_pr {ref}: could not check ({e})"
     if status in ("ahead", "identical"):
         return None
-    return f"deployed_pr {ref}: {where} last deployed {deployed[:8]}, which doesn't include {merge_sha[:8]} yet"
+    return f"deployed_pr {ref}: {where} runs {deployed[:8]}, which doesn't include {merge_sha[:8]} yet"
 
 
 def pytest_collection_modifyitems(config, items):
@@ -687,8 +674,7 @@ def pytest_collection_modifyitems(config, items):
         marker = item.get_closest_marker("deployed_pr")
         if marker:
             reason = _deployed_pr_state(
-                marker.args[0], os.getenv("API_BASE_URL", ""),
-                marker.kwargs.get("workflow"), marker.kwargs.get("branch"),
+                marker.args[0], os.getenv("API_BASE_URL", ""), marker.kwargs.get("site")
             )
             if reason:
                 item.add_marker(pytest.mark.skip(reason=reason))

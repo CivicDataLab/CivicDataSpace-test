@@ -105,7 +105,7 @@ def _assert_index_shape(index_xml, base_url):
 
 @pytest.mark.api
 @pytest.mark.seo
-@pytest.mark.deployed_pr("DataSpaceFrontend#493", workflow="deploy-Dataspace.yml")
+@pytest.mark.deployed_pr("DataSpaceFrontend#493", site="HOME_URL_DEV")
 def test_dev_sends_noindex_header(dev_frontend_client):
     """Every dev page must carry X-Robots-Tag: noindex so search engines drop it."""
     resp = dev_frontend_client.get("/")
@@ -115,7 +115,7 @@ def test_dev_sends_noindex_header(dev_frontend_client):
 
 @pytest.mark.api
 @pytest.mark.seo
-@pytest.mark.deployed_pr("DataSpaceFrontend#493", workflow="deploy-Dataspace.yml")
+@pytest.mark.deployed_pr("DataSpaceFrontend#493", site="HOME_URL_DEV")
 def test_dev_sitemap_is_disabled(dev_frontend_client):
     """dev /sitemap.xml must 404 and robots.txt must not advertise a sitemap."""
     resp = dev_frontend_client.get("/sitemap.xml")
@@ -195,7 +195,7 @@ def test_prod_robots_txt_references_sitemap(prod_frontend_client, frontend_base_
     pytest.param(
         "aimodels", "query{aiModels(filters:{isPublic:true,status:ACTIVE}){id}}", "aiModels",
         # prod serves 0 aimodels urls until the numeric-id fix ships to prod
-        marks=pytest.mark.deployed_pr("DataSpaceFrontend#495", workflow="deploy-Dataspace.yml", branch="main"),
+        marks=pytest.mark.deployed_pr("DataSpaceFrontend#495", site="HOME_URL_PROD"),
     ),
     ("usecases", "query{publishedUseCases{id}}", "publishedUseCases"),
     ("collaboratives", "query{publishedCollaboratives{id}}", "publishedCollaboratives"),
