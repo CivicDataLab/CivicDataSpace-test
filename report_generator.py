@@ -121,9 +121,12 @@ def main():
             story.append(Paragraph(msg, body))
             story.append(Spacer(1, 8))
 
-            # —8c) Check for a screenshot in user_properties
+            # —8c) Check for a screenshot in user_properties. pytest-json-report
+            #     writes record_property entries as {name: value}; conftest.py
+            #     injects screenshots as [name, value].
             screenshot_path = None
-            for name, value in t.get("user_properties", []):
+            for prop in t.get("user_properties") or []:
+                name, value = next(iter(prop.items())) if isinstance(prop, dict) else prop
                 if name == "screenshot":
                     screenshot_path = value
                     break
