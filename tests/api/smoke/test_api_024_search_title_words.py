@@ -133,22 +133,20 @@ def test_search_aimodel_short_prefix_matches_as_you_type(anon_api_client, aimode
     baseline_results = aimodel_baseline["results"]
     baseline_total = aimodel_baseline["total"]
 
-    candidate = None
-    prefix = None
+    # Rarest prefix across titles, so it can't match every record ("Mod" from
+    # "Model" is in all of them on dev) and fail the narrowing assertion.
+    by_prefix = {}
     for r in baseline_results:
-        dn = r.get("display_name") or ""
-        for word in re.findall(r"[A-Za-z]{5,}", dn):
-            prefix = word[:3]
-            candidate = r
-            break
-        if candidate:
-            break
+        for word in re.findall(r"[A-Za-z]{5,}", r.get("display_name") or ""):
+            by_prefix.setdefault(word[:3], {})[r["id"]] = r
 
-    if not candidate:
+    if not by_prefix:
         pytest.skip(
             "no AI model title on this environment has a word long enough to "
             "build a sub-4-letter prefix from"
         )
+    prefix, records = min(by_prefix.items(), key=lambda kv: len(kv[1]))
+    candidate = next(iter(records.values()))
 
     resp = anon_api_client.get("/api/search/aimodel/", params={"query": prefix, "size": 200})
     assert resp.status_code == 200, f"search failed ({resp.status_code}): {resp.text}"
