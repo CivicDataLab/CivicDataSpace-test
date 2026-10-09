@@ -22,7 +22,7 @@ import requests
 
 from pages.consumer.usecase_page import UseCasePage
 
-pytestmark = [pytest.mark.smoke]
+pytestmark = [pytest.mark.smoke, pytest.mark.readonly]
 
 BASE_URL = os.getenv("HOME_URL_DEV", "https://dev.civicdataspace.in")
 
