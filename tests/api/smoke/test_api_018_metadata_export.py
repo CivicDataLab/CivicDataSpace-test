@@ -112,12 +112,8 @@ def test_export_rejects_an_unknown_standard(anon_api_client, published_dataset_i
 # DataSpaceBackend#238: with PUBLIC_API_URL / PUBLIC_SITE_URL unset, the export
 # falls back to https://api.civicdataspace.in, which does not resolve. The tests
 # above only check the document's shape, so every download link was dead on dev
-# and they stayed green.
-
-_EXPORT_URL_BUG = pytest.mark.xfail(
-    raises=AssertionError,
-    reason="DataSpaceBackend#238: PUBLIC_API_URL/PUBLIC_SITE_URL unset, export URLs point at a dead host",
-)
+# and they stayed green. A failure here usually means the backend .env on the
+# target box is missing those two variables.
 
 
 @pytest.fixture(scope="module")
@@ -138,7 +134,6 @@ def dataset_with_resources_export(anon_graphql_client, anon_api_client):
 
 
 @pytest.mark.regression
-@_EXPORT_URL_BUG
 def test_export_download_urls_resolve_on_this_backend(dataset_with_resources_export, api_base_url):
     """Every dcat:downloadURL is on the backend under test and actually downloads."""
     dists = dataset_with_resources_export.get("dcat:distribution") or []
@@ -157,7 +152,6 @@ def test_export_download_urls_resolve_on_this_backend(dataset_with_resources_exp
 
 
 @pytest.mark.regression
-@_EXPORT_URL_BUG
 def test_export_landing_page_is_on_this_frontend(dataset_with_resources_export, frontend_base_url_dev):
     """dcat:landingPage points at the frontend paired with this backend."""
     landing = (dataset_with_resources_export.get("dcat:landingPage") or {}).get("@id", "")
