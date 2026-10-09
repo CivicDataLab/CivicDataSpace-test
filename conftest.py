@@ -593,6 +593,13 @@ def pytest_sessionfinish(session, exitstatus):
     else:
         print("\n\n⚠️  report.json not found; skipping report generation.")
 
+    # Accessibility runs leave structured findings behind; turn them into
+    # ACCESSIBILITY_REPORT.md/.html. Skipped when the run had no a11y tests so
+    # an unrelated run never overwrites the last accessibility report.
+    if any((Path(os.getcwd()) / "reports" / "a11y").glob("*.json")):
+        print("\n📄 Generating ACCESSIBILITY_REPORT.md + .html …")
+        subprocess.run([sys.executable, "a11y_report_generator.py"], check=False)
+
 # --- pending_pr: tests written for an open product PR run only once it merges ---
 import functools as _functools
 import json as _json
