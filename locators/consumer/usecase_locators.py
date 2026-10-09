@@ -30,3 +30,13 @@ class UseCaseLocators:
     DETAIL_DASHBOARDS_HEADING = (By.XPATH, "//main//*[normalize-space(text())='Dashboards Linked to this Use Case']")
     DETAIL_DASHBOARD_IFRAME = (By.XPATH, "//main//iframe")
     DETAIL_DASHBOARD_OPEN_LINK = (By.XPATH, "//main//a[normalize-space()='Open dashboard in a new tab']")
+
+    # JusticeHub dashboard embed (DataSpaceFrontend #492): a justicehub.in dashboard
+    # gets its own wrapper that preloads the public theme CSS/logo and hides the
+    # iframe behind a spinner (aria-busy) until it has actually loaded, instead of
+    # the plain iframe every other dashboard still uses.
+    JUSTICEHUB_PRELOAD_CSS = (By.XPATH, "//link[@rel='preload' and contains(@href, 'jh_home_new1.css')]")
+    JUSTICEHUB_PRELOAD_LOGO = (By.XPATH, "//link[@rel='preload' and contains(@href, 'jh_logo.png')]")
+    JUSTICEHUB_PRECONNECT = (By.XPATH, "//link[@rel='preconnect' and contains(@href, 'justicehub.in')]")
+    # The wrapper div carries aria-busy and contains the iframe it is guarding.
+    JUSTICEHUB_EMBED_WRAPPER = (By.XPATH, "//main//div[@aria-busy][.//iframe]")
