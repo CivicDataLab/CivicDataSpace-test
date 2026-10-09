@@ -1,8 +1,8 @@
 # tests/api/smoke/test_api_006_seo_sitemap.py
 #
 # Prod: verify sitemap.xml / robots.txt structure and that pages are indexable.
-# Dev: verify the site is hidden from search engines (DataSpaceFrontend#493):
-# no sitemap, no Sitemap line in robots.txt, and an X-Robots-Tag noindex header.
+# Dev's noindex checks live in test_api_027_dev_noindex.py: this file is
+# `readonly`, and in the prod gate HOME_URL_DEV points at prod.
 #
 # Each prod child sitemap's <url> count is cross-checked against the live prod
 # backend (API_BASE_URL_PROD). Regression this guards: a prior bug swallowed
@@ -99,31 +99,6 @@ def _assert_index_shape(index_xml, base_url):
         assert nums == list(range(1, len(nums) + 1)), (
             f"{entity} pages are not contiguous from 1: {nums}"
         )
-
-
-# ─── dev must not be indexed ──────────────────────────────────────────────────
-
-@pytest.mark.api
-@pytest.mark.seo
-@pytest.mark.deployed_pr("DataSpaceFrontend#493", site="HOME_URL_DEV")
-def test_dev_sends_noindex_header(dev_frontend_client):
-    """Every dev page must carry X-Robots-Tag: noindex so search engines drop it."""
-    resp = dev_frontend_client.get("/")
-    tag = resp.headers.get("X-Robots-Tag", "")
-    assert "noindex" in tag, f"dev / missing X-Robots-Tag noindex, got: {tag!r}"
-
-
-@pytest.mark.api
-@pytest.mark.seo
-@pytest.mark.deployed_pr("DataSpaceFrontend#493", site="HOME_URL_DEV")
-def test_dev_sitemap_is_disabled(dev_frontend_client):
-    """dev /sitemap.xml must 404 and robots.txt must not advertise a sitemap."""
-    resp = dev_frontend_client.get("/sitemap.xml")
-    assert resp.status_code == 404, f"dev sitemap.xml should be 404, got {resp.status_code}"
-
-    robots = dev_frontend_client.get("/robots.txt")
-    assert robots.status_code == 200, f"robots.txt failed ({robots.status_code}): {robots.text}"
-    assert "Sitemap:" not in robots.text, f"dev robots.txt still advertises a sitemap:\n{robots.text}"
 
 
 # ─── prod structural checks (no prod backend configured to cross-check counts) ─
