@@ -24,13 +24,13 @@ PUBLIC_PAGES = [
     ("about-us", "/about-us"),
 ]
 
-# Provider-side routes are reached by navigating the UI (their URLs embed a
-# per-user slug), so they are described by the dashboard nav label to click.
+# Provider sections live under /dashboard/<entityType>/<slug>/<path>. The slug
+# differs per account, so tests derive the base from the logged-in URL.
 PROVIDER_SECTIONS = [
-    ("datasets", "Datasets"),
-    ("usecases", "UseCases"),
-    ("charts", "Add & Manage Charts"),
-    ("profile", "Profile"),
+    ("datasets", "dataset"),
+    ("usecases", "usecases"),
+    ("charts", "charts"),
+    ("profile", "profile"),
 ]
 
 
