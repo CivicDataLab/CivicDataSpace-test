@@ -86,3 +86,49 @@ class UseCasePage(BasePage):
             "return !!(arguments[0].compareDocumentPosition(arguments[1]) & Node.DOCUMENT_POSITION_FOLLOWING);",
             dash, datasets,
         )
+
+    # ── JusticeHub embed (DataSpaceFrontend #492) ───────────────────────────
+
+    def justicehub_theme_preloaded(self, timeout: int = 10) -> dict:
+        """Which of the JusticeHub theme preload/preconnect links are present.
+
+        Each check gets its own short wait rather than the page's default 15s,
+        so a genuinely-missing link (the pre-#492 behaviour) fails fast instead
+        of stalling three times in a row.
+        """
+        def present(locator):
+            try:
+                WebDriverWait(self.driver, timeout).until(
+                    EC.presence_of_element_located(locator)
+                )
+                return True
+            except TimeoutException:
+                return False
+
+        return {
+            "preconnect": present(UseCaseLocators.JUSTICEHUB_PRECONNECT),
+            "preload_css": present(UseCaseLocators.JUSTICEHUB_PRELOAD_CSS),
+            "preload_logo": present(UseCaseLocators.JUSTICEHUB_PRELOAD_LOGO),
+        }
+
+    def justicehub_embed_becomes_ready(self, timeout: int = 12) -> bool:
+        """Poll the JusticeHub wrapper's aria-busy until it reads "false".
+
+        Returns False (never raises) if the wrapper never appears or never
+        clears aria-busy within `timeout` seconds -- i.e. the spinner never
+        actually goes away, which is the failure mode this guards against.
+        """
+        from selenium.common.exceptions import NoSuchElementException
+
+        def is_ready(driver):
+            try:
+                el = driver.find_element(*UseCaseLocators.JUSTICEHUB_EMBED_WRAPPER)
+            except NoSuchElementException:
+                return False
+            return el.get_attribute("aria-busy") == "false"
+
+        try:
+            WebDriverWait(self.driver, timeout).until(is_ready)
+            return True
+        except TimeoutException:
+            return False
