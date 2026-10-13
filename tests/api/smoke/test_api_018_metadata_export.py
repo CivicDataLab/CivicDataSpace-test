@@ -104,3 +104,39 @@ def test_export_rejects_an_unknown_standard(anon_api_client, published_dataset_i
     assert resp.status_code == 400, (
         f"expected a 400 for an unknown standard, got {resp.status_code}: {resp.text}"
     )
+
+
+@pytest.mark.smoke
+@pytest.mark.regression
+@pytest.mark.deployed_pr("DataSpaceBackend#245")
+def test_export_error_does_not_echo_the_caller_s_invalid_value(anon_api_client, published_dataset_id):
+    """An invalid standard/format error names the problem, not the caller's own input.
+
+    DataSpaceBackend#245: the view used to build the 400 body from
+    str(ValueError), so an invalid `standard`/`format` value round-tripped
+    straight back into the response. Both are now validated up front with a
+    fixed message, before export_dataset() is ever called.
+    """
+    resp = anon_api_client.get(
+        f"/api/datasets/{published_dataset_id}/export/",
+        params={"standard": "not_a_real_standard", "format": "jsonld"},
+    )
+    assert resp.status_code == 400, f"{resp.status_code}: {resp.text}"
+    error = resp.json().get("error", "")
+    assert error == "Unknown standard", (
+        f"expected the fixed message, got {error!r} (looks like the pre-#245 "
+        "exception text, which echoes the caller's own value)"
+    )
+    assert "not_a_real_standard" not in error
+
+    resp = anon_api_client.get(
+        f"/api/datasets/{published_dataset_id}/export/",
+        params={"standard": "dcat", "format": "not_a_real_format"},
+    )
+    assert resp.status_code == 400, f"{resp.status_code}: {resp.text}"
+    error = resp.json().get("error", "")
+    assert error == "Format not available for this standard", (
+        f"expected the fixed message, got {error!r} (looks like the pre-#245 "
+        "exception text, which echoes the caller's own value)"
+    )
+    assert "not_a_real_format" not in error
