@@ -17,6 +17,10 @@ class CollaborativesListPage(BasePage):
         """'drafts_empty', 'published_empty' or 'rows' (see BasePage.list_view_state)."""
         return self.list_view_state(CollaborativesListPageLocators)
 
+    def usecase_count_label(self, collaborative_title: str) -> str:
+        """Text of the 'Use Cases' column for the row matching `collaborative_title`."""
+        return self.table_cell_text(collaborative_title, "Use Cases")
+
     def is_loaded(self):
         return self.wait_with_timeout(10).until(
             EC.visibility_of_element_located(CollaborativesListPageLocators.ADD_NEW_COLLABORATIVE_BUTTON)
