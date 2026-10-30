@@ -4,8 +4,8 @@
 # sortable, paginated view over built charts and chart images, additive next
 # to the existing `getChartData` query.
 #
-# `readonly`: anonymous-only, so it also runs in the prod gate. `deployed_pr`
-# skips it wherever the backend doesn't serve #262 yet; on prod before the
+# `readonly`: reads only (anonymous, and the worker account's own charts),
+# so it also runs in the prod gate. `deployed_pr` skips it wherever the backend doesn't serve #262 yet; on prod before the
 # release the field doesn't exist at all ("Cannot query field 'chartsTable'")
 # and would fail every prod deploy instead.
 
@@ -45,3 +45,42 @@ def test_anon_is_refused_like_get_chart_data(anon_graphql_client):
     message = body["errors"][0]["message"]
     assert "permission" in message.lower(), message
     assert body.get("data") is None, body
+
+
+# ─── Authenticated: the worker's account (graphql_client) ──────────────────
+
+ROWS = """data { __typename
+  ... on TypeResourceChart { id status chartType dataset { id } }
+  ... on TypeResourceChartImage { id status dataset { id } } }"""
+
+
+def _charts_table(client, args="", fields="totalItemsCount", org=None):
+    """Raw chartsTable response body. `org` is sent as the `organization`
+    header, which the backend middleware turns into the org context."""
+    response = client.session.post(
+        client.endpoint,
+        json={"query": f"{{ chartsTable{args} {{ {fields} }} }}"},
+        headers={"organization": org} if org else {},
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def _table(client, args="", fields="totalItemsCount", org=None):
+    body = _charts_table(client, args, fields, org)
+    assert not body.get("errors"), body["errors"]
+    return body["data"]["chartsTable"]
+
+
+@pytest.mark.smoke
+def test_outsider_org_context_is_refused(graphql_client):
+    """Logged in, but asking for an organisation's charts without being a
+    member of it: refused by ChartDataPermission, not served that org's rows."""
+    mine = {o["slug"] for o in graphql_client.query("{ organizations { slug } }")["organizations"]}
+    others = [o["slug"] for o in graphql_client.query("{ allOrganizations { slug } }")["allOrganizations"]
+              if o["slug"] not in mine]
+    if not others:
+        pytest.skip("this account is a member of every organisation")
+    body = _charts_table(graphql_client, "(limit: 5)", "totalItemsCount", org=others[0])
+    assert body.get("errors"), f"a non-member got {others[0]!r}'s charts: {body}"
+    assert "permission" in body["errors"][0]["message"].lower(), body["errors"]
