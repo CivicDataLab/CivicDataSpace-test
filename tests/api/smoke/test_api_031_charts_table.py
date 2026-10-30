@@ -104,3 +104,81 @@ def test_invalid_page_filter_and_sort_input_is_rejected(graphql_client, args, ex
     # Images are filtered first so the allowlist is named as clients know it,
     # not with the built-chart rewrite (resource__dataset…).
     assert "resource__" not in message, message
+
+
+@pytest.fixture(scope="module")
+def charts(graphql_client):
+    """(org, table) for the first context of this account that lists charts:
+    its own (no org), then each organisation it belongs to."""
+    orgs = [o["slug"] for o in graphql_client.query("{ organizations { slug } }")["organizations"]]
+    for org in [None, *orgs]:
+        table = _table(graphql_client, "(limit: 100)", f"totalItemsCount statusCounts {{ status count }} {ROWS}", org)
+        if table["totalItemsCount"]:
+            return org, table
+    pytest.skip(f"this account has no charts or chart images in its own context or in {orgs}")
+
+
+def _kind(row):
+    return {"TypeResourceChart": "CHART", "TypeResourceChartImage": "IMAGE"}[row["__typename"]]
+
+
+@pytest.mark.functional
+@pytest.mark.parametrize("field, key", [
+    ("kind", _kind),
+    ("chart_type", lambda row: row.get("chartType")),
+    ("dataset", lambda row: (row.get("dataset") or {}).get("id")),
+], ids=["kind", "chart_type", "dataset"])
+def test_filter_narrows_to_matching_rows(graphql_client, charts, field, key):
+    """Each filter returns only matching rows, and fewer of them. The value is
+    picked from live rows and some visible row must lack it, so a filter the
+    resolver ignored could not pass. `kind` also proves the UNION merge: a
+    CHART row must come back as TypeResourceChart, an IMAGE row as
+    TypeResourceChartImage."""
+    org, table = charts
+    rows = table["data"]
+    assert len(rows) == min(table["totalItemsCount"], 100), "rows were dropped while merging the two tables"
+    values = [key(r) for r in rows]
+    candidates = [v for v in values if v is not None and any(x != v for x in values)]
+    if not candidates:
+        pytest.skip(f"no {field} value that only some of this account's charts have")
+    value = max(set(candidates), key=lambda v: (values.count(v), str(v)))
+
+    filtered = _table(
+        graphql_client,
+        f'(limit: 100, filters: [{{field: "{field}", value: "{value}"}}])',
+        f"totalItemsCount {ROWS}",
+        org,
+    )
+    assert 0 < filtered["totalItemsCount"] < table["totalItemsCount"], (
+        f"filtering {field}={value!r} should narrow {table['totalItemsCount']} rows, "
+        f"got {filtered['totalItemsCount']}"
+    )
+    for row in filtered["data"]:
+        assert key(row) == value, f"row doesn't match {field}={value!r}: {row}"
+
+
+@pytest.mark.functional
+def test_status_counts_ignore_the_status_filter_itself(graphql_client, charts):
+    """statusCounts is computed over every filter except `status`, summed
+    over both tables. The status picked is one the filter actually changes the
+    rows for (a minority status, else one no chart has), so counts computed
+    with the status filter applied could not pass."""
+    org, table = charts
+    counts = {c["status"]: c["count"] for c in table["statusCounts"]}
+    total = table["totalItemsCount"]
+    assert sum(counts.values()) == total, f"statusCounts {counts} don't add up to {total}"
+    status = min(("DRAFT", "PUBLISHED", "ARCHIVED"), key=lambda s: (counts.get(s, 0) == total, counts.get(s, 0)))
+
+    filtered = _table(
+        graphql_client,
+        f'(filters: [{{field: "status", value: "{status}"}}])',
+        "totalItemsCount statusCounts { status count }",
+        org,
+    )
+    assert filtered["totalItemsCount"] == counts.get(status, 0) != total, (
+        f"the status filter should still apply to rows: {status} -> {filtered}"
+    )
+    assert filtered["statusCounts"] == table["statusCounts"], (
+        "adding a status filter must not change statusCounts "
+        f"(unfiltered={table['statusCounts']}, filtered={filtered['statusCounts']})"
+    )
