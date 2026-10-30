@@ -6,7 +6,7 @@
 # (#215, see test_api_013_datasets_table.py), additive next to the existing
 # useCases/collaboratives/aiModels/publications queries.
 #
-# `readonly`: every test here is an anonymous, unauthenticated GraphQL read.
+# `readonly`: every test here is a GraphQL read (anonymous, or as accounts 2/3).
 # `deployed_pr`: #254 has not reached `main`/prod yet (confirmed via
 # `git merge-base --is-ancestor <merge-sha> origin/main` in DataSpaceBackend),
 # so this is gated the same way #215/#223/#245 were -- safe to merge into CI
