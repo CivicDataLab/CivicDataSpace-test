@@ -28,9 +28,9 @@ def test_prv_013_ind_ai_model_domain_dropdown(driver, base_url, test_credentials
     flow (test_prv_012) never touches the Domain field.
     Steps:
       1. Access Homepage and log in
-      2. Navigate to My Dashboard -> AI Models -> Add New AI Model
-         (creation redirects straight into the edit/details page)
-      3. Read the Domain <select>'s real (non-placeholder) option values
+      2. Navigate to My Dashboard -> AI Models -> Create AI Model
+         (creation opens the Versions step), then open Model Information
+      3. Read the options the empty Domain combobox lists
       4. Assert it populated with real PromptDomain values, not empty
     """
     driver.delete_all_cookies()
@@ -50,7 +50,7 @@ def test_prv_013_ind_ai_model_domain_dropdown(driver, base_url, test_credentials
         "test_prv_013: go_to_login(flow='provider') did not return ProviderHomePage"
     )
 
-    # Step 2: My Dashboard -> AI Models -> Add New AI Model
+    # Step 2: My Dashboard -> AI Models -> Create AI Model
     my_dash = prov_home.goto_my_dashboard()
     assert isinstance(my_dash, MyDashboardPage), (
         "test_prv_013: goto_my_dashboard() did not return MyDashboardPage"
@@ -66,10 +66,9 @@ def test_prv_013_ind_ai_model_domain_dropdown(driver, base_url, test_credentials
         "test_prv_013: click_add_new_ai_model() did not return CreateAiModelPage"
     )
 
-    create_page.go_to_metadata_tab()
+    create_page.go_to_details()
 
-    # Step 3-4: Domain dropdown must have real PromptDomain options, not just
-    # the "Click to select from dropdown" placeholder.
+    # Step 3-4: Domain must list real PromptDomain options, not none.
     domain_values = create_page.get_domain_option_values()
     assert len(domain_values) >= MIN_REAL_DOMAIN_OPTIONS, (
         f"Step 3-4: Domain dropdown has only {len(domain_values)} real option(s) "

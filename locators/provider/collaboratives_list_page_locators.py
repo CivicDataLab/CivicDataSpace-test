@@ -2,10 +2,9 @@
 from selenium.webdriver.common.by import By
 
 class CollaborativesListPageLocators:
-    # Broad locator used only for page-load detection (not for clicking)
-    ADD_NEW_COLLABORATIVE_BUTTON = (By.XPATH, "//*[contains(normalize-space(), 'Add New Collaborative')]")
+    ADD_NEW_COLLABORATIVE_BUTTON = (By.XPATH, "//button[normalize-space(.)='Create Collaborative']")
 
-    # Empty-list states. Which one renders depends on the drafts/published tab.
-    EMPTY_DRAFTS_MESSAGE = (By.XPATH, "//*[normalize-space(text())='You have not added any collaborative yet.']")
-    EMPTY_PUBLISHED_MESSAGE = (By.XPATH, "//*[normalize-space(text())='No Published Collaboratives yet.']")
-    LIST_ROWS = (By.XPATH, "//table//tbody/tr")
+    # One empty-state cell for every tab; LIST_ROWS skips it.
+    EMPTY_DRAFTS_MESSAGE = (By.XPATH, "//table//tbody//td[contains(@class,'EmptyCell')]")
+    EMPTY_PUBLISHED_MESSAGE = EMPTY_DRAFTS_MESSAGE
+    LIST_ROWS = (By.XPATH, "//table//tbody/tr[not(td[contains(@class,'EmptyCell')])]")
