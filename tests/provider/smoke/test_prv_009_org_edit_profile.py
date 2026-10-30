@@ -71,8 +71,10 @@ def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, t
 
     # ─── Step 6: Organization Profile Details ──────────────────────────────────────────
 
-    # (6a) Organization Name / First Name field
-    org_name = "CivicDataLab"
+    # (6a) Organization Name: re-save the org's own name. Renaming it changes its
+    # slug: "CivicDataLab" collided with the real org's slug, and any rename
+    # would break `writable_org` for every other org-scoped test.
+    org_name = writable_org
     org_profile.enter_first_name(org_name)
     get_org_name = org_profile.get_first_name_value()
     assert get_org_name == org_name, (
