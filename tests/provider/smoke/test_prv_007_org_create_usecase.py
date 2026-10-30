@@ -1,19 +1,15 @@
 # tests/provider/functional/test_prv_007_org_create_usecase.py
 
 import os
-import time
 
 import pytest
-import requests
 
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
 from pages.home_page import HomePage
 from pages.provider.provider_home_page import ProviderHomePage
 from pages.provider.my_dashboard_page import MyDashboardPage
 from pages.provider.create_usecase_page import CreateUsecasePage
+from tests.data.test_data import UseCaseTestData
 from pages.provider.organizations_page import OrganizationsPage
 
 @pytest.mark.functional
@@ -42,13 +38,11 @@ def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_cre
       2. Click LOGIN / SIGN UP and auto-login as provider
       3. Navigate to "Organizations"
       4. Select an organization
-      5. Under UseCases section click on "Add New UseCase"
-      6. Fill in Summary, Tags, Sectors, Geography, SDG Goals, Started On, Running Status,
-         Completed On, and Upload a Logo.
-      7. Switch to "Datasets" tab, select the first dataset in the list, then click "Submit".
-      8. Switch to "Contributors" tab, add Contributors, Supporters, and Partners.
-      9. Switch to "Publish" tab and click "Publish".
-      10. Assert that the UseCase is marked "Published".
+      5. Under UseCases section click "Create Use Case"
+      6. Builder: set title and subtitle, upload a thumbnail, add a text block.
+      7. Connect: tags, SDG goal, sector and geography; connect the first published dataset.
+      8. Review & Publish: click "Publish Use Case".
+      9. Assert the use case is listed as Published.
     """
     # ─── Step 1: Load Homepage ──────────────────────────────────────────────────────
     driver.delete_all_cookies()
@@ -83,97 +77,48 @@ def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_cre
     usecases_page = org_dash.click_usecases_card()
     assert usecases_page.is_loaded(), "UseCases page did not load properly"
 
-    # ─── Step 6: Click "Add New UseCase" ─────────────────────────────────────────────
+    # ─── Step 6: Click "Create Use Case" ─────────────────────────────────────────────
     create_uc = usecases_page.click_add_new_usecase()
     assert isinstance(create_uc, CreateUsecasePage), (
         f"Expected CreateUsecasePage after click, got {type(create_uc)}"
     )
 
-    # ─── Step 7: Fill in UseCase Details ─────────────────────────────────────────────
+    # ─── Step 7: Builder -- title, subtitle, thumbnail, a text block ────────────
+    title = f"Org UC {datetime.now():%d%b%y_%H%M%S}"
+    create_uc.enter_title(title)
+    assert create_uc.get_title_value() == title
 
-    # (7a) Summary
-    test_summary = f"Automated Org UseCase Test – {datetime.now().date()}"
-    create_uc.enter_summary(test_summary)
-    actual_summary = create_uc.get_summary_value()
-    assert actual_summary == test_summary, (
-        f"Step 7a failure: Summary mismatch. Expected: '{test_summary}', Found: '{actual_summary}'."
-    )
+    subtitle = UseCaseTestData.get_summary("organization")
+    create_uc.enter_subtitle(subtitle)
+    assert create_uc.get_subtitle_value() == subtitle
 
-    # (7b) Platform URL
-    create_uc.enter_platform_url("https://orgplatform.url")
-    actual_url = create_uc.get_platform_url_value()
-    assert actual_url == "https://orgplatform.url", (
-        f"Step 7b failure: Expected platform URL 'https://orgplatform.url', but found '{actual_url}'."
-    )
+    assert os.path.exists(sample_logo_path)
+    create_uc.upload_thumbnail(sample_logo_path)
 
-    time.sleep(3)
+    body = "Automated test content block."
+    create_uc.add_text_block(body)
+    assert create_uc.get_text_block_value() == body
 
-    # (7c) Running Status
-    create_uc.select_running_status("On Going")
-    actual_status = create_uc.get_running_status_value()
-    assert actual_status == "On Going", (
-        f"Step 7c failure: Expected status 'On Going', but found '{actual_status}'."
-    )
+    # ─── Step 8: Connect -- classification and one published dataset ─────────
+    create_uc.click_continue("connect")
 
-    # (7d) Tags
-    create_uc.select_tags(["Budget"])
-    selected_tags = create_uc.get_selected_tags()
-    assert "Budget" in selected_tags, (
-        f"Step 7d failure: Tag not selected correctly. Current tags: {selected_tags}"
-    )
+    create_uc.select_tags(UseCaseTestData.TAGS)
+    for tag in UseCaseTestData.TAGS:
+        assert tag in create_uc.get_selected_tags()
 
-    # (7e) Sectors
+    create_uc.select_sdg_goals(UseCaseTestData.SDG_GOALS)
+    assert UseCaseTestData.SDG_GOALS in create_uc.get_selected_sdg_goals()
+
     create_uc.select_sectors([sector_name])
-    selected_sectors = create_uc.get_selected_sectors()
-    assert sector_name in selected_sectors, (
-        f"Step 7e failure: Sector not selected correctly. Current sectors: {selected_sectors}"
-    )
+    assert sector_name in create_uc.get_selected_sectors()
 
-    # (7f) Geography
-    create_uc.select_geography("India")
-    actual_geo = create_uc.get_selected_geography()
-    assert "India" in actual_geo, (
-        f"Step 7f failure: Expected geography to contain 'India', but got '{actual_geo}'."
-    )
+    create_uc.select_geography(UseCaseTestData.GEOGRAPHY)
+    geos = create_uc.get_selected_geography()
+    assert any(g.startswith(UseCaseTestData.GEOGRAPHY) for g in geos), f"Geography chips: {geos}"
 
-    # (7g) SDG Goals
-    create_uc.select_sdg_goals("13")
-    selected_sdgs = create_uc.get_selected_sdg_goals()
-    assert "13" in selected_sdgs, (
-        f"Step 7g failure: SDG goal not selected correctly. Selected: {selected_sdgs}"
-    )
+    assert create_uc.connect_first_dataset()
 
-    # (7h) Started On
-    start_date = "2023-01-01"
-    create_uc.enter_started_on(start_date)
-    actual_start = create_uc.get_started_on_value()
-    assert actual_start == "2023-01-01", (
-        f"Step 7h failure: Started On mismatch. Expected: {start_date}, Found: {actual_start}"
-    )
-
-    # Note: Skipped "Completed On" as "On Going" status doesn't require completion date
-
-    # (7i) Logo Upload
-    create_uc.upload_logo(sample_logo_path)
-    assert create_uc.is_logo_uploaded(), "Step 7i failure: Logo upload did not succeed."
-
-    # ─── Step 8: Datasets tab – select the first dataset, click Submit ────────────────
-    create_uc.go_to_datasets_tab() \
-        .select_first_dataset_checkbox() \
-        .click_submit_datasets()
-
-    # Verify that dataset was selected and submission registered
-    selected_datasets = create_uc.get_selected_datasets()
-    assert selected_datasets, (
-        f"Step 8 failure: No dataset was selected/submitted. Got: {selected_datasets}"
-    )
-
-    # Note: Skipping contributor's section due to ongoing issues (as per test_prv_003)
-
-    # ─── Step 9: Publish tab – Publish UseCase ───────────────────────────────────────
-    create_uc.go_to_publish_tab()
-    time.sleep(5)
-    detail = create_uc.click_publish()
-    assert detail.is_published(), "Step 9 failure: UseCase was not marked as 'Published'."
-
-
+    # ─── Step 9: Review & Publish ───────────────────────────────────────────────
+    create_uc.click_continue("publish")
+    create_uc.click_publish(title)
+    assert create_uc.is_published(), f"Use case {title!r} is not listed as Published after publishing"

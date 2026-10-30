@@ -1,19 +1,15 @@
 # tests/provider/functional/test_prv_003_ind_create_usecase.py
 
 import os
-import time
 
 import pytest
-import requests
 
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
 from pages.home_page import HomePage
 from pages.provider.provider_home_page import ProviderHomePage
 from pages.provider.my_dashboard_page import MyDashboardPage
 from pages.provider.create_usecase_page import CreateUsecasePage
+from tests.data.test_data import UseCaseTestData
 
 @pytest.mark.functional
 def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url,test_credentials, sector_name):
@@ -25,13 +21,11 @@ def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url,test_cred
       1. Access Homepage
       2. Click LOGIN / SIGN UP and auto-login as provider
       3. Navigate to “My Dashboard”
-      4. Under UseCases section click on “Add New UseCase”
-      5. Fill in Summary, Tags, Sectors, Geography, SDG Goals, Started On, Running Status,
-         Completed On, and Upload a Logo.
-      6. Switch to “Datasets” tab, select the first dataset in the list, then click “Submit”.
-      7. Switch to “Contributors” tab, add Contributors, Supporters, and Partners.
-      8. Switch to “Publish” tab and click “Publish”.
-      9. Assert that the UseCase is marked “Published”.
+      4. Under UseCases section click "Create Use Case"
+      5. Builder: set title and subtitle, upload a thumbnail, add a text block.
+      6. Connect: tags, SDG goal, sector and geography; connect the first published dataset.
+      7. Review & Publish: click "Publish Use Case".
+      8. Assert the use case is listed as Published.
     """
     # ─── Step 1: Load Homepage ──────────────────────────────────────────────────────
     driver.delete_all_cookies()
@@ -60,137 +54,48 @@ def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url,test_cred
     usecases_page = my_dash.click_usecases_card()
     assert usecases_page.is_loaded(), "UseCases page did not load properly"
 
-    # ─── Step 5: Click “Add New UseCase” ─────────────────────────────────────────────
+    # ─── Step 5: Click "Create Use Case" ─────────────────────────────────────────────
     create_uc = usecases_page.click_add_new_usecase()
     assert isinstance(create_uc, CreateUsecasePage), (
         f"Expected CreateUsecasePage after click, got {type(create_uc)}"
     )
 
-    # # (6a) Use Case Name (optional, if applicable)
-    # test_usecase_name = f"Automated Test UseCase {datetime.now().strftime('%Y%m%d%H%M%S')}"
-    # create_uc.enter_usecase_name(test_usecase_name)
-    # actual_uc_name = create_uc.get_usecase_name_value()
-    # assert actual_uc_name == test_usecase_name, (
-    #     f"Step 6a failure: Expected use case name to be '{test_usecase_name}', but found '{actual_uc_name}'."
-    # )
+    # ─── Step 6: Builder -- title, subtitle, thumbnail, a text block ────────────
+    title = f"Ind UC {datetime.now():%d%b%y_%H%M%S}"
+    create_uc.enter_title(title)
+    assert create_uc.get_title_value() == title
 
-    # (6b) Summary
-    test_summary = f"Automated Functional Test UseCase – {datetime.now().date()}"
-    create_uc.enter_summary(test_summary)
-    actual_summary = create_uc.get_summary_value()
-    assert actual_summary == test_summary, (
-        f"Step 6b failure: Summary mismatch. Expected: '{test_summary}', Found: '{actual_summary}'."
-    )
+    subtitle = UseCaseTestData.get_summary("individual")
+    create_uc.enter_subtitle(subtitle)
+    assert create_uc.get_subtitle_value() == subtitle
 
-    ## (6c) Platform URL
-    create_uc.enter_platform_url("https://yourplatform.url")
-    actual_url = create_uc.get_platform_url_value()
-    assert actual_url == "https://yourplatform.url", (
-        f"Step 6c failure: Expected status 'Initiated', but found '{actual_url}'."
-    )
+    assert os.path.exists(sample_logo_path)
+    create_uc.upload_thumbnail(sample_logo_path)
 
-    time.sleep(3)
+    body = "Automated test content block."
+    create_uc.add_text_block(body)
+    assert create_uc.get_text_block_value() == body
 
-    # (6d) Running Status
-    create_uc.select_running_status("On Going")
-    actual_status = create_uc.get_running_status_value()
-    assert actual_status == "On Going", (
-        f"Step 6d failure: Expected status 'Initiated', but found '{actual_status}'."
-    )
+    # ─── Step 7: Connect -- classification and one published dataset ─────────
+    create_uc.click_continue("connect")
 
-    # (6e) Tags
-    create_uc.select_tags(["Budget"])
-    selected_tags = create_uc.get_selected_tags()
-    assert "Budget" in selected_tags, (
-        f"Step 6e failure: Tag not selected correctly. Current tags: {selected_tags}"
-    )
+    create_uc.select_tags(UseCaseTestData.TAGS)
+    for tag in UseCaseTestData.TAGS:
+        assert tag in create_uc.get_selected_tags()
 
-    # (6f) Sectors
+    create_uc.select_sdg_goals(UseCaseTestData.SDG_GOALS)
+    assert UseCaseTestData.SDG_GOALS in create_uc.get_selected_sdg_goals()
+
     create_uc.select_sectors([sector_name])
-    selected_sectors = create_uc.get_selected_sectors()
-    assert sector_name in selected_sectors, (
-        f"Step 6f failure: Sector not selected correctly. Current sectors: {selected_sectors}"
-    )
+    assert sector_name in create_uc.get_selected_sectors()
 
-    # (6g) Geography
-    create_uc.select_geography("India")
-    actual_geo = create_uc.get_selected_geography()
-    assert "India" in actual_geo, (
-        f"Step 6g failure: Expected geography to contain 'India', but got '{actual_geo}'."
-    )
+    create_uc.select_geography(UseCaseTestData.GEOGRAPHY)
+    geos = create_uc.get_selected_geography()
+    assert any(g.startswith(UseCaseTestData.GEOGRAPHY) for g in geos), f"Geography chips: {geos}"
 
-    # (6h) SDG Goals
-    create_uc.select_sdg_goals("13")
-    selected_sdgs = create_uc.get_selected_sdg_goals()
-    assert "13" in selected_sdgs, (
-        f"Step 6h failure: SDG goal not selected correctly. Selected: {selected_sdgs}"
-    )
+    assert create_uc.connect_first_dataset()
 
-    # (6i) Started On
-    start_date = "2023-01-01"
-    create_uc.enter_started_on(start_date)
-    actual_start = create_uc.get_started_on_value()
-    assert actual_start == "2023-01-01", (
-        f"Step 6i failure: Started On mismatch. Expected: {start_date}, Found: {actual_start}"
-    )
-
-    # skipped as On going does not have a completed on date.
-    # # (6j) Completed On
-    # completed_date = "01062023"
-    # create_uc.enter_completed_on(completed_date)
-    # actual_completed = create_uc.get_completed_on_value()
-    # assert actual_completed == "2023-06-01", (
-    #     f"Step 6j failure: Completed On mismatch. Expected: {completed_date}, Found: {actual_completed}"
-    # )
-
-    # (6k) Logo Upload
-    create_uc.upload_logo(sample_logo_path)
-    assert create_uc.is_logo_uploaded(), "Step 6k failure: Logo upload did not succeed."
-
-
-    # ─── Step 7: Datasets tab – select the first dataset, click Submit ────────────────
-    create_uc.go_to_datasets_tab() \
-        .select_first_dataset_checkbox() \
-        .click_submit_datasets()
-
-
-    # Verify that dataset was selected and submission registered (assumes a method exists)
-    selected_datasets = create_uc.get_selected_datasets()
-    assert selected_datasets, (
-        f"Step 7 failure: No dataset was selected/submitted. Got: {selected_datasets}"
-    )
-
-
-    #Skipping contributor's section because of ongoing issues.
-
-    # # ─── Step 8: Contributors tab – add contributors, supporters, partners ────────────
-    # create_uc.go_to_contributors_tab() \
-    #     .add_contributors(["Sanjay Pinna"]) \
-    #     .add_supporters(["CivicDataLab"]) \
-    #     .add_partners(["CivicDataLab"])
-    #
-    # # Validate entries
-    # contribs = create_uc.get_contributors_list()
-    # assert "Sanjay Pinna" in contribs, f"Step 8a failure: Contributor 'Sanjay Pinna' not found at index 3. Found: {contribs}"
-    #
-    # supporters = create_uc.get_supporters_list()
-    # assert "CivicDataLab" in supporters, (
-    #     f"Step 8b failure: Supporter 'CivicDataLab' not found. Found: {supporters}"
-    # )
-    #
-    # partners = create_uc.get_partners_list()
-    # assert "CivicDataLab" in partners, (
-    #     f"Step 8c failure: Partner 'CivicDataLab' not found. Found: {partners}"
-    # )
-
-    # ─── Step 9: Publish tab – Publish UseCase ───────────────────────────────────────
-    create_uc.go_to_publish_tab()
-    time.sleep(5)
-    detail = create_uc.click_publish()
-    assert detail.is_published(), "Step 9 failure: UseCase was not marked as 'Published'."
-
-    # ─── (Optional) Step 10: Download the newly published UseCase details via API (200)
-    # For example, if your app exposes a “download” or “fetch” endpoint for published use cases:
-    #    download_url = detail.get_download_url()   # assume this method exists
-    #    resp = requests.get(download_url)
-    #    assert resp.status_code == 200, f"Expected HTTP 200 when downloading use case, got {resp.status_code}"
+    # ─── Step 8: Review & Publish ───────────────────────────────────────────────
+    create_uc.click_continue("publish")
+    create_uc.click_publish(title)
+    assert create_uc.is_published(), f"Use case {title!r} is not listed as Published after publishing"
