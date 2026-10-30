@@ -126,9 +126,57 @@ class ProviderAPI:
     def ids(self, kind, org_name=None):
         return {str(row["id"]) for row in self.listing(kind, org_name)["data"]}
 
+    def names(self, kind, org_name=None):
+        """The titles of the listed records (display names for AI models, names for charts)."""
+        return [r.get("title") or r.get("displayName") or r.get("name") for r in self.listing(kind, org_name)["data"]]
+
     def counts(self, org_name=None):
         """{kind: totalItemsCount} for every kind; used to prove a run left no residue."""
         return {kind: self.listing(kind, org_name)["totalItemsCount"] for kind in ORDER}
+
+    # -- creating -------------------------------------------------------------
+
+    def create_draft(self, kind, title, org_name=None):
+        """Create a draft called `title` through the API and return its id.
+
+        Mirrors what the dashboard's Create button does (an empty record), plus
+        the rename, so tests get a row they can find by name.
+        """
+        org = self._owner(org_name)
+        if kind == "dataset":
+            made = self._mutate(
+                "mutation{ addDataset(createInput:{datasetType: DATA}){ success data { id } } }", org)
+            record_id = made["addDataset"]["data"]["id"]
+            self._mutate(
+                "mutation($i: UpdateDatasetInput!){ updateDataset(updateDatasetInput:$i){ __typename } }",
+                org, {"i": {"dataset": record_id, "title": title}})
+        elif kind in ("usecase", "collaborative"):
+            add, update = ("addUseCase", "updateUseCase") if kind == "usecase" else ("addCollaborative", "updateCollaborative")
+            made = self._mutate("mutation{ %s { __typename ... on Type%s { id } } }" % (
+                add, "UseCase" if kind == "usecase" else "Collaborative"), org)
+            record_id = made[add]["id"]
+            self._mutate(
+                "mutation($i: %sInputPartial!){ %s(data:$i){ id } }" % (
+                    "UseCase" if kind == "usecase" else "Collaborative", update),
+                org, {"i": {"id": record_id, "title": title}})
+        elif kind == "aimodel":
+            made = self._mutate(
+                "mutation($i: CreateAIModelInput!){ createAiModel(input:$i){ success data { id } } }", org,
+                {"i": {"name": title.lower().replace(" ", "-"), "displayName": title,
+                       "modelType": "TEXT_GENERATION", "provider": "CUSTOM"}})
+            record_id = made["createAiModel"]["data"]["id"]
+        else:
+            raise ValueError(f"cannot create a {kind} draft through the API")
+        return str(record_id)
+
+    def _mutate(self, query, org=None, variables=None):
+        body = self.gql(query, variables, org)
+        assert "errors" not in body, f"{query[:60]}...: {body['errors']}"
+        data = body["data"]
+        for payload in data.values():
+            if isinstance(payload, dict) and payload.get("success") is False:
+                raise AssertionError(f"{query[:60]}... refused: {payload}")
+        return data
 
     # -- deleting -------------------------------------------------------------
 
