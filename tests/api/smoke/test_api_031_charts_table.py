@@ -123,20 +123,37 @@ def _kind(row):
 
 
 @pytest.mark.functional
+def test_kind_filter_splits_rows_into_their_own_types(graphql_client, charts):
+    """kind=CHART and kind=IMAGE partition the table, and the UNION merge
+    resolves each row to its own type: a CHART row is a TypeResourceChart, an
+    IMAGE row a TypeResourceChartImage. Asked per kind rather than picked from
+    the page, so images rendered as built charts fail instead of skipping."""
+    org, table = charts
+    assert len(table["data"]) == min(table["totalItemsCount"], 100), "rows were dropped while merging the two tables"
+    totals = {}
+    for kind in ("CHART", "IMAGE"):
+        filtered = _table(
+            graphql_client, f'(limit: 100, filters: [{{field: "kind", value: "{kind}"}}])', f"totalItemsCount {ROWS}", org
+        )
+        totals[kind] = filtered["totalItemsCount"]
+        for row in filtered["data"]:
+            assert _kind(row) == kind, f"kind={kind} returned a {row['__typename']}: {row}"
+    assert sum(totals.values()) == table["totalItemsCount"], f"kinds {totals} don't add up to {table['totalItemsCount']}"
+    if not all(totals.values()):
+        pytest.skip(f"this account's charts are all one kind ({totals}); the merge needs both")
+
+
+@pytest.mark.functional
 @pytest.mark.parametrize("field, key", [
-    ("kind", _kind),
     ("chart_type", lambda row: row.get("chartType")),
     ("dataset", lambda row: (row.get("dataset") or {}).get("id")),
-], ids=["kind", "chart_type", "dataset"])
+], ids=["chart_type", "dataset"])
 def test_filter_narrows_to_matching_rows(graphql_client, charts, field, key):
     """Each filter returns only matching rows, and fewer of them. The value is
     picked from live rows and some visible row must lack it, so a filter the
-    resolver ignored could not pass. `kind` also proves the UNION merge: a
-    CHART row must come back as TypeResourceChart, an IMAGE row as
-    TypeResourceChartImage."""
+    resolver ignored could not pass."""
     org, table = charts
     rows = table["data"]
-    assert len(rows) == min(table["totalItemsCount"], 100), "rows were dropped while merging the two tables"
     values = [key(r) for r in rows]
     candidates = [v for v in values if v is not None and any(x != v for x in values)]
     if not candidates:
