@@ -1,4 +1,6 @@
 # locators/provider/ai_models_locators.py
+#
+# AI-model-only parts. Shared wizard parts: EditorWizardLocators.
 
 from selenium.webdriver.common.by import By
 
@@ -8,59 +10,25 @@ class AiModelsLocators:
     # ── List page ─────────────────────────────────────────────────────────────
     ADD_NEW_AI_MODEL_BTN = (By.XPATH, "//button[normalize-space()='Create AI Model']")
 
-    # ── Editor tabs ───────────────────────────────────────────────────────────
-    TAB_METADATA = "//button[@role='tab' and normalize-space()='Metadata']"
-    TAB_VERSION  = "//button[@role='tab' and normalize-space()='Version']"
-    TAB_PUBLISH  = "//button[@role='tab' and normalize-space()='Publish']"
+    # ── Wizard: /aimodels/edit/<id>/{versions,details,publish} ────────────────
+    # Versions: "Add Version" opens a sheet holding the version and its access methods.
+    ADD_VERSION_BTN = (By.XPATH, "//button[normalize-space()='Add Version']")
+    VERSION_SHEET = (By.XPATH, "//*[@role='dialog'][.//h2[normalize-space()='Add Version']]")
+    ADD_ACCESS_METHOD_BTN = (By.XPATH, "(//*[@role='dialog']//button[normalize-space()='Add Access Method'])[last()]")
+    ACCESS_NAME_INPUT = (By.XPATH, "//input[@name='accessName']")
+    PROVIDER_SELECT = (By.XPATH, "//*[@role='dialog']//button[@role='combobox'][normalize-space()='Select provider...']")
+    PROVIDER_MODEL_ID_INPUT = (By.XPATH, "//input[@name='providerModelId']")
+    API_ENDPOINT_INPUT = (By.XPATH, "//input[@name='apiEndpointUrl']")
+    SAVE_VERSION_BTN = (By.XPATH, "//button[normalize-space()='Save Version']")
+    SAVED_VERSION = "//main//*[normalize-space()='Version {name}']"
 
-    # ── Metadata – native <select> fields (by stable `name` attribute) ────────
-    # Labels use <label> elements; asterisk is CSS ::after, not in DOM text
-    MODEL_TYPE_SELECT    = "//select[@name='modelType']"
-    DOMAIN_SELECT        = "//select[@name='domain']"
-    MAX_TOKENS_SELECT    = "//select[@name='maxTokens']"
-    USAGE_LICENSE_SELECT = "//select[@name='usageLicense']"
+    # Model Information
+    MODEL_NAME_INPUT = (By.XPATH, "//input[@name='modelName']")
+    DESCRIPTION_EDITOR = (By.XPATH, "//main//div[contains(@class,'ql-editor') and @contenteditable='true']")
+    INTENDED_USE_INPUT = (By.XPATH, "//textarea[@name='intendedUse']")
+    MODEL_WEBSITE_INPUT = (By.XPATH, "//input[@name='modelWebsite']")
+    USAGE_LICENSE_SELECT = (By.XPATH, "//button[@id=//label[normalize-space()='Usage License']/@for]")
 
-    # ── Metadata – Quill rich-text editor ─────────────────────────────────────
-    DESCRIPTION_EDITOR = "//div[contains(@class,'ql-editor')]"
-
-    # ── Metadata – text inputs / textareas (by stable `name` attribute) ───────
-    TARGET_USERS_INPUT  = "//textarea[@name='targetUsers']"
-    INTENDED_USE_INPUT  = "//textarea[@name='intendedUse']"
-    MODEL_WEBSITE_INPUT = "//input[@name='modelWebsite']"
-
-    # ── Metadata – custom combobox inputs (via <label> text, no asterisk) ─────
-    SECTORS_INPUT   = "//label[normalize-space()='Sectors']/following::input[@role='combobox'][1]"
-    TAGS_INPUT      = "//label[normalize-space()='Tags']/following::input[@role='combobox'][1]"
-    LANGUAGES_INPUT = "//label[normalize-space()='Languages']/following::input[@role='combobox'][1]"
-    GEOGRAPHY_INPUT = "//label[normalize-space()='Locations / Geography']/following::input[@role='combobox'][1]"
-
-    # ── Version tab – main card ───────────────────────────────────────────────
-    CREATE_FIRST_VERSION_BTN = "//button[normalize-space()='Create First Version']"
-    NEW_VERSION_BTN          = "//button[normalize-space()='NEW VERSION']"
-    ADD_ACCESS_METHOD_BTN    = "//button[contains(normalize-space(),'Add Access Method')]"
-    NO_VERSIONS_PLACEHOLDER  = "//div[normalize-space()='No versions yet']"
-
-    # ── Version tab – "Add a New Version" dialog ──────────────────────────────
-    VERSION_NAME_INPUT     = "//label[normalize-space()='Version Name']/following::input[1]"
-    LIFECYCLE_STAGE_SELECT = "//label[normalize-space()='Lifecycle Stage']/following::select[1]"
-    SAVE_VERSION_BTN       = "//button[normalize-space()='SAVE AND CLOSE']"
-
-    # ── Version tab – "Add New Access Method" dialog ──────────────────────────
-    PROVIDER_TYPE_SELECT = "//label[normalize-space()='Provider Type']/following::select[1]"
-    API_ENDPOINT_INPUT   = "//input[@placeholder='https://your-api.com/v1/completions']"
-    ADD_PROVIDER_BTN     = "//button[normalize-space()='Add Provider']"
-
-    # ── Metadata – access type ────────────────────────────────────────────────
-    # Radix UI Checkbox renders as <button role="checkbox">; the Restricted
-    # option has @disabled, so selecting the non-disabled one gives Open Access.
-    OPEN_ACCESS_CHECKBOX = "//button[@role='checkbox' and not(@disabled)]"
-
-    # ── Wizard navigation ─────────────────────────────────────────────────────
-    WIZARD_NEXT_BTN = "//button[normalize-space()='Next']"
-
-    # ── Publish tab ───────────────────────────────────────────────────────────
-    PUBLISH_REVIEW_SECTION  = "//div[contains(normalize-space(),'REVIEW AI MODEL DETAILS')]"
-    PUBLISH_BTN             = "//button[normalize-space()='Publish' and not(@role='tab')]"
-    MODEL_NOT_PUBLISHED_TXT = "//div[contains(normalize-space(),'Model is not published')]"
-    MODEL_PUBLISHED_TXT     = "//div[contains(normalize-space(),'Model is published')]"
-    METADATA_MISSING_ERROR  = "//*[contains(normalize-space(),'missing. Please add to continue')]"
+    # A button-style select's options live in the element its trigger controls.
+    SELECT_OPTION = "//*[@id='{listbox}']//*[@role='option' and normalize-space()='{text}']"
+    LISTBOX_OPTIONS = "//*[@id='{listbox}']//*[@role='option']"
