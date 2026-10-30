@@ -26,6 +26,8 @@
 
 import pytest
 
+from tests.api import publications as pub
+
 pytestmark = [pytest.mark.api, pytest.mark.readonly, pytest.mark.deployed_pr("DataSpaceBackend#254")]
 
 
@@ -230,3 +232,129 @@ def test_publications_table_gap_no_published_rows_on_dev(anon_graphql_client):
     if data["totalItemsCount"] > 0:
         pytest.skip("a Publication is now published on dev -- replace this with real coverage")
     assert data["data"] == [] and data["statusCounts"] == [], data
+
+
+# ─── Authenticated visibility ──────────────────────────────────────────────
+#
+# Account 2 is the owner/member, account 3 the outsider (fixed, as in
+# test_api_017, so the roles don't depend on which xdist worker runs this).
+# Reads only. Records are picked at runtime; a missing case skips with why.
+
+AUTH_TABLES = ["useCasesTable", "collaborativesTable", "aiModelsTable"]
+ROW_BY_TABLE = {
+    "useCasesTable": "id status organization { id } user { id }",
+    "collaborativesTable": "id status organization { id } user { id }",
+    "aiModelsTable": "id status isPublic isActive organization { id } user { id }",
+}
+
+
+def _rows(client, table, org=None, include_public=False, ids=None):
+    """One page of `table` as `client` sees it; `ids` narrows to those rows."""
+    args = "limit: 100"
+    if include_public:
+        args += ", includePublic: true"
+    if ids is not None:
+        args += ', filters: [{field: "id", condition: "in", value: "%s"}]' % ",".join(map(str, ids))
+    body = pub.gql(
+        client, "{ %s(%s) { totalItemsCount data { %s } } }" % (table, args, ROW_BY_TABLE[table]), org=org,
+    )
+    assert "errors" not in body, f"{table}: {body['errors']}"
+    data = body["data"][table]
+    assert data["totalItemsCount"] <= 100, f"{table}: more than one page ({data['totalItemsCount']}), narrow the query"
+    return data["data"]
+
+
+def _is_public(table, row):
+    """The anonymous/includePublic set: PUBLISHED, or public+active for AI models."""
+    if table == "aiModelsTable":
+        return row["isPublic"] and row["isActive"]
+    return row["status"] == "PUBLISHED"
+
+
+def _org_id(row):
+    return (row["organization"] or {}).get("id")
+
+
+@pytest.fixture(scope="module")
+def owner(graphql_client_for):
+    return graphql_client_for(2)
+
+
+@pytest.fixture(scope="module")
+def outsider(graphql_client_for):
+    return graphql_client_for(3)
+
+
+@pytest.fixture(scope="module")
+def owner_id(owner):
+    return owner.query("{ me { id } }")["me"]["id"]
+
+
+@pytest.mark.smoke
+@pytest.mark.parametrize("table", AUTH_TABLES)
+def test_signed_in_without_org_lists_only_own_rows(owner, owner_id, table):
+    """No org header, no includePublic: the caller's own rows only (AI models:
+    own rows with no organization). Broken scoping shows other users' rows."""
+    rows = _rows(owner, table)
+    if not rows:
+        pytest.skip(f"account 2 owns no {table} rows on this environment")
+    strangers = [r for r in rows if (r["user"] or {}).get("id") != owner_id]
+    assert not strangers, f"{table}: rows owned by someone else: {strangers[:3]}"
+    if table == "aiModelsTable":
+        in_orgs = [r for r in rows if _org_id(r)]
+        assert not in_orgs, f"aiModelsTable: own rows must have no organization: {in_orgs[:3]}"
+
+
+@pytest.mark.smoke
+@pytest.mark.parametrize("table", AUTH_TABLES)
+def test_own_drafts_hidden_from_anonymous_and_outsider(owner, outsider, anon_graphql_client, table):
+    hidden = {r["id"] for r in _rows(owner, table) if not _is_public(table, r)}
+    if not hidden:
+        pytest.skip(f"account 2 has no non-public {table} rows on this environment")
+    for who, client in (("anonymous", anon_graphql_client), ("account 3", outsider)):
+        seen = {r["id"] for r in _rows(client, table, include_public=True, ids=hidden)}
+        assert not hidden & seen, f"{table}: {who} sees account 2's non-public rows {sorted(hidden & seen)[:5]}"
+
+
+@pytest.fixture(scope="module")
+def member_org_ids(owner):
+    orgs = owner.query("{ userPermissions { organizations { organizationId } } }")["userPermissions"]["organizations"]
+    if not orgs:
+        pytest.skip("account 2 belongs to no organization")
+    return [o["organizationId"] for o in orgs]
+
+
+def _org_with_hidden_rows(owner, table, org_ids):
+    """First member org whose table has a non-public row, with its rows."""
+    for org in org_ids[:8]:  # ponytail: bounded scan to spare the 1000 POST/h budget
+        rows = _rows(owner, table, org=org)
+        if any(not _is_public(table, r) for r in rows):
+            return org, rows
+    pytest.skip(f"none of account 2's first 8 orgs has a non-public {table} row")
+
+
+@pytest.mark.smoke
+@pytest.mark.parametrize("table", AUTH_TABLES)
+def test_org_header_lists_that_orgs_rows_including_drafts(owner, anon_graphql_client, member_org_ids, table):
+    """With `organization: <id>` a member sees that org's rows -- only those,
+    drafts included -- not their own-rows list and not just the public set."""
+    org, rows = _org_with_hidden_rows(owner, table, member_org_ids)
+    other_orgs = {_org_id(r) for r in rows} - {org}
+    assert not other_orgs, f"{table}: org {org} listing has rows from {other_orgs}"
+    drafts = {r["id"] for r in rows if not _is_public(table, r)}
+    public = {r["id"] for r in _rows(anon_graphql_client, table, include_public=True, ids=drafts)}
+    assert drafts - public, f"{table}: org {org} listing adds nothing beyond the public set"
+
+
+@pytest.mark.smoke
+@pytest.mark.xfail(strict=True, reason=(
+    "DataSpaceBackend: the organization header is trusted without a membership "
+    "check (_visible_use_cases & co., same as useCases/collaboratives/aiModels), "
+    "so an anonymous caller lists any org's drafts. Verified on dev 2026-10-30."
+))
+@pytest.mark.parametrize("table", AUTH_TABLES)
+def test_org_header_does_not_expose_drafts_to_anonymous(owner, anon_graphql_client, member_org_ids, table):
+    org, rows = _org_with_hidden_rows(owner, table, member_org_ids)
+    drafts = {r["id"] for r in rows if not _is_public(table, r)}
+    seen = {r["id"] for r in _rows(anon_graphql_client, table, org=org)}
+    assert not drafts & seen, f"{table}: anonymous + organization:{org} lists {len(drafts & seen)} non-public rows"
