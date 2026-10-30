@@ -106,6 +106,57 @@ class UseCasePage(BasePage):
             dash, datasets,
         )
 
+    # ── cover, story rail, dataset cards, topic chips (DataSpaceFrontend #512) ──
+
+    def cover(self):
+        """{back, meta, publisher: {name, kind, href}} read from the cover."""
+        publisher = self.find(UseCaseLocators.COVER_PUBLISHER)
+        spans = publisher.find_elements(By.XPATH, ".//span/span")
+        return {
+            "back": self.find(UseCaseLocators.COVER_BACK).get_attribute("href"),
+            "meta": self.driver.find_element(*UseCaseLocators.COVER_META).get_attribute("textContent").strip(),
+            "publisher": {
+                "name": spans[0].get_attribute("textContent").strip(),
+                "kind": spans[1].get_attribute("textContent").strip(),
+                "href": publisher.get_attribute("href"),
+            },
+        }
+
+    def contents_links(self):
+        """[(label, href)] in the story rail's Contents list."""
+        return [(a.get_attribute("textContent").strip(), a.get_attribute("href")) for a in self.finds(UseCaseLocators.CONTENTS_LINKS)]
+
+    def jump_to_story_heading(self, label):
+        """Click a Contents link; return (url hash, text of the element with that id) once the hash changes."""
+        link = next(a for a in self.finds(UseCaseLocators.CONTENTS_LINKS) if a.get_attribute("textContent").strip() == label)
+        target = link.get_attribute("href").split("#", 1)[1]
+        link.click()
+        self.wait.until(lambda d: d.execute_script("return decodeURIComponent(window.location.hash)") == "#" + target)
+        heading = self.driver.find_element(By.ID, target)
+        return target, " ".join(heading.get_attribute("textContent").split())
+
+    def contributors(self):
+        """[(name, href)] in the story rail's Contributors list."""
+        return [
+            (a.find_element(By.XPATH, ".//p[1]").get_attribute("textContent").strip(), a.get_attribute("href"))
+            for a in self.finds(UseCaseLocators.CONTRIBUTOR_LINKS)
+        ]
+
+    def dataset_cards(self):
+        """[(href, card text)] for the 'Datasets behind this story' cards."""
+        return [(a.get_attribute("href"), a.get_attribute("textContent").strip()) for a in self.finds(UseCaseLocators.DATASET_CARD_LINKS)]
+
+    def open_dataset_card(self, index):
+        """Click a dataset card; return the href it pointed at."""
+        card = self.finds(UseCaseLocators.DATASET_CARD_LINKS)[index]
+        href = card.get_attribute("href")
+        card.click()
+        return href
+
+    def topic_chips(self, group_title):
+        """[(chip text, href)] in a TopicBar group."""
+        return [(a.get_attribute("textContent").strip(), a.get_attribute("href")) for a in self.finds(UseCaseLocators.topic_links(group_title))]
+
     # ── JusticeHub embed (DataSpaceFrontend #492) ───────────────────────────
 
     def justicehub_theme_preloaded(self, timeout: int = 10) -> dict:

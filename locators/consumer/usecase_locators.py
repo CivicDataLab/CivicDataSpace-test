@@ -35,6 +35,19 @@ class UseCaseLocators:
     DETAIL_DASHBOARDS_HEADING = (By.XPATH, "//main//h2[normalize-space()='Explore the data']")
     DETAIL_DASHBOARD_IFRAME = (By.XPATH, "//main//iframe")
 
+    # Use case cover, story rail, dataset cards and topic chips (DataSpaceFrontend #512)
+    COVER_BACK = (By.XPATH, "//main//a[normalize-space()='Back']")
+    COVER_META = (By.XPATH, "//main//a[normalize-space()='Back']/following-sibling::div[1]")
+    COVER_PUBLISHER = (By.XPATH, "//main//a[.//span[normalize-space()='Organisation' or normalize-space()='Individual']]")
+    CONTENTS_LINKS = (By.XPATH, "//main//nav[@aria-label='Contents']//a")
+    CONTRIBUTOR_LINKS = (By.XPATH, "//main//section[@aria-label='Contributors']//li//a")
+    DATASET_CARD_LINKS = (By.XPATH, "//main//h2[normalize-space()='Datasets behind this story']/following-sibling::ul//li//a")
+
+    @staticmethod
+    def topic_links(group_title):
+        """Chips under a TopicBar group titled 'Tags', 'SDG Goals' or 'Sector'."""
+        return (By.XPATH, f"//main//p[normalize-space()='{group_title}']/following-sibling::div[1]//a")
+
     # JusticeHub dashboard embed (DataSpaceFrontend #492): a justicehub.in dashboard
     # gets its own wrapper that preloads the public theme CSS/logo and hides the
     # iframe behind a spinner (aria-busy) until it has actually loaded, instead of
