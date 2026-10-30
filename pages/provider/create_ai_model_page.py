@@ -79,7 +79,7 @@ class CreateAiModelPage(EditorWizardPage):
         combo.click()
         listbox = combo.get_attribute("aria-controls")
         options = self.wait_with_timeout(30).until(
-            lambda d: d.find_elements(By.XPATH, L.LISTBOX_OPTIONS.format(listbox=listbox)) or False,
+            lambda d: d.find_elements(By.XPATH, W.LISTBOX_OPTIONS.format(listbox=listbox)) or False,
             message="The Domain combobox listed no options",
         )
         values = [o.get_attribute("textContent").strip() for o in options]
@@ -97,20 +97,3 @@ class CreateAiModelPage(EditorWizardPage):
 
     def get_description_text(self) -> str:
         return self.find(L.DESCRIPTION_EDITOR).text.strip()
-
-    # ─── Button-style selects (Provider Type, Usage License) ────────────────────
-
-    def choose_select_option(self, trigger_locator, text: str):
-        self.wait_until_saved()
-        trigger = self.wait.until(EC.element_to_be_clickable(trigger_locator))
-        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", trigger)
-        trigger.click()
-        listbox = self.wait.until(lambda d: trigger.get_attribute("aria-controls") or False)
-        self.wait_with_timeout(15).until(
-            EC.element_to_be_clickable((By.XPATH, L.SELECT_OPTION.format(listbox=listbox, text=text))),
-            message=f"No {text!r} option in the select",
-        ).click()
-        self.wait_with_timeout(10).until(
-            lambda d: text in trigger.text, message=f"The select never showed {text!r}"
-        )
-        return self

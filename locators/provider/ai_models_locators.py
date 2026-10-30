@@ -3,6 +3,7 @@
 # AI-model-only parts. Shared wizard parts: EditorWizardLocators.
 
 from selenium.webdriver.common.by import By
+from locators.provider.editor_wizard_locators import EditorWizardLocators as W
 
 
 class AiModelsLocators:
@@ -27,8 +28,4 @@ class AiModelsLocators:
     DESCRIPTION_EDITOR = (By.XPATH, "//main//div[contains(@class,'ql-editor') and @contenteditable='true']")
     INTENDED_USE_INPUT = (By.XPATH, "//textarea[@name='intendedUse']")
     MODEL_WEBSITE_INPUT = (By.XPATH, "//input[@name='modelWebsite']")
-    USAGE_LICENSE_SELECT = (By.XPATH, "//button[@id=//label[normalize-space()='Usage License']/@for]")
-
-    # A button-style select's options live in the element its trigger controls.
-    SELECT_OPTION = "//*[@id='{listbox}']//*[@role='option' and normalize-space()='{text}']"
-    LISTBOX_OPTIONS = "//*[@id='{listbox}']//*[@role='option']"
+    USAGE_LICENSE_SELECT = (By.XPATH, W.SELECT_BY_LABEL.format(label="Usage License"))
