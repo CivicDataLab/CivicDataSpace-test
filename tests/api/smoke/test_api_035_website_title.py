@@ -1,4 +1,4 @@
-# tests/api/smoke/test_api_028_website_title.py
+# tests/api/smoke/test_api_035_website_title.py
 #
 # DataSpaceFrontend#470 ("Provider Flow Update") added a new, unauthenticated
 # API route, GET /api/website-title?url=<url>, that fetches an arbitrary
