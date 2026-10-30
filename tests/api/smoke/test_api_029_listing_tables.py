@@ -164,8 +164,8 @@ def test_ai_models_table_filters_on_the_snake_case_field_name(anon_graphql_clien
         '{field: "display_name", condition: "icontains", value: "New AI Model"}]) '
         "{ totalItemsCount } }"
     )["aiModelsTable"]
-    assert 0 < filtered["totalItemsCount"] <= page["totalItemsCount"], (
-        f"display_name filter should narrow or match {page['totalItemsCount']} rows, "
+    assert 0 < filtered["totalItemsCount"] < page["totalItemsCount"], (
+        f"display_name filter should narrow {page['totalItemsCount']} rows, "
         f"got {filtered['totalItemsCount']}"
     )
 
