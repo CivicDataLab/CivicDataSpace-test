@@ -22,21 +22,9 @@
 # so zero now reads as singular ("0 dataset" / "0 use case"), matching the
 # grammar used everywhere else a count label appears in this app.
 #
-# Only the Use Cases and Collaboratives tables are covered here, reusing
-# their existing Page Objects (UseCasesListPage, CollaborativesListPage).
-# The Datasets table's "files" column (dataset.resourceCount) uses the same
-# formatCount() fix, but there is no provider Datasets-*listing* Page Object
-# yet -- pages/provider/dataset_detail_page.py is the published-dataset
-# detail page, not the dashboard's Datasets table. That is a real gap, not
-# something to paper over with a raw selector in this test; a human should
-# add a DatasetsListPage (mirroring UseCasesListPage/CollaborativesListPage)
-# and extend this file once one exists.
-#
-# UNVERIFIED -- not executed, no credentials in this environment (scheduled
-# cloud routine run, no TEST_EMAIL_*/TEST_PASSWORD_* available). Collection
-# was confirmed locally; the actual browser run, the red run against the
-# pre-#505 formatCount, and the green run against dev all still need a human
-# with real provider credentials. See the PR body for exact commands.
+# Covers all three tables that use formatCount(): Datasets ("Files"), Use
+# Cases ("Datasets") and Collaboratives ("Use Cases"). The tables page at 10
+# rows, so BasePage.table_cell_text searches the list for the row first.
 
 import os
 
@@ -44,6 +32,7 @@ import pytest
 import requests
 
 from pages.provider.collaboratives_list_page import CollaborativesListPage
+from pages.provider.organizations_page import OrganizationsPage
 from pages.provider.usecases_list_page import UseCasesListPage
 
 pytestmark = pytest.mark.smoke
@@ -152,4 +141,34 @@ def test_prv_016_collaborative_zero_usecase_count_is_singular(
     assert label == "0 use case", (
         f"Collaborative '{title}' has zero use cases; the 'Use Cases' column read '{label}', "
         f"expected singular '0 use case' (DataSpaceFrontend#505's formatCount fix)."
+    )
+
+
+@pytest.mark.timeout(180)
+def test_prv_016_dataset_zero_file_count_is_singular(
+    logged_in_provider, test_credentials, org_add_permission
+):
+    if not os.getenv("API_BASE_URL"):
+        pytest.skip("API_BASE_URL not set -- cannot find a draft dataset with zero files")
+
+    token = _access_token(*test_credentials)
+    org_ids = {
+        o["name"]: o["id"]
+        for o in _graphql(token, "{ organizations { id name } }")["organizations"]
+        if o["name"] in org_add_permission
+    }
+    org, title = _draft_with_zero_related(token, org_ids, "datasets", "DatasetFilter", "resourceCount")
+    if title is None:
+        pytest.skip(
+            f"None of {org_add_permission} has a draft dataset with zero files "
+            f"to exercise the #505 zero-count label"
+        )
+
+    org_dash = logged_in_provider.goto_organizations()
+    page: OrganizationsPage = org_dash.select_org(org)
+
+    label = page.file_count_label(title)
+    assert label == "0 file", (
+        f"Dataset '{title}' has zero files; the 'Files' column read '{label}', "
+        f"expected singular '0 file' (DataSpaceFrontend#505's formatCount fix)."
     )
