@@ -12,7 +12,7 @@ class MyDashboardLocators:
 
     # (2) Sidebar navigation links
     SIDEBAR_DATASETS = (By.XPATH, '//span[normalize-space()="Datasets"]')
-    USECASES_NAV_LINK = (By.XPATH, '//span[normalize-space()="Use Cases"]')
+    USECASES_NAV_LINK = (By.XPATH, "//a[contains(@href,'/dashboard/') and contains(@href,'/usecases')]")
     COLLABORATIVES_NAV_LINK = (By.XPATH, "//a[contains(@href,'/dashboard/') and contains(@href,'collaboratives')]")
     AI_MODELS_NAV_LINK = (By.XPATH, '//span[normalize-space()="AI Models"]')
     CHARTS_NAV_LINK = (By.XPATH, "//a[contains(@href,'/dashboard/') and contains(@href,'charts')]")
