@@ -35,8 +35,11 @@ class UseCaseLocators:
         By.XPATH,
         "//main//*[normalize-space(text())='Dashboards Linked to this Use Case' or normalize-space(text())='Explore the data']",
     )
-    # Either section: the redesign hides the datasets section when a use case has none.
-    DETAIL_SECTION_HEADING = (By.XPATH, f"{DETAIL_DATASETS_HEADING[1]} | {DETAIL_DASHBOARDS_HEADING[1]}")
+    # The cover <h1> renders for every published use case; both content sections are
+    # conditional, so neither alone can be the "page loaded" signal.
+    DETAIL_TITLE = (By.XPATH, "//main//h1")
+    # Either section (the redesign hides each when empty), or the title.
+    DETAIL_SECTION_HEADING = (By.XPATH, f"{DETAIL_DATASETS_HEADING[1]} | {DETAIL_DASHBOARDS_HEADING[1]} | //main//h1")
     DETAIL_DASHBOARD_IFRAME = (By.XPATH, "//main//iframe")
 
     # JusticeHub dashboard embed (DataSpaceFrontend #492): a justicehub.in dashboard
