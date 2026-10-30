@@ -52,10 +52,15 @@ class UseCasePage(BasePage):
     # ── Use case detail page ─────────────────────────────────────────────────
 
     def open_detail(self, base_url: str, usecase_id):
-        """Open /usecases/<id> and wait for its datasets or dashboards heading."""
+        """Open /usecases/<id>, wait for the page, and return the cover title ("" on the old layout).
+
+        Neither content section is always present, so the wait accepts the title
+        or either section heading.
+        """
         self.visit(f"{base_url.rstrip('/')}/usecases/{usecase_id}")
         self.find(UseCaseLocators.DETAIL_SECTION_HEADING)
-        return self
+        titles = self.finds(UseCaseLocators.DETAIL_TITLE)
+        return titles[0].text if titles else ""
 
     def has_dashboards_section(self, timeout: int = 10) -> bool:
         try:
@@ -66,8 +71,21 @@ class UseCasePage(BasePage):
         except TimeoutException:
             return False
 
+    def has_datasets_section(self, timeout: int = 10) -> bool:
+        try:
+            WebDriverWait(self.driver, timeout).until(
+                EC.presence_of_element_located(UseCaseLocators.DETAIL_DATASETS_HEADING)
+            )
+            return True
+        except TimeoutException:
+            return False
+
     def dashboards_section_hidden(self, timeout: int = 15) -> bool:
-        """True once no dashboards heading is shown. DataSpaceFrontend#512 shows it while loading."""
+        """True once no dashboards heading is shown.
+
+        While its query is in flight the redesign shows the heading over a spinner and
+        drops it only if nothing is embeddable, so wait for it to go.
+        """
         try:
             WebDriverWait(self.driver, timeout).until(
                 EC.invisibility_of_element_located(UseCaseLocators.DETAIL_DASHBOARDS_HEADING)
