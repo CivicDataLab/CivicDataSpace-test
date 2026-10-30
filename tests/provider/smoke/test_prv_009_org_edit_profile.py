@@ -103,11 +103,13 @@ def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, t
         "Step 6d failure: Organization logo/profile image upload did not succeed."
     )
 
-    # (6e) Click Save Button
+    # (6e) Save (waits for the "updated successfully" toast), then reload: the
+    # description must come back from the server, not from the form state.
     org_profile.click_save()
-    # Verify save was successful by checking if profile image is still uploaded
-    assert org_profile.is_profile_image_uploaded(), (
-        "Step 6e failure: Clicking save button did not succeed."
+    org_profile.reload()
+    saved_bio = org_profile.get_bio_text_value()
+    assert saved_bio == bio_text, (
+        f"Step 6e failure: After save and reload, expected description '{bio_text}', found '{saved_bio}'."
     )
 
     print("[SUCCESS] test_prv_009_org_edit_profile completed successfully")
