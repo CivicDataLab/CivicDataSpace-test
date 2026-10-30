@@ -262,6 +262,24 @@ The provider smoke test suite includes comprehensive end-to-end workflows:
 
 Each test uses the **Page Object Model** with dedicated locators, page classes, and test data from `tests/data/test_data.py`.
 
+### Security, performance, load and stress (opt-in)
+
+Four extra categories live under `tests/api/security`, `tests/api/performance` and
+`tests/api/load` (stress sits with load). They carry only their own marker, so the
+smoke/functional/regression selections used by push, PR and the default dispatch never
+pick them up.
+
+| Marker | What | Run |
+|---|---|---|
+| `security` | headers, cookie flags, CORS, error leakage, exposed paths, a 5-request login probe | `pytest tests/api/security -m security` |
+| `performance` | p50/p95 budgets over 20 sequential GETs (`PERF_P50_S`, `PERF_P95_S`, `PERF_REQUESTS`) | `pytest tests/api/performance -m performance` |
+| `load` / `stress` | guarded read-only load and stepped ramp | `RUN_LOAD_TESTS=1 pytest tests/api/load -m "load or stress"` |
+
+Load and stress refuse to run without `RUN_LOAD_TESTS=1`, refuse any target that is or
+resolves to production, default to 5 concurrent for 10 s (`LOAD_CONCURRENCY`,
+`LOAD_DURATION_S`; hard ceiling 50 and 60 s), stop at the first 429 or 5xx burst, and only
+send GETs or anonymous GraphQL queries. The rules live in `tests/api/load/safety.py`.
+
 ### 1. Consumer Tests
 
 Run only the consumer smoke tests:

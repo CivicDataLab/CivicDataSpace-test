@@ -132,9 +132,17 @@ first version of this file being written. Re-read `pytest.ini` every time.
 | functional | `functional` | `e2e` | `flow` |
 | api | `api` | `api` | **none** |
 | regression | `regression` | `regression` | **none** |
-| security | **none** | `security` | `security` |
-| performance | **none** | `performance` | `performance` |
-| load | **none** | `load` | `load` (opt-in, `-m load` only) |
+| security | `security` (opt-in, `-m security` only) | `security` | `security` |
+| performance | `performance` (opt-in, `-m performance` only) | `performance` | `performance` |
+| load | `load` (opt-in, needs `RUN_LOAD_TESTS=1`) | `load` | `load` (opt-in, `-m load` only) |
+| stress | `stress` (lives in `tests/api/load`, same guards) | **none** | **none** |
+
+CDS `security`/`performance`/`load`/`stress` live in `tests/api/security|performance|load`
+and carry **no** `smoke`/`functional`/`regression` marker, so push/PR and the default
+dispatch never select them (and CI only passes `tests/api/smoke` as the path anyway).
+Load and stress tests must go through `tests/api/load/safety.py` (opt-in env, prod
+refusal, capped concurrency/duration, abort on 429/5xx burst, read-only). Do not add
+the `smoke` marker to them to "make them run".
 
 Also available: CDS `mobile`/`seo`/`accessibility`/`widget`; Parakh `visual`/`auth`/
 `mobile`/`accessibility`/`regression_write` (write-side, sandbox-org only, opt-in);
