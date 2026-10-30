@@ -30,7 +30,7 @@ from pages.provider.organizations_page import OrganizationsPage
 # merged and deployed to dev 2026-09-18. Re-added smoke after confirming green
 # under real -n 3 concurrent load against dev (0 reruns needed, vs 3/3
 # failures pre-fix).
-def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_credentials, writable_org, sector_name):
+def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_credentials, writable_org, sector_name, cleanup):
 
     """
     Test Case ID: test_prv_002_ind_create_dataset
@@ -48,6 +48,8 @@ def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_cred
       10. Assert the dataset is marked “Published”
      11. Download the dataset and verify HTTP 200
     """
+    # Delete whatever this test creates, even when it fails part-way.
+    cleanup.watch("dataset", writable_org)
     driver.delete_all_cookies()
     # Step 1: load homepage
     home = HomePage(driver, base_url)

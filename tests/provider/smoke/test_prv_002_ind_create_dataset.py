@@ -15,7 +15,7 @@ from pages.provider.my_dashboard_page import MyDashboardPage
 from pages.provider.create_dataset_page import CreateDatasetPage
 
 @pytest.mark.functional
-def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url, test_credentials, sector_name):
+def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url, test_credentials, sector_name, cleanup):
 
     """
     Test Case ID: test_prv_002_ind_create_dataset
@@ -32,6 +32,8 @@ def test_prv_002_ind_create_dataset(driver, sample_csv_path, base_url, test_cred
       9. Assert the dataset is marked “Published”
      10. Download the dataset and verify HTTP 200
     """
+    # Delete whatever this test creates, even when it fails part-way.
+    cleanup.watch("dataset")
     driver.delete_all_cookies()
     # Step 1: load homepage
     home = HomePage(driver, base_url)

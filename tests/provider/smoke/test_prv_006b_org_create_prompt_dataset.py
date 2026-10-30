@@ -11,7 +11,7 @@ from pages.provider.create_dataset_page import CreateDatasetPage
 
 @pytest.mark.functional
 @pytest.mark.smoke
-def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, test_credentials, writable_org, sector_name):
+def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, test_credentials, writable_org, sector_name, cleanup):
     """
     Test Case ID: test_prv_006b_org_create_prompt_dataset
     Verify a user can create a Prompt Dataset end-to-end from the Org Dashboard.
@@ -24,6 +24,8 @@ def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, t
       6. Fill Prompt-specific Metadata (Task Type, Domain, Target Languages, Target Model Types)
       7. Publish and verify Published status
     """
+    # Delete whatever this test creates, even when it fails part-way.
+    cleanup.watch("dataset", writable_org)
     driver.delete_all_cookies()
 
     home = HomePage(driver, base_url)
