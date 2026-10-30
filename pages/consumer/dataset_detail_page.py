@@ -17,6 +17,9 @@ class DatasetDetailPage(BasePage):
         self.find(L.tab("data"))
         return self
 
+    def title(self):
+        return self.find((By.XPATH, "//main//h1")).get_attribute("textContent").strip()
+
     # ── tabs ─────────────────────────────────────────────────────────────────
 
     def selected_tabs(self):
