@@ -87,6 +87,10 @@ class OrganizationsPage(BasePage):
 
         return self
 
+    def file_count_label(self, dataset_title: str) -> str:
+        """Text of the Datasets table's 'Files' column for the row matching `dataset_title`."""
+        return self.table_cell_text(dataset_title, "Files")
+
     def click_add_new_dataset(self):
         from pages.provider.create_dataset_page import CreateDatasetPage
         from locators.provider.create_dataset_locators import CreateDatasetLocators
