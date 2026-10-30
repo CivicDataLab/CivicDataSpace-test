@@ -6,6 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
     ElementClickInterceptedException,
+    NoSuchElementException,
     StaleElementReferenceException,
     TimeoutException,
 )
@@ -265,6 +266,52 @@ class BasePage:
         return self.wait_with_timeout(timeout).until(
             settled, message=f"List page never showed rows or an empty state: {self.driver.current_url}"
         )
+
+    def table_cell_text(self, row_match_text: str, header_text: str, timeout: int = 15) -> str:
+        """Text of the `header_text` column's cell, in the row containing `row_match_text`.
+
+        Shared by the provider dashboard listing tables (Datasets, Use Cases,
+        Collaboratives, ...), which all render through the same
+        ProviderListingTable component. The column is found by its header
+        text rather than a hardcoded index, so this keeps working if columns
+        are reordered.
+
+        The tables page at 10 rows, so the row is searched for first: a
+        matching row on page 2 would otherwise read as missing.
+        """
+        search = self.wait_with_timeout(timeout).until(
+            EC.element_to_be_clickable((By.XPATH, "//main//input[starts-with(@placeholder,'Search ')]")),
+            message="List search box never appeared"
+        )
+        search.click()
+        search.send_keys(row_match_text)
+        self.wait_with_timeout(timeout).until(
+            EC.visibility_of_element_located((By.XPATH, "//table//thead//th")),
+            message="Table header never appeared"
+        )
+        headers = self.finds((By.XPATH, "//table//thead//th"))
+        seen = []
+        index = None
+        for i, th in enumerate(headers, start=1):
+            # A sortable header also reads "Sorted in ascending order" above its label.
+            text = th.text.strip().splitlines()[-1].strip() if th.text.strip() else ""
+            seen.append(text)
+            if text == header_text:
+                index = i
+                break
+        if index is None:
+            raise NoSuchElementException(
+                f"No '{header_text}' column header found. Headers seen: {seen}"
+            )
+
+        row = self.wait_with_timeout(timeout).until(
+            EC.visibility_of_element_located(
+                (By.XPATH, f"//table//tbody/tr[.//*[normalize-space(text())='{row_match_text}']]")
+            ),
+            message=f"No table row found containing text '{row_match_text}'"
+        )
+        cell = row.find_element(By.XPATH, f"./td[{index}]")
+        return cell.text.strip()
 
     def save_failure_artifacts(self, tag: str) -> None:
         """Dump a screenshot + DOM so a timeout says what was actually on screen.

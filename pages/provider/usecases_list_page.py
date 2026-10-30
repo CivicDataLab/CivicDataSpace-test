@@ -17,6 +17,10 @@ class UseCasesListPage(BasePage):
         """'drafts_empty', 'published_empty' or 'rows' (see BasePage.list_view_state)."""
         return self.list_view_state(UseCaseListPageLocators)
 
+    def dataset_count_label(self, usecase_title: str) -> str:
+        """Text of the 'Datasets' column for the row matching `usecase_title`."""
+        return self.table_cell_text(usecase_title, "Datasets")
+
     def is_loaded(self):
         return self.wait_with_timeout(10).until(
             EC.presence_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON)
