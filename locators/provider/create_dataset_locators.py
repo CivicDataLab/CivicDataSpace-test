@@ -95,6 +95,8 @@ class CreateDatasetLocators:
 
     # 7b) Once you click “Publish,” the page shows a “Published” badge or text:
     # e.g. <span class="status-badge published">Published</span>
+    # The listing's "Published" tab (not the row status badges, which share the text)
+    PUBLISHED_LIST_TAB = "//button[@role='tab' and contains(@id,'-trigger-PUBLISHED')]"
     PUBLISHED_STATUS_BADGE = "//span[contains(@class,'status-badge') and normalize-space(text())='Published']"
 
     # 7c) The download link (for the newly-published dataset)

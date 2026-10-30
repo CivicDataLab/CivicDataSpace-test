@@ -359,21 +359,17 @@ class CreateDatasetPage(BasePage):
         import time
         time.sleep(2)
 
-        # Click on the "Published" tab to verify dataset is there
+        # Click on the "Published" tab to verify dataset is there. Since
+        # DataSpaceFrontend#504 the tab no longer writes `?tab=` into the URL,
+        # so its own aria-selected is the signal.
         try:
             published_tab = self.wait_with_timeout(10).until(
-                EC.element_to_be_clickable(
-                    (By.XPATH, "//span[normalize-space()='Published']")
-                )
+                EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.PUBLISHED_LIST_TAB))
             )
             published_tab.click()
 
-            # Wait for the Published tab to load
-            time.sleep(2)
-
-            # Verify URL changed to published tab
             self.wait_with_timeout(10).until(
-                lambda d: "?tab=published" in d.current_url.lower()
+                lambda d: published_tab.get_attribute("aria-selected") == "true"
             )
 
             return True
