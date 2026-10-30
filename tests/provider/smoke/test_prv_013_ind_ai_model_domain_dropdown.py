@@ -16,7 +16,7 @@ MIN_REAL_DOMAIN_OPTIONS = 10
 
 
 @pytest.mark.smoke
-def test_prv_013_ind_ai_model_domain_dropdown(driver, base_url, test_credentials):
+def test_prv_013_ind_ai_model_domain_dropdown(driver, base_url, test_credentials, cleanup):
     """
     Test Case ID: test_prv_013_ind_ai_model_domain_dropdown
     Regression guard for DataSpaceFrontend#465/#463: the AI model edit
@@ -33,6 +33,8 @@ def test_prv_013_ind_ai_model_domain_dropdown(driver, base_url, test_credentials
       3. Read the options the empty Domain combobox lists
       4. Assert it populated with real PromptDomain values, not empty
     """
+    # Delete whatever this test creates, even when it fails part-way.
+    cleanup.watch("aimodel")
     driver.delete_all_cookies()
 
     home = HomePage(driver, base_url)

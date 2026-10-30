@@ -28,7 +28,7 @@ from pages.provider.organizations_page import OrganizationsPage
 # merged and deployed to dev 2026-09-18. Re-added smoke after confirming green
 # under real -n 3 concurrent load against dev (0 reruns needed, vs failing
 # every attempt pre-fix).
-def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_credentials, writable_org, sector_name):
+def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_credentials, writable_org, sector_name, cleanup):
     """
     Test Case ID: test_prv_007_org_create_usecase
     Verify User is able to create a UseCase end-to-end as an Organization provider.
@@ -45,6 +45,8 @@ def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_cre
       9. Assert the use case is listed as Published.
     """
     # ─── Step 1: Load Homepage ──────────────────────────────────────────────────────
+    # Delete whatever this test creates, even when it fails part-way.
+    cleanup.watch("usecase", writable_org)
     driver.delete_all_cookies()
     email, password = test_credentials
     home = HomePage(driver, base_url)

@@ -12,7 +12,7 @@ from pages.provider.create_usecase_page import CreateUsecasePage
 from tests.data.test_data import UseCaseTestData
 
 @pytest.mark.functional
-def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url,test_credentials, sector_name):
+def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url,test_credentials, sector_name, cleanup):
     """
     Test Case ID: test_prv_003_ind_create_usecase
     Verify User is able to create a UseCase end-to-end as an Individual provider.
@@ -28,6 +28,8 @@ def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url,test_cred
       8. Assert the use case is listed as Published.
     """
     # ─── Step 1: Load Homepage ──────────────────────────────────────────────────────
+    # Delete whatever this test creates, even when it fails part-way.
+    cleanup.watch("usecase")
     driver.delete_all_cookies()
     email, password = test_credentials
     home = HomePage(driver, base_url)

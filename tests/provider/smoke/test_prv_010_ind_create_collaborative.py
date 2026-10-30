@@ -12,7 +12,7 @@ from tests.data.test_data import CollaborativeTestData
 
 @pytest.mark.functional
 @pytest.mark.timeout(360)
-def test_prv_010_ind_create_collaborative(driver, sample_logo_path, sample_cover_image_path, base_url, test_credentials, sector_name):
+def test_prv_010_ind_create_collaborative(driver, sample_logo_path, sample_cover_image_path, base_url, test_credentials, sector_name, cleanup):
     """
     Test Case ID: test_prv_010_ind_create_collaborative
     Verify User is able to create a Collaborative end-to-end as an Individual provider.
@@ -29,6 +29,8 @@ def test_prv_010_ind_create_collaborative(driver, sample_logo_path, sample_cover
       8. Assert the collaborative is listed as Published.
     """
     # ─── Step 1: Load Homepage ──────────────────────────────────────────────────────
+    # Delete whatever this test creates, even when it fails part-way.
+    cleanup.watch("collaborative")
     driver.delete_all_cookies()
     email, password = test_credentials
     home = HomePage(driver, base_url)
