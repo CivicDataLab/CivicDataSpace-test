@@ -6,7 +6,7 @@ from selenium.webdriver.common.by import By
 class AiModelsLocators:
 
     # ── List page ─────────────────────────────────────────────────────────────
-    ADD_NEW_AI_MODEL_BTN = (By.XPATH, "//button[normalize-space()='Add New AI Model']")
+    ADD_NEW_AI_MODEL_BTN = (By.XPATH, "//button[normalize-space()='Create AI Model']")
 
     # ── Editor tabs ───────────────────────────────────────────────────────────
     TAB_METADATA = "//button[@role='tab' and normalize-space()='Metadata']"
