@@ -84,3 +84,23 @@ def test_outsider_org_context_is_refused(graphql_client):
     body = _charts_table(graphql_client, "(limit: 5)", "totalItemsCount", org=others[0])
     assert body.get("errors"), f"a non-member got {others[0]!r}'s charts: {body}"
     assert "permission" in body["errors"][0]["message"].lower(), body["errors"]
+
+
+@pytest.mark.regression
+@pytest.mark.parametrize("args, expected", [
+    ("(limit: 0)", "limit (0) must be between 1 and 100"),
+    ("(limit: 101)", "limit (101) must be between 1 and 100"),
+    ("(offset: -1)", "offset (-1) must be 0 or more"),
+    ('(filters: [{field: "not_a_real_field", value: "x"}])', "Cannot filter on 'not_a_real_field'. Allowed fields:"),
+    ('(sortOptions: [{field: "not_a_real_field"}])', "Cannot sort on 'not_a_real_field'. Allowed fields:"),
+], ids=["limit_0", "limit_101", "offset_negative", "filter_field", "sort_field"])
+def test_invalid_page_filter_and_sort_input_is_rejected(graphql_client, args, expected):
+    """qs_utils' bounds and allowlists apply to chartsTable. Runs in the
+    account's own context, which an authenticated caller is always allowed."""
+    body = _charts_table(graphql_client, args)
+    assert body.get("errors"), f"expected {args} to be rejected, got: {body}"
+    message = body["errors"][0]["message"]
+    assert expected in message, message
+    # Images are filtered first so the allowlist is named as clients know it,
+    # not with the built-chart rewrite (resource__dataset…).
+    assert "resource__" not in message, message
