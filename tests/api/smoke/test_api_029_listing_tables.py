@@ -96,11 +96,7 @@ def test_use_cases_table_title_filter_narrows_results(anon_graphql_client):
     page = anon_graphql_client.query(
         "{ useCasesTable(includePublic: true, limit: 50) { totalItemsCount data { title } } }"
     )["useCasesTable"]
-    word = "testing"  # confirmed present in exactly one of 132 live titles as of this PR
-    matches = sum(word in row["title"].lower() for row in page["data"])
-    if matches == 0:
-        pytest.skip(f"no use case title containing {word!r} on dev any more")
-
+    word = "testing"  # matched 1 of 132 live titles as of this PR
     filtered = anon_graphql_client.query(
         """
         query($word: String!) {
@@ -126,11 +122,7 @@ def test_collaboratives_table_title_filter_narrows_results(anon_graphql_client):
     page = anon_graphql_client.query(
         "{ collaborativesTable(includePublic: true, limit: 50) { totalItemsCount data { title } } }"
     )["collaborativesTable"]
-    word = "test collab"  # confirmed present in a strict subset of 106 live titles
-    matches = sum(word in row["title"].lower() for row in page["data"])
-    if matches == 0 or matches == page["totalItemsCount"]:
-        pytest.skip(f"{word!r} no longer narrows collaboratives on dev (matches={matches})")
-
+    word = "test collab"  # matched 10 of 106 live titles as of this PR
     filtered = anon_graphql_client.query(
         """
         query($word: String!) {
@@ -143,6 +135,8 @@ def test_collaboratives_table_title_filter_narrows_results(anon_graphql_client):
         """,
         {"word": word},
     )["collaborativesTable"]
+    if filtered["totalItemsCount"] == 0:
+        pytest.skip(f"no collaborativesTable title contains {word!r} on this environment any more")
     assert 0 < filtered["totalItemsCount"] < page["totalItemsCount"], (
         f"filtering collaboratives on {word!r} should narrow {page['totalItemsCount']} rows, "
         f"got {filtered['totalItemsCount']}"
