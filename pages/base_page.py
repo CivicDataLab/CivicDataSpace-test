@@ -173,6 +173,8 @@ class BasePage:
 
         self.wait_until_saved()
         combo = self.wait.until(EC.element_to_be_clickable(input_locator))
+        # Centre it first: a field near the top sits under the editor's sticky bar.
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", combo)
         combo.click()
         combo.clear()
         combo.send_keys(option_text)
