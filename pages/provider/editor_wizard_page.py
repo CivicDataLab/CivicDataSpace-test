@@ -64,6 +64,37 @@ class EditorWizardPage(BasePage):
     def get_selected_geography(self) -> list[str]:
         return self.selected_chips("Geography")
 
+    # ─── Button-style selects (Radix: they open on a real pointer press) ───────
+
+    def _open_select(self, trigger_locator):
+        self.wait_until_saved()
+        trigger = self.wait.until(EC.element_to_be_clickable(trigger_locator))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", trigger)
+        trigger.click()
+        listbox = self.wait.until(lambda d: trigger.get_attribute("aria-controls") or False)
+        return trigger, listbox
+
+    def choose_select_option(self, trigger_locator, text: str):
+        trigger, listbox = self._open_select(trigger_locator)
+        self.wait_with_timeout(15).until(
+            EC.element_to_be_clickable((By.XPATH, W.SELECT_OPTION.format(listbox=listbox, text=text))),
+            message=f"No {text!r} option in the select",
+        ).click()
+        self.wait_with_timeout(10).until(
+            lambda d: text in trigger.text, message=f"The select never showed {text!r}"
+        )
+        return self
+
+    def get_select_options(self, trigger_locator) -> list[str]:
+        _, listbox = self._open_select(trigger_locator)
+        options = self.wait_with_timeout(30).until(
+            lambda d: d.find_elements(By.XPATH, W.LISTBOX_OPTIONS.format(listbox=listbox)) or False,
+            message="The select listed no options",
+        )
+        values = [o.get_attribute("textContent").strip() for o in options]
+        ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
+        return values
+
     # ─── Images ─────────────────────────────────────────────────────────────────
 
     def upload_image(self, label: str, path_to_file: str):

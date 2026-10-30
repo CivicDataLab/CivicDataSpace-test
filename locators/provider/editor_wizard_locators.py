@@ -12,6 +12,11 @@ class EditorWizardLocators:
     FIELD_INPUT = "//input[@id=//label[normalize-space()='{label}']/@for]"
     FIELD_CHIPS = FIELD_INPUT + "/preceding-sibling::span//span[@title]"
 
+    # A button-style select (Radix) names its options' container in aria-controls.
+    SELECT_BY_LABEL = "//button[@id=//label[normalize-space()='{label}']/@for]"
+    SELECT_OPTION = "//*[@id='{listbox}']//*[@role='option' and normalize-space()='{text}']"
+    LISTBOX_OPTIONS = "//*[@id='{listbox}']//*[@role='option']"
+
     # Geography options read "<name> (<parent>)", e.g. "India (Asia Pacific)".
     GEOGRAPHY_OPTION = "//*[@id='{listbox}']//*[@role='option' and starts-with(normalize-space(.), '{name} (')]"
 
