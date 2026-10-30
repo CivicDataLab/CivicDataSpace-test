@@ -5,7 +5,7 @@
 # eventsTable, event, createEvent/updateEvent/publishEvent/unpublishEvent/deleteEvent).
 #
 # Written by the cloud routine with no TEST_EMAIL_n/TEST_PASSWORD_n available,
-# so both tests here are unauthenticated-only. Two behaviours proven live
+# so the first two tests are unauthenticated-only. Two behaviours proven live
 # against dev on 2026-10-30:
 #
 #   - `publishedEvents` is a public, world-readable query. Before #263 the
@@ -17,14 +17,11 @@
 #     permission to create an event"]}}, and publishedEvents.totalItemsCount
 #     stayed 0 before and after the probe.
 #
-# Not covered here (needs TEST_EMAIL_n/TEST_PASSWORD_n, unavailable to this
-# cloud run): authenticated create/update/publish/delete flows, the
-# organization-scoped `eventsTable` for a logged-in provider, and the
-# AllowPublishedEvents draft-hides-from-outsiders path (no draft event exists
-# on dev yet — publishedEvents.totalItemsCount was 0 at write time, so there
-# is nothing to assert "excludes" against beyond the empty-list case covered
-# below). A human with credentials should add those. UNVERIFIED — not
-# executed, no credentials in this environment.
+# The authenticated flows (create/update/publish/delete, eventsTable scoping,
+# AllowPublishedEvents' draft branch) were added afterwards with real
+# credentials; see the section at the bottom of this file. On an empty dev,
+# the publishedEvents check below only proves the field exists and is public;
+# test_draft_is_private_until_published is what proves drafts stay out.
 #
 # `test_published_events_is_public_and_excludes_drafts` only queries, so it
 # carries `readonly` and is safe in the prod gate once DataSpaceBackend#263
