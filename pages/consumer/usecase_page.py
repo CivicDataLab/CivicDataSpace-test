@@ -52,10 +52,13 @@ class UseCasePage(BasePage):
     # ── Use case detail page ─────────────────────────────────────────────────
 
     def open_detail(self, base_url: str, usecase_id):
-        """Open /usecases/<id> and wait for the always-rendered datasets heading."""
+        """Open /usecases/<id>, wait for the cover title, and return it.
+
+        The title renders for every published use case; the dashboards and
+        datasets sections do not, so neither can be the "page loaded" signal.
+        """
         self.visit(f"{base_url.rstrip('/')}/usecases/{usecase_id}")
-        self.find(UseCaseLocators.DETAIL_DATASETS_HEADING)
-        return self
+        return self.find(UseCaseLocators.DETAIL_TITLE).text
 
     def has_dashboards_section(self, timeout: int = 10) -> bool:
         try:
@@ -66,18 +69,34 @@ class UseCasePage(BasePage):
         except TimeoutException:
             return False
 
+    def has_datasets_section(self, timeout: int = 10) -> bool:
+        try:
+            WebDriverWait(self.driver, timeout).until(
+                EC.presence_of_element_located(UseCaseLocators.DETAIL_DATASETS_HEADING)
+            )
+            return True
+        except TimeoutException:
+            return False
+
+    def dashboards_section_is_gone(self, timeout: int = 10) -> bool:
+        """True once "Explore the data" is absent.
+
+        While its query is in flight the section shows its heading over a
+        spinner and drops it only if nothing is embeddable, so a snapshot
+        taken straight after load proves nothing: wait for it to go.
+        """
+        try:
+            WebDriverWait(self.driver, timeout).until(
+                EC.invisibility_of_element_located(UseCaseLocators.DETAIL_DASHBOARDS_HEADING)
+            )
+            return True
+        except TimeoutException:
+            return False
+
     def embedded_dashboards(self):
         """[{title, src}] for each dashboard iframe on the detail page."""
         frames = self.finds(UseCaseLocators.DETAIL_DASHBOARD_IFRAME)
         return [{"title": f.get_attribute("title"), "src": f.get_attribute("src")} for f in frames]
-
-    def dashboard_open_links(self):
-        """[{href, target, rel}] for each 'Open dashboard in a new tab' link."""
-        links = self.finds(UseCaseLocators.DETAIL_DASHBOARD_OPEN_LINK)
-        return [
-            {"href": a.get_attribute("href"), "target": a.get_attribute("target"), "rel": a.get_attribute("rel")}
-            for a in links
-        ]
 
     def dashboards_render_before_datasets(self) -> bool:
         dash = self.find(UseCaseLocators.DETAIL_DASHBOARDS_HEADING)
@@ -86,6 +105,57 @@ class UseCasePage(BasePage):
             "return !!(arguments[0].compareDocumentPosition(arguments[1]) & Node.DOCUMENT_POSITION_FOLLOWING);",
             dash, datasets,
         )
+
+    # ── cover, story rail, dataset cards, topic chips (DataSpaceFrontend #512) ──
+
+    def cover(self):
+        """{back, meta, publisher: {name, kind, href}} read from the cover."""
+        publisher = self.find(UseCaseLocators.COVER_PUBLISHER)
+        spans = publisher.find_elements(By.XPATH, ".//span/span")
+        return {
+            "back": self.find(UseCaseLocators.COVER_BACK).get_attribute("href"),
+            "meta": self.driver.find_element(*UseCaseLocators.COVER_META).get_attribute("textContent").strip(),
+            "publisher": {
+                "name": spans[0].get_attribute("textContent").strip(),
+                "kind": spans[1].get_attribute("textContent").strip(),
+                "href": publisher.get_attribute("href"),
+            },
+        }
+
+    def contents_links(self):
+        """[(label, href)] in the story rail's Contents list."""
+        return [(a.get_attribute("textContent").strip(), a.get_attribute("href")) for a in self.finds(UseCaseLocators.CONTENTS_LINKS)]
+
+    def jump_to_story_heading(self, label):
+        """Click a Contents link; return (url hash, text of the element with that id) once the hash changes."""
+        link = next(a for a in self.finds(UseCaseLocators.CONTENTS_LINKS) if a.get_attribute("textContent").strip() == label)
+        target = link.get_attribute("href").split("#", 1)[1]
+        link.click()
+        self.wait.until(lambda d: d.execute_script("return decodeURIComponent(window.location.hash)") == "#" + target)
+        heading = self.driver.find_element(By.ID, target)
+        return target, " ".join(heading.get_attribute("textContent").split())
+
+    def contributors(self):
+        """[(name, href)] in the story rail's Contributors list."""
+        return [
+            (a.find_element(By.XPATH, ".//p[1]").get_attribute("textContent").strip(), a.get_attribute("href"))
+            for a in self.finds(UseCaseLocators.CONTRIBUTOR_LINKS)
+        ]
+
+    def dataset_cards(self):
+        """[(href, card text)] for the 'Datasets behind this story' cards."""
+        return [(a.get_attribute("href"), a.get_attribute("textContent").strip()) for a in self.finds(UseCaseLocators.DATASET_CARD_LINKS)]
+
+    def open_dataset_card(self, index):
+        """Click a dataset card; return the href it pointed at."""
+        card = self.finds(UseCaseLocators.DATASET_CARD_LINKS)[index]
+        href = card.get_attribute("href")
+        card.click()
+        return href
+
+    def topic_chips(self, group_title):
+        """[(chip text, href)] in a TopicBar group."""
+        return [(a.get_attribute("textContent").strip(), a.get_attribute("href")) for a in self.finds(UseCaseLocators.topic_links(group_title))]
 
     # ── JusticeHub embed (DataSpaceFrontend #492) ───────────────────────────
 

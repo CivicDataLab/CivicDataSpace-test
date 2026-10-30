@@ -25,11 +25,28 @@ class UseCaseLocators:
     # chart-image link (/download/chart/), which is a separate failing endpoint.
     DOWNLOAD_LINK = (By.XPATH, "//a[contains(@href, '/download/resource/')]")
 
-    # Use case detail page (/usecases/<id>): dashboards embedded as iframes (DataSpaceFrontend #476)
-    DETAIL_DATASETS_HEADING = (By.XPATH, "//main//*[normalize-space(text())='Datasets in this Use Case']")
-    DETAIL_DASHBOARDS_HEADING = (By.XPATH, "//main//*[normalize-space(text())='Dashboards Linked to this Use Case']")
+    # Use case detail page (/usecases/<id>), as revamped in DataSpaceFrontend #512.
+    # The cover <h1> renders for every published use case, so it is the "page
+    # loaded" anchor. Both content sections are conditional: "Explore the data"
+    # exists only when a dashboard is embeddable, "Datasets behind this story"
+    # only when the use case has datasets.
+    DETAIL_TITLE = (By.XPATH, "//main//h1")
+    DETAIL_DATASETS_HEADING = (By.XPATH, "//main//h2[normalize-space()='Datasets behind this story']")
+    DETAIL_DASHBOARDS_HEADING = (By.XPATH, "//main//h2[normalize-space()='Explore the data']")
     DETAIL_DASHBOARD_IFRAME = (By.XPATH, "//main//iframe")
-    DETAIL_DASHBOARD_OPEN_LINK = (By.XPATH, "//main//a[normalize-space()='Open dashboard in a new tab']")
+
+    # Use case cover, story rail, dataset cards and topic chips (DataSpaceFrontend #512)
+    COVER_BACK = (By.XPATH, "//main//a[normalize-space()='Back']")
+    COVER_META = (By.XPATH, "//main//a[normalize-space()='Back']/following-sibling::div[1]")
+    COVER_PUBLISHER = (By.XPATH, "//main//a[.//span[normalize-space()='Organisation' or normalize-space()='Individual']]")
+    CONTENTS_LINKS = (By.XPATH, "//main//nav[@aria-label='Contents']//a")
+    CONTRIBUTOR_LINKS = (By.XPATH, "//main//section[@aria-label='Contributors']//li//a")
+    DATASET_CARD_LINKS = (By.XPATH, "//main//h2[normalize-space()='Datasets behind this story']/following-sibling::ul//li//a")
+
+    @staticmethod
+    def topic_links(group_title):
+        """Chips under a TopicBar group titled 'Tags', 'SDG Goals' or 'Sector'."""
+        return (By.XPATH, f"//main//p[normalize-space()='{group_title}']/following-sibling::div[1]//a")
 
     # JusticeHub dashboard embed (DataSpaceFrontend #492): a justicehub.in dashboard
     # gets its own wrapper that preloads the public theme CSS/logo and hides the
