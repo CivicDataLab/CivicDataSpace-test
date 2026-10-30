@@ -1,384 +1,175 @@
 # pages/provider/create_dataset_page.py
 
-import time
-import json
+import os
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import Select
 from selenium.common.exceptions import TimeoutException
-from pages.base_page import BasePage
-from locators.provider.create_dataset_locators import CreateDatasetLocators
-from pages.provider.dataset_detail_page import DatasetDetailPage
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from pages.provider.editor_wizard_page import EditorWizardPage
+from locators.provider.create_dataset_locators import CreateDatasetLocators as L
+from locators.provider.editor_wizard_locators import EditorWizardLocators as W
 
-class CreateDatasetPage(BasePage):
-    """POM for the three‐tab Create Dataset editor."""
+
+class CreateDatasetPage(EditorWizardPage):
+    """Dataset wizard: Data Files (Prompt Files) -> Metadata -> Review & Publish."""
+
+    ENTITY = "Dataset"
 
     def is_form_visible(self) -> bool:
-        # “Metadata” tab must be visible
-        return bool(self.wait.until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA))
-        ))
+        return bool(self.wait.until(EC.visibility_of_element_located((By.XPATH, L.TAB_METADATA))))
 
-    # ---- Tab navigation ----
-    def go_to_metadata_tab(self):
-        # After "Dataset created successfully" the form can drop back to a full
-        # "Loading" render once more, so a tab that was clickable a moment ago gets
-        # covered mid-click (test_prv_002: ElementClickIntercepted). Retry until
-        # the Metadata form is actually showing.
+    # ---- Steps ----
+    def _go_to_step(self, label: str, segment: str):
+        self.wait_until_saved()
         self.click_until(
-            (By.XPATH, CreateDatasetLocators.TAB_METADATA),
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.DESCRIPTION)),
+            (By.XPATH, L.STEP_BUTTON.format(label=label)),
+            lambda d: f"/edit/{segment}" in d.current_url,
+            message=f"The '{label}' step never opened",
         )
+        return self
+
+    def go_to_metadata_tab(self):
+        self._go_to_step("Metadata", "metadata")
+        # The list row is found by this name after publishing.
+        self._dataset_name = self.wait.until(
+            EC.visibility_of_element_located((By.XPATH, L.TITLE_INPUT))
+        ).get_attribute("value")
         return self
 
     def go_to_datafiles_tab(self):
-        tab = self.wait.until(EC.element_to_be_clickable(
-            (By.XPATH, CreateDatasetLocators.TAB_DATAFILES)
-        ))
-        self.driver.execute_script(
-            "arguments[0].scrollIntoView({behavior: 'auto', block: 'center'});",
-            tab
-        )
-        tab.click()
-        return self
+        return self._go_to_step("Data Files", "resources")
 
     def go_to_prompt_files_tab(self):
-        tab = self.wait.until(EC.element_to_be_clickable(
-            (By.XPATH, CreateDatasetLocators.TAB_PROMPT_FILES)
-        ))
-        self.driver.execute_script(
-            "arguments[0].scrollIntoView({behavior: 'auto', block: 'center'});",
-            tab
-        )
-        tab.click()
-        return self
+        return self._go_to_step("Prompt Files", "resources")
 
     def go_to_publish_tab(self):
-        self.click((By.XPATH, CreateDatasetLocators.TAB_PUBLISH))
-        self.wait.until(EC.visibility_of_element_located(
-            (By.XPATH, CreateDatasetLocators.PUBLISH_REVIEW_TEXT)
-        ))
-        return self
+        return self._go_to_step("Review & Publish", "publish")
 
-    # ---- Metadata entry ----
+    # ---- Metadata ----
     def enter_description(self, text: str):
-        # Same Quill editor as the usecase/collaborative/ai-model summary fields,
-        # and the same failure: a plain send_keys can leave it empty, so
-        # test_prv_006 step 5a asserted description == '' . This was the one
-        # enter_description never converted when the others moved to the helper.
-        self.type_into_rich_editor((By.XPATH, CreateDatasetLocators.DESCRIPTION), text)
+        self.type_into_rich_editor((By.XPATH, L.DESCRIPTION), text)
         return self
 
     def select_sectors(self, items: list[str]):
-        """Select multiple sectors using BasePage utility to eliminate duplication"""
-        for val in items:
-            self.select_combobox_option((By.XPATH, CreateDatasetLocators.SECTOR_INPUT), val)
-        # Wait for any toast notifications to disappear, but don't fail if they persist
-        try:
-            self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=5)
-        except TimeoutException:
-            pass  # Continue anyway - toasts don't block interaction
-        return self
+        return self.select_field_options("Sector", items)
 
-    def select_tags(self, items: list[str]):
-        """Select multiple tags using BasePage utility to eliminate duplication"""
-        for val in items:
-            self.select_combobox_option((By.XPATH, CreateDatasetLocators.TAGS_INPUT), val)
-        return self
-
-    def select_geography(self, value: str):
-        self.wait_until_saved()
-        import time
-
-        toggle = self.wait_with_timeout(10).until(EC.element_to_be_clickable(
-            (By.XPATH, CreateDatasetLocators.GEOGRAPHY_CONTAINER)
-        ))
-        toggle.click()
-
-        # Type the value to filter the dropdown options
-        toggle.send_keys(value)
-        time.sleep(2)
-
-        # Use keyboard to select the first filtered option
-        toggle.send_keys(Keys.ARROW_DOWN)
-        time.sleep(0.5)
-        toggle.send_keys(Keys.ENTER)
-        time.sleep(0.5)
-
-        ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
-        return self
-
-    def enter_date_created(self, iso_date: str):
-
-        # 1) locate the date <input>
-        fld = self.wait.until(EC.presence_of_element_located(
-            (By.XPATH, CreateDatasetLocators.DATE_CREATED_INPUT)
-        ))
-        fld.send_keys(iso_date)
+    def enter_date_created(self, date_keys: str):
+        self.find((By.XPATH, L.DATE_CREATED_INPUT)).send_keys(date_keys)
+        self.wait_for_autosave()
         return self
 
     def enter_source_website(self, url: str):
-        fld = self.find((By.XPATH, CreateDatasetLocators.SOURCE_INPUT))
-        fld.clear()
-        fld.send_keys(url)
+        self.clear_and_type((By.XPATH, L.SOURCE_INPUT), url)
+        self.wait_for_autosave()
         return self
 
     def select_license(self, license_text: str):
-        """
-        Picks the desired license from the native <select>.
-        """
-        # 1) wait for the <select> to be present
-        sel_elem = self.wait.until(EC.presence_of_element_located(
-            (By.XPATH, CreateDatasetLocators.LICENSE_SELECT)
-        ))
+        return self.choose_select_option((By.XPATH, L.LICENSE_SELECT), license_text)
 
-        # 2) wrap it in the Select helper and choose by visible text
-        sel = Select(sel_elem)
-        sel.select_by_visible_text(license_text)
-
-        return self
-
-    # ---- Prompt Dataset Metadata fields ----
-    def _scroll_to_locator(self, locator):
-        el = self.wait.until(EC.presence_of_element_located(locator))
-        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
-        return el
-
+    # Prompt datasets only
     def select_task_type(self, value: str):
-        loc = (By.XPATH, CreateDatasetLocators.TASK_TYPE_INPUT)
-        self._scroll_to_locator(loc)
-        self.select_combobox_option(loc, value)
-        return self
+        return self.select_field_options("Task Type", [value])
 
     def select_domain(self, value: str):
-        loc = (By.XPATH, CreateDatasetLocators.DOMAIN_INPUT)
-        self._scroll_to_locator(loc)
-        self.select_combobox_option(loc, value)
-        return self
+        return self.select_field_options("Domain", [value])
 
     def select_target_languages(self, items: list[str]):
-        loc = (By.XPATH, CreateDatasetLocators.TARGET_LANGUAGES_INPUT)
-        self._scroll_to_locator(loc)
-        for val in items:
-            self.select_combobox_option(loc, val)
-        return self
+        return self.select_field_options("Target Languages", items)
 
     def select_target_model_types(self, items: list[str]):
-        loc = (By.XPATH, CreateDatasetLocators.TARGET_MODEL_TYPES_INPUT)
-        self._scroll_to_locator(loc)
-        for val in items:
-            self.select_combobox_option(loc, val)
-        return self
-
-    def get_selected_task_type(self) -> list[str]:
-        els = self.driver.find_elements(By.XPATH, CreateDatasetLocators.TASK_TYPE_SELECTED_PILL)
-        return [el.text.strip() for el in els]
-
-    def get_selected_domain(self) -> list[str]:
-        els = self.driver.find_elements(By.XPATH, CreateDatasetLocators.DOMAIN_SELECTED_PILL)
-        return [el.text.strip() for el in els]
-
-    def get_selected_target_languages(self) -> list[str]:
-        els = self.driver.find_elements(By.XPATH, CreateDatasetLocators.TARGET_LANGUAGES_SELECTED_PILL)
-        return [el.text.strip() for el in els]
-
-    def get_selected_target_model_types(self) -> list[str]:
-        els = self.driver.find_elements(By.XPATH, CreateDatasetLocators.TARGET_MODEL_TYPES_SELECTED_PILL)
-        return [el.text.strip() for el in els]
+        return self.select_field_options("Target Model Types", items)
 
     def get_prompt_field_options(self, label: str) -> list[str]:
-        """Every option the prompt dropdown labelled `label` offers, e.g. 'Task Type'."""
-        loc = (By.XPATH, CreateDatasetLocators.COMBOBOX_BY_LABEL.format(label))
-        self._scroll_to_locator(loc)
-        return self.get_combobox_options(loc)
+        """Every option the prompt field labelled `label` offers, e.g. 'Task Type'."""
+        select = (By.XPATH, W.SELECT_BY_LABEL.format(label=label))
+        if self.driver.find_elements(*select):  # Prompt Format is a button-style select
+            return self.get_select_options(select)
+        return self.get_combobox_options((By.XPATH, W.FIELD_INPUT.format(label=label)))
 
-    # ---- File upload ----
+    # ---- Files ----
     def _upload(self, path: str) -> str:
-        """Upload a file and wait until its edit view shows it. Returns the file name."""
-        import os
-
+        """Upload a file and wait until its card lists it. Returns the file name."""
         filename = os.path.basename(path)
-        inp = self.wait.until(EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.DATAFILES_INPUT)))
-        inp.send_keys(path)
-
-        # The edit view for this upload names the file once the upload is done.
+        self.wait.until(EC.presence_of_element_located((By.XPATH, L.DATAFILES_INPUT))).send_keys(path)
+        # Wait on this file's card: the list re-renders while uploads land.
         self.wait_with_timeout(60).until(
-            EC.presence_of_element_located((By.XPATH, f"//*[normalize-space(text())='{filename}']")),
+            EC.presence_of_element_located((By.XPATH, L.UPLOADED_FILE_NAME.format(name=filename))),
             message=f"Timed out waiting for '{filename}' to finish uploading",
         )
         self.wait_until_saved()
         return filename
 
-    def upload_prompt_file_and_open(self, path: str):
-        """Upload a prompt file and stay on its edit view (where Prompt Format lives)."""
+    def upload_datafile(self, path: str):
         self._upload(path)
         return self
 
-    def _upload_and_return_to_list(self, path: str, go_to_tab) -> None:
-        """Upload a file, wait until it has really landed, then return to the file list.
+    upload_prompt_file = upload_datafile
 
-        When an upload finishes the app opens that file's edit view. Clicking back
-        as soon as the back arrow appears could land mid-upload; the completed
-        upload then reopened the edit view, and the resource-name getter fell back
-        to its schema table and returned column names (test_prv_002b).
-        """
+    def upload_prompt_file_and_open(self, path: str):
+        """Upload a prompt file and open its details sheet (where Prompt Format lives)."""
         filename = self._upload(path)
-        self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.BACK_BUTTON))
-        ).click()
-
-        go_to_tab()
-        self.wait_with_timeout(30).until(
-            lambda d: any(
-                el.text.strip() == filename
-                for el in d.find_elements(By.XPATH, CreateDatasetLocators.RESOURCE_NAME_CELLS)
-            ),
-            message=f"Timed out waiting for '{filename}' in the uploaded file list",
+        self.click_until(
+            (By.XPATH, L.VIEW_FILE_BUTTON.format(name=filename)),
+            EC.visibility_of_element_located((By.XPATH, L.PROMPT_FILE_SHEET)),
+            message=f"'View' never opened the details of '{filename}'",
         )
-
-    def upload_datafile(self, path: str):
-        self._upload_and_return_to_list(path, self.go_to_datafiles_tab)
         return self
 
-    def upload_prompt_file(self, path: str):
-        self._upload_and_return_to_list(path, self.go_to_prompt_files_tab)
-        return self
-
-    # ---- Final publish ----
-    def click_publish(self) -> DatasetDetailPage:
-        self.click((By.XPATH, CreateDatasetLocators.PUBLISH_BUTTON))
-        return DatasetDetailPage(self.driver)
-
-    # ----Getter functions----
-
-    def get_description_value(self) -> str:
-        elt = self.wait.until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.DESCRIPTION))
-        )
-        return elt.text.strip()
-
-    def get_selected_sectors(self) -> list[str]:
-        # Assuming each selected‐tag appears as a “pill” with text inside
-        elements = self.driver.find_elements(
-            By.XPATH, CreateDatasetLocators.SECTOR_SELECTED_PILL
-        )
-        return [el.text.strip() for el in elements]
-
-    def get_selected_tags(self) -> list[str]:
-        elements = self.driver.find_elements(
-            By.XPATH, CreateDatasetLocators.TAG_SELECTED_PILL
-        )
-        return [el.text.strip() for el in elements]
-
-    def get_selected_geography(self) -> str:
-        elt = self.wait.until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.GEOGRAPHY_SELECTED_PILL))
-        )
-        return elt.text.strip()
-
-    def get_date_created_value(self) -> str:
-        """
-        Returns the “value” attribute of the <input type='date'> field,
-        which should be in YYYY-MM-DD format.
-        """
-        inp = self.wait.until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.GET_DATE_CREATED))
-        )
-        return inp.get_attribute("value")
-
-    def get_source_website_value(self) -> str:
-        inp = self.wait.until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.SOURCE_WEBSITE_INPUT))
-        )
-        return inp.get_attribute("value").strip()
-
-    def get_selected_license_text(self) -> str:
-        # If LICENSE_CONTAINER is the dropdown, maybe the current selection is inside a <span> there.
-        elt = self.wait.until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.LICENSE_SELECTED_TEXT))
-        )
-        return elt.text.strip()
-
-    def get_uploaded_resource_names(self) -> list[str]:
-        """
-        Returns the text of every cell under the "NAME OF RESOURCE" column.
-        """
-        # wait until at least one row has appeared
-        # Try multiple locator strategies in case the table structure changed
+    def close_file_details(self):
+        # Escape out of a select inside the sheet can already be closing it.
         try:
-            els = self.wait_with_timeout(10).until(EC.presence_of_all_elements_located(
-                (By.XPATH, CreateDatasetLocators.RESOURCE_NAME_CELLS)
-            ))
-        except:
-            # Try alternative: any table row's first cell
-            try:
-                els = self.wait_with_timeout(5).until(EC.presence_of_all_elements_located(
-                    (By.XPATH, "//table//tbody//tr//td[1]")
-                ))
-            except:
-                # Try another alternative: look for file names anywhere in the data files section
-                els = self.wait_with_timeout(5).until(EC.presence_of_all_elements_located(
-                    (By.XPATH, "//div[contains(@class, 'datafile') or contains(@class, 'resource')]//span | //div[contains(@class, 'datafile') or contains(@class, 'resource')]//div")
-                ))
+            self.wait_with_timeout(5).until(
+                EC.invisibility_of_element_located((By.XPATH, L.PROMPT_FILE_SHEET))
+            )
+            return self
+        except TimeoutException:
+            pass
+        self.click_until(
+            (By.XPATH, L.SHEET_CLOSE_BUTTON),
+            EC.invisibility_of_element_located((By.XPATH, L.PROMPT_FILE_SHEET)),
+            message="The file details sheet never closed",
+        )
+        return self
 
-        # strip() in case there's extra whitespace
-        return [el.text.strip() for el in els if el.text.strip()]
-
-    # ─── Publish‐tab getters ─────────────────────────────────────────────────────────────────
+    # ---- Publish ----
     def is_publish_tab_visible(self) -> bool:
         return bool(self.wait.until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.PUBLISH_TAB_CONTAINER))
+            EC.visibility_of_element_located((By.XPATH, L.PUBLISH_DATASET_BUTTON))
         ))
 
-    def is_published(self) -> bool:
-        """
-        Check if the dataset has been published by navigating to the Published tab.
+    def click_publish(self):
+        return super().click_publish(self._dataset_name)
 
-        After clicking Publish, the page redirects to the drafts tab. We then need to
-        click on the "Published" tab to verify the dataset appears there.
+    # ---- Getters ----
+    def get_description_value(self) -> str:
+        return self.wait.until(EC.visibility_of_element_located((By.XPATH, L.DESCRIPTION))).text.strip()
 
-        Returns:
-            True if we can successfully navigate to the Published tab, False otherwise
-        """
-        # Wait for the redirect away from the publish route (confirms publish
-        # succeeded). DataSpaceFrontend#471 switched the drafts/published tab
-        # to a silent default (nuqs `withDefault('drafts')`) instead of writing
-        # `?tab=drafts` into the URL, so the post-publish redirect
-        # (`router.push('/dashboard/.../dataset')`, no query string - see
-        # publish/page.tsx) never contains that substring anymore. Checking
-        # for the publish route disappearing is what's actually true post-#471.
-        self.wait_with_timeout(10).until(
-            lambda d: "/edit/publish" not in d.current_url
-        )
+    def get_selected_sectors(self) -> list[str]:
+        return self.selected_chips("Sector")
 
-        # Wait a moment for the UI to update after redirect
-        import time
-        time.sleep(2)
+    def get_selected_geography(self) -> str:
+        return ", ".join(self.selected_chips("Geography"))
 
-        # Click on the "Published" tab to verify dataset is there. Since
-        # DataSpaceFrontend#504 the tab no longer writes `?tab=` into the URL,
-        # so its own aria-selected is the signal.
-        try:
-            published_tab = self.wait_with_timeout(10).until(
-                EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.PUBLISHED_LIST_TAB))
-            )
-            published_tab.click()
+    def get_selected_task_type(self) -> list[str]:
+        return self.selected_chips("Task Type")
 
-            self.wait_with_timeout(10).until(
-                lambda d: published_tab.get_attribute("aria-selected") == "true"
-            )
+    def get_selected_domain(self) -> list[str]:
+        return self.selected_chips("Domain")
 
-            return True
-        except TimeoutException:
-            # If we can't navigate to published tab or it times out
-            return False
+    def get_selected_target_languages(self) -> list[str]:
+        return self.selected_chips("Target Languages")
 
-    def get_download_url(self) -> str:
-        link = self.wait.until(
-            EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.DOWNLOAD_LINK))
-        )
-        return link.get_attribute("href")
+    def get_selected_target_model_types(self) -> list[str]:
+        return self.selected_chips("Target Model Types")
+
+    def get_date_created_value(self) -> str:
+        return self.find((By.XPATH, L.DATE_CREATED_INPUT)).get_attribute("value")
+
+    def get_source_website_value(self) -> str:
+        return self.find((By.XPATH, L.SOURCE_INPUT)).get_attribute("value").strip()
+
+    def get_selected_license_text(self) -> str:
+        return self.find((By.XPATH, L.LICENSE_SELECT)).text.strip()
+
+    def get_uploaded_resource_names(self) -> list[str]:
+        return [el.text.strip() for el in self.finds((By.XPATH, L.UPLOADED_FILE_NAMES))]
