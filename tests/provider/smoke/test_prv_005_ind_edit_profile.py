@@ -1,4 +1,6 @@
 # tests/provider/functional/test_prv_005_ind_edit_profile.py
+import time
+
 import pytest
 from pages.home_page import HomePage
 from pages.provider.login_page import LoginPage
@@ -22,7 +24,7 @@ def test_prv_005_ind_edit_profile(driver, sample_profile_image_path, base_url, t
           5. Fill in First name, Last name, Github profile, Linkedin Profile, Location, Twitter profile, Bio,
           6. Upload a profile picture
           7. Click on Save button
-          9. Assert the profile details are updated
+          8. Reload, assert the saved bio came back from the server
         """
 
     driver.delete_all_cookies()
@@ -74,7 +76,9 @@ def test_prv_005_ind_edit_profile(driver, sample_profile_image_path, base_url, t
     )
 
     # (5b) Enter Bio Text
-    bio_text = 'Quality Assurance Engineer. Deriving Quality at CDL'
+    # Unique per run, so a save that silently doesn't persist can't pass on
+    # a value left over from an earlier run.
+    bio_text = f'Quality Assurance Engineer. Deriving Quality at CDL ({int(time.time())})'
     up_profile.enter_bio_text(bio_text)
     get_bio_text = up_profile.get_bio_text_value()
     assert get_bio_text == bio_text, (
@@ -86,4 +90,10 @@ def test_prv_005_ind_edit_profile(driver, sample_profile_image_path, base_url, t
 
     # (5d) Click Save Button
     up_profile.click_save()
-    assert up_profile.is_profile_image_uploaded(), "Step 5d failure: clicking save button did not succeed."
+
+    # (5e) The bio must survive a reload, i.e. it was written to the backend.
+    up_profile.reload()
+    saved_bio = up_profile.get_bio_text_value()
+    assert saved_bio == bio_text, (
+        f"Step 5e failure: after reload, expected bio '{bio_text}', but found '{saved_bio}'."
+    )
