@@ -87,3 +87,180 @@ def test_anonymous_cannot_create_event(anon_graphql_client):
     assert payload["errors"]["nonFieldErrors"] == [
         "You don't have permission to create an event"
     ], payload["errors"]
+
+
+# ─── Authenticated flows (added locally with TEST_EMAIL_3, 2026-10-30) ─────────
+#
+# Account 3 is admin of "test org name" (see org_add_permission in conftest.py;
+# re-check before trusting). Every event is created as a draft and deleted in
+# teardown. Writes to dev only: none of these are readonly.
+#
+# Not covered: an authenticated outsider (a logged-in non-member) reading or
+# changing another account's draft. That needs a second account as creator;
+# the anonymous branch of AllowPublishedEvents is covered below.
+
+from tests.api import publications as pub  # noqa: E402  (generic gql/mutate/errors helpers)
+
+ORG = "test org name"
+EVENT_FIELDS = "id name status isIndividualEvent organization { slug }"
+EVENT_RESULT = "success errors { fieldErrors { field messages } nonFieldErrors } data { %s }" % EVENT_FIELDS
+COMPLETE = {
+    "location": "Online",
+    "startDate": "2030-01-01",
+    "endDate": "2030-01-02",
+    "lumaEmbed": "https://lu.ma/embed/event/evt-apitest/simple",
+}
+# Newest-modified first by default, so a just-created event is on the first page.
+TABLE = "{ eventsTable(limit: 100) { data { id } } }"
+
+
+def _create(client, org=None, **fields):
+    payload = pub.mutate(
+        client, "createEvent",
+        "mutation($i: CreateEventInput!){ createEvent(input:$i){ %s } }" % EVENT_RESULT,
+        {"i": {"name": pub.unique_title("api-test event"), **fields}}, org,
+    )
+    assert payload["success"], f"createEvent failed: {payload['errors']}"
+    return payload["data"]
+
+
+def _by_id(name, event_id, org=None):
+    return lambda client: pub.mutate(
+        client, name,
+        "mutation($id: UUID!){ %s(eventId:$id){ %s } }"
+        % (name, "success errors { fieldErrors { field messages } nonFieldErrors }"),
+        {"id": event_id}, org,
+    )
+
+
+def _get(client, event_id):
+    return pub.gql(client, "query($id: UUID!){ event(eventId:$id){ id status } }", {"id": event_id})
+
+
+def _published_ids(client, event_id):
+    body = pub.gql(
+        client, "query($f: [FilterSpec!]){ publishedEvents(filters: $f){ data { id } } }",
+        {"f": [{"field": "id", "value": event_id}]},
+    )
+    assert "errors" not in body, body
+    return {e["id"] for e in body["data"]["publishedEvents"]["data"]}
+
+
+def _table_ids(client, org=None):
+    body = pub.gql(client, TABLE, org=org)
+    assert "errors" not in body, body
+    return {e["id"] for e in body["data"]["eventsTable"]["data"]}
+
+
+@pytest.fixture
+def owner(graphql_client_for):
+    return graphql_client_for(3)
+
+
+@pytest.fixture
+def org_slug(owner):
+    return pub.org_slug(owner, ORG)
+
+
+@pytest.fixture
+def own_event(owner):
+    created = []
+
+    def make(**fields):
+        created.append(_create(owner, **fields))
+        return created[-1]
+
+    yield make
+    for event in created:
+        _by_id("deleteEvent", event["id"])(owner)
+
+
+@pytest.fixture
+def org_event(owner, org_slug):
+    event = _create(owner, org=org_slug)
+    yield event
+    _by_id("deleteEvent", event["id"], org=org_slug)(owner)
+
+
+@pytest.mark.api
+@pytest.mark.smoke
+@pytest.mark.deployed_pr("DataSpaceBackend#263")
+def test_draft_is_private_until_published(owner, anon_graphql_client, own_event):
+    """
+    AllowPublishedEvents: a draft is visible to its owner and refused to an
+    anonymous caller, by id and in publishedEvents. Publishing opens it up,
+    unpublishing closes it again.
+    """
+    event = own_event(**COMPLETE)
+    assert event["status"] == "DRAFT" and event["isIndividualEvent"] is True, event
+    assert _get(owner, event["id"])["data"]["event"]["id"] == event["id"]
+
+    anon = _get(anon_graphql_client, event["id"])
+    assert anon["data"]["event"] is None, f"anonymous caller read a draft: {anon}"
+    assert anon["errors"][0]["message"] == "You need to be authenticated to access non-published events", anon
+    assert event["id"] not in _published_ids(anon_graphql_client, event["id"]), "publishedEvents listed a draft"
+
+    payload = _by_id("publishEvent", event["id"])(owner)
+    assert payload["success"], payload["errors"]
+    assert _get(anon_graphql_client, event["id"])["data"]["event"] == {"id": event["id"], "status": "PUBLISHED"}
+    assert event["id"] in _published_ids(anon_graphql_client, event["id"]), "published event missing from publishedEvents"
+
+    payload = _by_id("unpublishEvent", event["id"])(owner)
+    assert payload["success"], payload["errors"]
+    assert _get(anon_graphql_client, event["id"])["data"]["event"] is None, "unpublished event still public"
+
+
+@pytest.mark.api
+@pytest.mark.smoke
+@pytest.mark.deployed_pr("DataSpaceBackend#263")
+def test_publish_refuses_an_incomplete_draft(owner, own_event):
+    """assert_ready_to_publish: name alone isn't enough; location, dates and a Luma embed are required."""
+    event = own_event()
+    payload = _by_id("publishEvent", event["id"])(owner)
+    assert payload["success"] is False, f"incomplete draft was published: {payload}"
+    assert set(pub.errors_of(payload)) >= {"location", "start_date", "end_date", "luma_embed"}, payload["errors"]
+    assert _get(owner, event["id"])["data"]["event"]["status"] == "DRAFT"
+
+
+@pytest.mark.api
+@pytest.mark.smoke
+@pytest.mark.deployed_pr("DataSpaceBackend#263")
+def test_owner_can_update_and_delete(owner):
+    event = _create(owner)
+    try:
+        payload = pub.mutate(
+            owner, "updateEvent",
+            "mutation($i: UpdateEventInput!){ updateEvent(input:$i){ %s } }" % EVENT_RESULT,
+            {"i": {"id": event["id"], "name": "renamed by api test"}},
+        )
+        assert payload["success"], payload["errors"]
+        assert payload["data"]["name"] == "renamed by api test", payload
+    finally:
+        deleted = _by_id("deleteEvent", event["id"])(owner)
+    assert deleted["success"], deleted["errors"]
+    assert _get(owner, event["id"])["data"]["event"] is None, "deleted event still readable"
+
+
+@pytest.mark.api
+@pytest.mark.smoke
+@pytest.mark.deployed_pr("DataSpaceBackend#263")
+def test_events_table_is_scoped_to_the_context(owner, org_slug, own_event, org_event):
+    """get_scoped_events: no header -> the caller's individual events; organization header -> that org's."""
+    mine = own_event()
+    personal, org = _table_ids(owner), _table_ids(owner, org=org_slug)
+    assert mine["id"] in personal and org_event["id"] not in personal, personal
+    assert org_event["id"] in org and mine["id"] not in org, org
+
+
+@pytest.mark.api
+@pytest.mark.smoke
+@pytest.mark.deployed_pr("DataSpaceBackend#263")
+@pytest.mark.xfail(
+    strict=True,
+    reason="eventsTable has no permission check: the organization header alone "
+    "selects that org's events, drafts included, for any caller (anonymous too). "
+    "Product bug in DataSpaceBackend#263's get_scoped_events; remove this xfail once fixed.",
+)
+def test_anonymous_cannot_list_an_orgs_drafts(anon_graphql_client, org_slug, org_event):
+    leaked = _table_ids(anon_graphql_client, org=org_slug)
+    assert org_event["id"] not in leaked, f"anonymous eventsTable listed {ORG!r}'s draft {org_event['id']}"
