@@ -19,9 +19,9 @@ def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, t
       1. Access Homepage and log in
       2. Navigate to Organizations dashboard and select an org
       3. Click "Add New Dataset" → select "Prompt Dataset"
-      4. Fill Metadata (Description, Sectors, Tags, Geography, Date, Source, License)
-      5. Fill Prompt-specific Metadata (Task Type, Domain, Target Languages, Target Model Types)
-      6. Upload a prompt file (Prompt Files tab)
+      4. Upload a prompt file (the wizard needs one before Metadata)
+      5. Fill Metadata (Description, Sectors, Tags, Geography, Date, Source, License)
+      6. Fill Prompt-specific Metadata (Task Type, Domain, Target Languages, Target Model Types)
       7. Publish and verify Published status
     """
     driver.delete_all_cookies()
@@ -57,6 +57,29 @@ def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, t
     assert isinstance(create_ds, CreateDatasetPage), (
         "test_prv_006b: click_add_new_prompt_dataset() did not return CreateDatasetPage"
     )
+
+    # ── Step 6: PROMPT FILES TAB ──────────────────────────────────────────────
+
+    create_ds.go_to_prompt_files_tab()
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    original_filename = os.path.basename(sample_csv_path)
+    name, ext = os.path.splitext(original_filename)
+    unique_filename = f"{name}_{timestamp}{ext}"
+    unique_path = os.path.join(os.path.dirname(sample_csv_path), unique_filename)
+    shutil.copy2(sample_csv_path, unique_path)
+
+    create_ds.upload_prompt_file(unique_path)
+
+    uploaded = create_ds.get_uploaded_resource_names()
+    assert unique_filename in uploaded, (
+        f"Step 6: '{unique_filename}' not found in uploaded files: {uploaded}"
+    )
+
+    try:
+        os.remove(unique_path)
+    except Exception:
+        pass
 
     # ── Step 4: METADATA TAB ──────────────────────────────────────────────────
 
@@ -137,29 +160,6 @@ def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, t
     assert any("GPT" in v for v in model_pills), (
         f"Step 5d: Target Model Type 'GPT' not found in pills: {model_pills}"
     )
-
-    # ── Step 6: PROMPT FILES TAB ──────────────────────────────────────────────
-
-    create_ds.go_to_prompt_files_tab()
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    original_filename = os.path.basename(sample_csv_path)
-    name, ext = os.path.splitext(original_filename)
-    unique_filename = f"{name}_{timestamp}{ext}"
-    unique_path = os.path.join(os.path.dirname(sample_csv_path), unique_filename)
-    shutil.copy2(sample_csv_path, unique_path)
-
-    create_ds.upload_prompt_file(unique_path)
-
-    uploaded = create_ds.get_uploaded_resource_names()
-    assert unique_filename in uploaded, (
-        f"Step 6: '{unique_filename}' not found in uploaded files: {uploaded}"
-    )
-
-    try:
-        os.remove(unique_path)
-    except Exception:
-        pass
 
     # ── Step 7: PUBLISH ───────────────────────────────────────────────────────
 
