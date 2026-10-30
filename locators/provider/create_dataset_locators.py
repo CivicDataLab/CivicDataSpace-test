@@ -1,134 +1,44 @@
+# locators/provider/create_dataset_locators.py
+#
+# Dataset-only parts of the wizard (/dataset/<id>/edit/{resources,metadata,publish}).
+# Shared wizard parts: EditorWizardLocators.
+
+from locators.provider.editor_wizard_locators import EditorWizardLocators as W
+
+
 class CreateDatasetLocators:
-    # ---- Dataset Type Selection Modal (appears when clicking "Add New Dataset") ----
+    # ---- Dataset type modal (from "Create Dataset" on the list) ----
     MODAL_TITLE = "//h2[contains(., 'Create New Dataset')] | //div[contains(., 'Select the type of dataset')]"
     DATA_DATASET_CARD = "//button[.//h3[normalize-space()='Data Dataset']]"
     PROMPT_DATASET_CARD = "//button[.//h3[normalize-space()='Prompt Dataset']]"
-    CREATE_DATASET_BUTTON = "//button[normalize-space()='Create Dataset']"
-    MODAL_CANCEL_BUTTON = "//button[normalize-space()='Cancel']"
+    # Scoped to the modal: the header has its own "Create Dataset" button.
+    CREATE_DATASET_BUTTON = "//div[@role='dialog']//button[normalize-space()='Create Dataset']"
 
-    # ---- Tabs ----
-    TAB_METADATA        = "//button[normalize-space()='Metadata']"
-    TAB_DATAFILES       = "//button[normalize-space()='Data Files']"
-    TAB_PROMPT_FILES    = "//button[normalize-space()='Prompt Files']"
-    TAB_PUBLISH         = "//button[normalize-space()='Publish']"
+    # ---- Steps: buttons in the Progress nav, labelled then subtitled ----
+    STEP_BUTTON = "//main//button[starts-with(normalize-space(),'{label}')]"
+    # Creating a dataset lands on Data Files, where this step button is the first sign of the editor.
+    TAB_METADATA = STEP_BUTTON.format(label="Metadata")
 
-    # ---- Metadata fields ----
-    DESCRIPTION         = "//div[contains(@class, 'ql-editor') and @contenteditable='true']"
+    # ---- Metadata ----
+    TITLE_INPUT = "//input[@name='title']"
+    DESCRIPTION = "//main//div[contains(@class, 'ql-editor') and @contenteditable='true']"
+    DATE_CREATED_INPUT = W.FIELD_INPUT.format(label="Date of Creation of Dataset")
+    SOURCE_INPUT = "//input[@id=//label[normalize-space()='Source Website']/@for]"
+    LICENSE_SELECT = W.SELECT_BY_LABEL.format(label="License")
 
-    SECTOR_INPUT        = "//label[normalize-space()='Sectors *']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
-    SECTOR_DROPDOWN_ITEM = "//div[@role='option'][normalize-space(.)='{value}']"
+    # Read by tests/test_pill_locators.py to keep chip getters field-scoped.
+    SECTOR_CHIPS = W.FIELD_CHIPS.format(label="Sector")
+    TAG_CHIPS = W.FIELD_CHIPS.format(label="Tags")
+    GEOGRAPHY_CHIPS = W.FIELD_CHIPS.format(label="Geography")
 
-    TAGS_INPUT           = "//label[normalize-space()='Tags' or normalize-space()='Tags *']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
-    TAG_DROPDOWN_ITEM    = "//div[@role='option' and normalize-space(.)='{value}']"
+    # ---- Data Files / Prompt Files ----
+    DATAFILES_INPUT = "//main//input[@type='file']"
+    # One <article> per uploaded file, labelled by its name.
+    UPLOADED_FILE_NAMES = "//main//article//p[@id=ancestor::article[1]/@aria-labelledby]"
+    UPLOADED_FILE_NAME = UPLOADED_FILE_NAMES + "[normalize-space()='{name}']"
+    VIEW_FILE_BUTTON = "//main//article[.//p[normalize-space()='{name}']]//button[normalize-space()='View']"
+    PROMPT_FILE_SHEET = "//*[@role='dialog'][.//h2[normalize-space()='Prompt File Details']]"
+    SHEET_CLOSE_BUTTON = PROMPT_FILE_SHEET + "//button[normalize-space()='Close']"
 
-    GEOGRAPHY_CONTAINER = "//label[normalize-space()='Geographies']/following::input[1]"
-    GEO_OPTION          = "//div[@role='option' and starts-with(normalize-space(.), '{value}')]"
-
-    DATE_CREATED_INPUT = "//label[normalize-space(.)='Date of Creation of Dataset']"\
-                         "/following::input[@type='date'][1]"
-
-    SOURCE_INPUT        = "//label[normalize-space()='Source Website']/following::input[1]"
-    
-    # the <select> for license
-    LICENSE_SELECT = "//select[@name='license']"
-
-    # ---- Data Files tab ----
-    # grab the file‐picker input anywhere
-    DATAFILES_INPUT = "//input[@type='file']"
-
-    BACK_BUTTON = "//*[contains(@class,'tabler-icon-arrow-left')]/ancestor::button[1]"
-
-    # ---- Publish tab ----
-    PUBLISH_REVIEW_TEXT = "//span[normalize-space()='REVIEW DATASET DETAILS']"
-    PUBLISH_BUTTON      = "//span[@class='Button-module_removeUnderline__dq0ct'][normalize-space()='Publish']"
-
-    #Getter locators :
-    # 5b) After selecting sectors, each chosen sector usually appears as a "pill"
-    SECTOR_SELECTED_PILL = (
-        "//label[normalize-space()='Sectors' or normalize-space()='Sectors *']"
-        "/ancestor::div[.//input[@role='combobox']][1]"
-        "//span[contains(@class,'Tag-module_TagText')]"
-    )
-    # 5c) Tag pills (after selecting tags, each chosen tag appears)
-    TAG_SELECTED_PILL = (
-        "//label[normalize-space()='Tags' or normalize-space()='Tags *']"
-        "/ancestor::div[.//input[@role='combobox']][1]"
-        "//span[contains(@class,'Tag-module_TagText')]"
-    )
-    # 5d) Selected geography appears as a single “pill” or dropdown value
-    GEOGRAPHY_SELECTED_PILL = (
-        "//label[normalize-space(text())='Geographies']"
-        "/ancestor::div[.//input[@role='combobox']][1]"
-        "//span[contains(@class,'Tag-module_TagText')]"
-    )
-
-    # 5e) Date of Creation input (<input type="date">)
-    GET_DATE_CREATED = "//label[normalize-space(.)='Date of Creation of Dataset']"\
-                         "/following::input[@type='date'][1]"
-
-    # 5f) Source website input field
-    SOURCE_WEBSITE_INPUT = "//label[normalize-space()='Source Website']/following::input[1]"
-
-    # 5g) License dropdown (container that shows the currently selected license)
-    LICENSE_SELECTED_TEXT = (
-        "//div[contains(@class,'Labelled-module_LabelWrapper')"
-        "    and .//label[normalize-space(text())='License']]"
-        "/following-sibling::div//span[contains(@class,'Select-module_SelectedOption__')]"
-    )
-
-
-    # ─── Data Files Tab ────────────────────────────────────────────────────────
-
-    # 6b) After uploading, you want a list of filenames.
-
-    # the table itself (you can narrow this down if you have a more specific container)
-    DATAFILES_TABLE = "//div[contains(@class,'opub-DataTable')]//table"
-
-    # all of the “Name of Resource” cells in its first column
-    RESOURCE_NAME_CELLS = DATAFILES_TABLE + "/tbody/tr/td[1]//div"
-
-    # ─── Publish Tab ───────────────────────────────────────────────────────────
-
-    # 7) The main Publish‐tab container (so you know the tab switched)
-    # e.g. <div id="publish-tab-content" …>
-    PUBLISH_TAB_CONTAINER = "//div[@class=' w-full py-6']"
-
-    # 7b) Once you click “Publish,” the page shows a “Published” badge or text:
-    # e.g. <span class="status-badge published">Published</span>
-    # The listing's "Published" tab (not the row status badges, which share the text)
-    PUBLISHED_LIST_TAB = "//button[@role='tab' and contains(@id,'-trigger-PUBLISHED')]"
-    PUBLISHED_STATUS_BADGE = "//span[contains(@class,'status-badge') and normalize-space(text())='Published']"
-
-    # 7c) The download link (for the newly-published dataset)
-    # e.g. <a id="download-dataset" href="...">Download</a>
-    DOWNLOAD_LINK = "//a[@id='download-dataset']"
-
-    # ─── Prompt Dataset Metadata section ──────────────────────────────────────
-    # Anchored to each field's label div — works regardless of heading tag type.
-    TASK_TYPE_INPUT          = "//label[normalize-space()='Task Type']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
-    DOMAIN_INPUT             = "//label[normalize-space()='Domain']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
-    TARGET_LANGUAGES_INPUT   = "//label[normalize-space()='Target Languages']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
-    # Any labelled combobox on the prompt dataset forms, e.g. .format('Prompt Format').
-    COMBOBOX_BY_LABEL        = "//label[normalize-space()='{}']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
-    TARGET_MODEL_TYPES_INPUT = "//label[normalize-space()='Target Model Types']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
-
-    TASK_TYPE_SELECTED_PILL = (
-        "//div[./div[normalize-space(.)='Task Type']]"
-        "//div[contains(@class,'Input-module_tags')]"
-        "//span[contains(@class,'Tag-module_TagText')]"
-    )
-    DOMAIN_SELECTED_PILL = (
-        "//div[./div[normalize-space(.)='Domain']]"
-        "//div[contains(@class,'Input-module_tags')]"
-        "//span[contains(@class,'Tag-module_TagText')]"
-    )
-    TARGET_LANGUAGES_SELECTED_PILL = (
-        "//div[./div[normalize-space(.)='Target Languages']]"
-        "//div[contains(@class,'Input-module_tags')]"
-        "//span[contains(@class,'Tag-module_TagText')]"
-    )
-    TARGET_MODEL_TYPES_SELECTED_PILL = (
-        "//div[./div[normalize-space(.)='Target Model Types']]"
-        "//div[contains(@class,'Input-module_tags')]"
-        "//span[contains(@class,'Tag-module_TagText')]"
-    )
+    # ---- Review & Publish ----
+    PUBLISH_DATASET_BUTTON = "//main//button[normalize-space()='Publish Dataset']"

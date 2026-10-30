@@ -10,7 +10,7 @@ pytestmark = pytest.mark.regression
 PILLS = [
     (CreateUsecaseLocators, ["TAG_CHIPS", "SECTOR_CHIPS", "GEOGRAPHY_CHIPS", "SDG_GOALS_CHIPS"]),
     (CreateCollaborativeLocators, ["TAG_CHIPS", "SECTOR_CHIPS", "GEOGRAPHY_CHIPS", "SDG_GOALS_CHIPS"]),
-    (CreateDatasetLocators, ["SECTOR_SELECTED_PILL", "TAG_SELECTED_PILL", "GEOGRAPHY_SELECTED_PILL"]),
+    (CreateDatasetLocators, ["SECTOR_CHIPS", "TAG_CHIPS", "GEOGRAPHY_CHIPS"]),
 ]
 
 
