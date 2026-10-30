@@ -1,4 +1,4 @@
-# tests/api/smoke/test_api_028_events_schema.py
+# tests/api/smoke/test_api_034_events_schema.py
 #
 # Covers DataSpaceBackend#263 (merge commit 11a0f8d56161e779c3a2122c3ae600a85e04165e):
 # a new Event model and GraphQL schema for event management (publishedEvents,
