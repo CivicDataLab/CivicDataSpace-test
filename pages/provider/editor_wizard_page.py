@@ -1,12 +1,14 @@
 # pages/provider/editor_wizard_page.py
 
 import os
+import re
 
 from selenium.webdriver import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
 from pages.base_page import BasePage
 from locators.provider.editor_wizard_locators import EditorWizardLocators as W
 
@@ -268,19 +270,6 @@ class EditorWizardPage(BasePage):
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", btn)
         return self
 
-    def open_step(self, step: str):
-        """Load the `step` URL segment of this draft directly."""
-        self.wait_until_saved()
-        url = self.driver.current_url.split("?")[0].rsplit("/", 1)[0]
-        self.driver.get(f"{url}/{step}")
-        self.wait_with_timeout(30).until(lambda d: f"/{step}" in d.current_url)
-        return self
-
-    def reload(self):
-        self.wait_until_saved()
-        self.driver.refresh()
-        return self
-
     def is_text_shown(self, text: str, timeout: int = 10) -> bool:
         return self.is_visible((By.XPATH, W.TEXT.format(text=text)), timeout=timeout)
 
@@ -289,6 +278,59 @@ class EditorWizardPage(BasePage):
         return self.wait_with_timeout(timeout).until(
             lambda d: (t := d.find_element(*W.MAIN).text) and "Previous" in t and t
         )
+
+    STEP_URL = re.compile(r"/(resources|metadata|publish|builder|connect|about|people|content|versions|details)$")
+
+    def wait_for_editor(self):
+        """Wait until an editor has settled on one of its steps.
+
+        Opening a draft first lands on the bare `/edit` URL and is then redirected
+        to the step it was left at, so the URL alone cannot be read before that.
+        """
+        self.wait_with_timeout(30).until(
+            lambda d: self.STEP_URL.search(d.current_url), message="The editor never settled on a step"
+        )
+        return self
+
+    def wait_until_synced(self, timeout: int = 30):
+        """Wait for a started autosave to finish and the header to read 'All changes saved'.
+
+        The header says 'Saving…' with a single ellipsis character, which the
+        three-dot text `wait_until_saved` looks for never matches, so that helper
+        returns at once. A save begins as soon as a field changes, so the
+        indicator gets a short window to appear before waiting for it to clear.
+        """
+        saving = (By.XPATH, "//*[normalize-space(text())='Saving…']")
+        try:
+            WebDriverWait(self.driver, 3, poll_frequency=0.05).until(EC.presence_of_element_located(saving))
+        except TimeoutException:
+            pass  # already finished, or nothing changed
+        self.wait_with_timeout(timeout).until(
+            EC.invisibility_of_element_located(saving), message="The editor is still saving"
+        )
+        self.wait_with_timeout(timeout).until(
+            EC.visibility_of_element_located((By.XPATH, "//*[normalize-space(text())='All changes saved']")),
+            message="The editor never reported 'All changes saved'",
+        )
+        return self
+
+    def open_step(self, segment: str):
+        """Open another step of the same record by URL (the last path segment) and wait for the save to settle.
+
+        Loading the URL is also how a test reads back what was saved: the page
+        is rebuilt from the backend, not from the form's state.
+        """
+        self.wait_until_synced()
+        url = self.driver.current_url.split("?")[0].rsplit("/", 1)[0]
+        self.driver.get(f"{url}/{segment}")
+        self.wait_with_timeout(30).until(lambda d: f"/{segment}" in d.current_url)
+        return self.wait_until_synced()
+
+    def reload(self):
+        """Reload the current step from the backend, once every edit has been saved."""
+        self.wait_until_synced()
+        self.driver.refresh()
+        return self.wait_until_synced()
 
     def click_publish(self, name: str):
         self.wait_until_saved()
