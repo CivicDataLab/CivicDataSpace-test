@@ -15,6 +15,8 @@ class CreateUsecaseLocators:
     # Builder "Content": Add Content opens a menu of block types.
     ADD_CONTENT_BUTTON = (By.XPATH, "//button[normalize-space()='Add Content']")
     CONTENT_BLOCK_TYPE = "//button[contains(@class,'menuItem') and normalize-space()='{kind}']"
+    MAIN = (By.TAG_NAME, "main")
+    DONE_EDITING_BUTTON = (By.XPATH, "//button[@aria-label='Done editing']")
     TEXT_BLOCK_EDITOR = (By.XPATH, "(//div[contains(@class,'ql-editor') and @data-placeholder='Write some text...'])[last()]")
 
     # Read by tests/test_pill_locators.py to keep chip getters field-scoped.

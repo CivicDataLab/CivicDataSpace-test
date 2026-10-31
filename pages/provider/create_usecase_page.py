@@ -1,5 +1,6 @@
 # pages/provider/create_usecase_page.py
 
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from pages.provider.editor_wizard_page import EditorWizardPage
@@ -33,6 +34,26 @@ class CreateUsecasePage(EditorWizardPage):
         ).click()
         self.type_into_rich_editor(L.TEXT_BLOCK_EDITOR, text)
         return self
+
+    def done_editing(self):
+        """Close the block being edited; a text block is only saved once it loses focus."""
+        self.click_until(
+            L.DONE_EDITING_BUTTON, EC.invisibility_of_element_located(L.DONE_EDITING_BUTTON),
+            message="'Done editing' never closed the block",
+        )
+        return self
+
+    def has_saved_text_block(self, text: str) -> bool:
+        """After a reload, does the page show a text block reading `text`?
+
+        A block that is not being edited is rendered read-only and its text is
+        not reachable as an element, only as the page's rendered text.
+        """
+        try:
+            self.wait_with_timeout(20).until(lambda d: text in d.find_element(*L.MAIN).text)
+            return True
+        except TimeoutException:
+            return False
 
     def get_title_value(self) -> str:
         return self.find(L.TITLE_INPUT).get_attribute("value")
