@@ -10,7 +10,7 @@ from pages.provider.organizations_page import OrganizationsPage
 
 @pytest.mark.functional
 @pytest.mark.smoke
-def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, test_credentials, writable_org):
+def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, test_credentials, writable_org, cleanup):
     """
     Test Case ID: test_prv_009_org_edit_profile
     Verify User is able to edit organization profile details.
@@ -30,6 +30,9 @@ def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, t
     but applies it to organization profile management.
     """
 
+    # Put the description and the rest back afterwards. The uploaded logo cannot be
+    # removed once saved, so it is the one thing this test still changes.
+    cleanup.restore_profile(writable_org)
     driver.delete_all_cookies()
 
     # Step 1: Load homepage
