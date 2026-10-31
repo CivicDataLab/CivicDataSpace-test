@@ -10,7 +10,7 @@ from pages.provider.update_profile_page import UpdateProfilePage
 
 
 @pytest.mark.functional
-def test_prv_005_ind_edit_profile(driver, sample_profile_image_path, base_url, test_credentials):
+def test_prv_005_ind_edit_profile(driver, sample_profile_image_path, base_url, test_credentials, cleanup):
     """
         Test Case ID: test_prv_005_ind_edit_profile
         Verify User is able to edit profile details.
@@ -25,6 +25,9 @@ def test_prv_005_ind_edit_profile(driver, sample_profile_image_path, base_url, t
           9. Assert the profile details are updated
         """
 
+    # Put the name, bio and the rest back afterwards. The uploaded picture cannot be
+    # removed once saved, so it is the one thing this test still changes.
+    cleanup.restore_profile()
     driver.delete_all_cookies()
     # Step 1: load homepage
     home = HomePage(driver, base_url)
@@ -84,6 +87,11 @@ def test_prv_005_ind_edit_profile(driver, sample_profile_image_path, base_url, t
     up_profile.upload_profile_image(sample_profile_image_path)
     assert up_profile.is_profile_image_uploaded(), "Step 5c failure: profile picture upload did not succeed."
 
-    # (5d) Click Save Button
+    # (5d) Save (waits for the "updated successfully" toast), then reload: the
+    # values must come back from the server, not from the form state. After a save
+    # the picture is no longer a local blob: preview, so it cannot be asserted on.
     up_profile.click_save()
-    assert up_profile.is_profile_image_uploaded(), "Step 5d failure: clicking save button did not succeed."
+    up_profile.reload()
+    assert up_profile.get_first_name_value() == first_name, "Step 5d failure: first name not saved"
+    assert up_profile.get_last_name_value() == last_name, "Step 5d failure: last name not saved"
+    assert up_profile.get_bio_text_value() == bio_text, "Step 5d failure: bio not saved"

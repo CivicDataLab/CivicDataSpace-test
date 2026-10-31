@@ -7,10 +7,10 @@ from selenium.webdriver import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
-from pages.base_page import BasePage
+from pages.provider.editor_wizard_page import EditorWizardPage
 from locators.provider.update_profile_locators import UpdateProfilePageLocators
 
-class UpdateProfilePage(BasePage):
+class UpdateProfilePage(EditorWizardPage):
 
     def is_loaded(self):
         """User ("My Profile") or organization ("My Organization Profile") profile page."""
@@ -72,3 +72,31 @@ class UpdateProfilePage(BasePage):
             return True
         except TimeoutException:
             return False
+
+    # ─── Any field by name, the org type, and the password button ──────────────
+
+    def enter_field(self, name: str, value: str):
+        self.clear_and_type((By.XPATH, UpdateProfilePageLocators.FIELD.format(name=name)), value)
+        return self
+
+    def field_value(self, name: str) -> str:
+        return self.find((By.XPATH, UpdateProfilePageLocators.FIELD.format(name=name))).get_attribute("value")
+
+    def field_enabled(self, name: str) -> bool:
+        return self.find((By.XPATH, UpdateProfilePageLocators.FIELD.format(name=name))).is_enabled()
+
+    def org_type_options(self) -> list[str]:
+        return self.get_select_options(UpdateProfilePageLocators.ORG_TYPE_SELECT)
+
+    def choose_org_type(self, text: str):
+        return self.choose_select_option(UpdateProfilePageLocators.ORG_TYPE_SELECT, text)
+
+    def org_type(self) -> str:
+        return self.find(UpdateProfilePageLocators.ORG_TYPE_SELECT).text.strip()
+
+    def change_password_enabled(self) -> bool:
+        return self.find(UpdateProfilePageLocators.CHANGE_PASSWORD_BUTTON).is_enabled()
+
+    def click_change_password(self):
+        self.find(UpdateProfilePageLocators.CHANGE_PASSWORD_BUTTON).click()
+        return self
