@@ -32,8 +32,7 @@ def _assert_same_options(label, enum_name, actual, expected):
 
 @pytest.mark.regression
 def test_prv_014_prompt_dropdowns_list_every_backend_value(
-    driver, sample_csv_path, base_url, test_credentials, backend_enum_labels
-):
+    driver, sample_csv_path, base_url, test_credentials, backend_enum_labels, cleanup):
     """
     Test Case ID: test_prv_014_prompt_dropdowns_list_every_backend_value
     Every prompt dataset dropdown offers exactly the backend enum's values.
@@ -46,6 +45,8 @@ def test_prv_014_prompt_dropdowns_list_every_backend_value(
       2. Metadata tab: Task Type, Domain, Target Languages, Target Model Types
       3. Prompt Files tab: upload a file, then Prompt Format on its edit view
     """
+    # Delete whatever this test creates, even when it fails part-way.
+    cleanup.watch("dataset")
     driver.delete_all_cookies()
     home = HomePage(driver, base_url)
     email, password = test_credentials

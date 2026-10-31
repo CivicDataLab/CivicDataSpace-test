@@ -12,7 +12,7 @@ from pages.provider.create_ai_model_page import CreateAiModelPage
 
 @pytest.mark.functional
 @pytest.mark.smoke
-def test_prv_012_ind_create_ai_model(driver, base_url, test_credentials, sector_name):
+def test_prv_012_ind_create_ai_model(driver, base_url, test_credentials, sector_name, cleanup):
     """
     Test Case ID: test_prv_012_ind_create_ai_model
     Verify an Individual provider can create and publish an AI Model end-to-end.
@@ -27,6 +27,8 @@ def test_prv_012_ind_create_ai_model(driver, base_url, test_credentials, sector_
       7. Continue to Review & Publish, publish
       8. Assert the model is listed as Published
     """
+    # Delete whatever this test creates, even when it fails part-way.
+    cleanup.watch("aimodel")
     driver.delete_all_cookies()
     email, password = test_credentials
 
