@@ -1,6 +1,8 @@
 # locators/provider/update_profile_locators.py
 from selenium.webdriver.common.by import By
 
+from locators.provider.editor_wizard_locators import EditorWizardLocators as W
+
 class UpdateProfilePageLocators:
 
     # ProfileShell (DataSpaceFrontend#506) renders the title as an <h1>:
@@ -18,3 +20,9 @@ class UpdateProfilePageLocators:
     GET_FIRST_NAME_INPUT = (By.XPATH, '//input[@name="firstName" or @name="name"]')
     GET_LAST_NAME_INPUT = (By.XPATH, '//input[@name="lastName"] | //textarea[@name="description"]')
     GET_BIO_TEXT_INPUT = (By.XPATH, '//textarea[@name="bio"] | //textarea[@name="description"]')
+
+    # Any profile field by its name (firstName, location, githubProfile, ...).
+    FIELD = "//main//*[(self::input or self::textarea) and @name='{name}']"
+    # The organization type is a button-style select, labelled "Organization Type".
+    ORG_TYPE_SELECT = (By.XPATH, W.SELECT_BY_LABEL.format(label="Organization Type"))
+    CHANGE_PASSWORD_BUTTON = (By.XPATH, '//main//button[normalize-space()="Change password"]')

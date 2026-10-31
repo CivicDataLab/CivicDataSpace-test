@@ -47,3 +47,21 @@ def open_listing(driver, logged_in_provider, request):
         return ListingTablePage(driver).open_section(section)
 
     return _open
+
+
+@pytest.fixture
+def open_profile(driver, logged_in_provider, request):
+    """Log in and open the profile page, as the individual or as the org's admin.
+
+    Returns a callable `open_profile(scope)` -> UpdateProfilePage; `scope` is
+    'individual' or 'org' (the account's dedicated `writable_org`).
+    """
+    def _open(scope):
+        if scope == "org":
+            dashboard = logged_in_provider.goto_organizations()
+            dashboard.select_org(request.getfixturevalue("writable_org"))
+        else:
+            dashboard = logged_in_provider.goto_my_dashboard()
+        return dashboard.click_profile_card().reload()
+
+    return _open

@@ -178,6 +178,38 @@ class ProviderAPI:
                 raise AssertionError(f"{query[:60]}... refused: {payload}")
         return data
 
+    # -- profiles -------------------------------------------------------------
+
+    USER_FIELDS = ["firstName", "lastName", "bio", "location", "githubProfile", "linkedinProfile", "twitterProfile"]
+    ORG_FIELDS = ["description", "homepage", "location", "organizationTypes",
+                  "githubProfile", "linkedinProfile", "twitterProfile"]
+
+    def profile(self, org_name=None):
+        """The editable profile fields of the account, or of the organization `org_name`.
+
+        None and "" are the same thing to the form, so both read back as "". The
+        organization's name and slug are deliberately not part of this: renaming
+        an organization changes its slug and breaks every test that selects it.
+        """
+        if org_name:
+            fields = self.ORG_FIELDS
+            body = self.gql("{ organizations { id name %s } }" % " ".join(fields))
+            org = next(o for o in body["data"]["organizations"] if o["name"] == org_name)
+            return {"id": org["id"], **{f: org[f] or "" for f in fields}}
+        body = self.gql("{ me { %s } }" % " ".join(self.USER_FIELDS))
+        return {f: body["data"]["me"][f] or "" for f in self.USER_FIELDS}
+
+    def restore_profile(self, original, org_name=None):
+        """Write `original` (from profile()) back and return what the backend now holds."""
+        if org_name:
+            body = self.gql(
+                "mutation($i: OrganizationInputPartial!){ updateOrganization(input: $i){ __typename } }",
+                {"i": original}, self._owner(org_name))
+        else:
+            body = self.gql("mutation($i: UpdateUserInput!){ updateUser(input: $i){ __typename } }", {"i": original})
+        assert "errors" not in body, f"restoring the profile failed: {body['errors']}"
+        return self.profile(org_name)
+
     # -- deleting -------------------------------------------------------------
 
     def delete(self, kind, record_id, org_name=None, typename=None):
@@ -205,6 +237,7 @@ class Cleanup:
         self.api = api
         self._watched: list[tuple[str, str | None, set[str]]] = []
         self._tracked: list[tuple[str, str, str | None]] = []
+        self._profiles: list[tuple[str | None, dict]] = []
         self.deleted: list[str] = []
 
     def watch(self, kind, org=None):
@@ -215,8 +248,17 @@ class Cleanup:
         """Delete this one record at teardown, unless the test already did."""
         self._tracked.append((kind, str(record_id), org))
 
+    def restore_profile(self, org=None):
+        """Remember the profile now (the account's, or the organization's) and write it back at teardown."""
+        self._profiles.append((org, self.api.profile(org)))
+
     def run(self):
         failures = []
+        for org, original in self._profiles:
+            now = self.api.restore_profile(original, org)
+            if now != original:
+                changed = {k: (now[k], original[k]) for k in original if now[k] != original[k]}
+                failures.append(f"{'organization' if org else 'user'} profile not restored (now, original): {changed}")
         todo = list(self._tracked)
         for kind, org, before in self._watched:
             for row in self.api.listing(kind, org)["data"]:
