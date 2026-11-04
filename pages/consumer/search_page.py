@@ -19,7 +19,7 @@ class SearchPage(BasePage):
     def shows_unable_to_load_message(self, timeout: int = 20) -> bool:
         """Wait up to `timeout` seconds for the friendly error state.
 
-        Before DataSpaceFrontend#511, a failed search call never updates
+        Before DataSpaceFrontend#514, a failed search call never updates
         this far: the page is left showing its "Loading" placeholder
         forever (the error is set but never read), so this times out
         instead of finding the message.
