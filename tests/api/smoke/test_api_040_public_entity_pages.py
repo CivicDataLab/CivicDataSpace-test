@@ -54,7 +54,7 @@ query UseCasedetails($pk: ID!) {
     geographies { name }
     sdgs { id code name }
     tags { id value }
-    logo { path }
+    logo { url }
     datasets {
       title id isIndividualDataset downloadCount description modified
       user { fullName profilePicture { url } }
