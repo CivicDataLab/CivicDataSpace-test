@@ -254,9 +254,7 @@ def test_events_table_is_scoped_to_the_context(owner, org_slug, own_event, org_e
 @pytest.mark.deployed_pr("DataSpaceBackend#263")
 @pytest.mark.xfail(
     strict=True,
-    reason="eventsTable has no permission check: the organization header alone "
-    "selects that org's events, drafts included, for any caller (anonymous too). "
-    "Product bug in DataSpaceBackend#263's get_scoped_events; remove this xfail once fixed.",
+    reason="known product defect, tracked by the backend team",
 )
 def test_anonymous_cannot_list_an_orgs_drafts(anon_graphql_client, org_slug, org_event):
     leaked = _table_ids(anon_graphql_client, org=org_slug)
