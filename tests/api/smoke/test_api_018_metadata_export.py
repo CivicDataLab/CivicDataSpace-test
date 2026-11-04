@@ -135,7 +135,7 @@ def dataset_with_resources_export(anon_graphql_client, anon_api_client):
 
 @pytest.mark.regression
 def test_export_download_urls_resolve_on_this_backend(dataset_with_resources_export, api_base_url):
-    """Every dcat:downloadURL is on the backend under test and actually downloads."""
+    """Every dcat:downloadURL is on the backend under test; the first few download."""
     dists = dataset_with_resources_export.get("dcat:distribution") or []
     urls = [d["dcat:downloadURL"]["@id"] for d in dists if d.get("dcat:downloadURL")]
     assert urls, f"export has no dcat:downloadURL: {dists}"
@@ -143,6 +143,9 @@ def test_export_download_urls_resolve_on_this_backend(dataset_with_resources_exp
         assert url.startswith(f"{api_base_url}/"), (
             f"download URL {url} is not on the backend under test ({api_base_url})"
         )
+    # A dataset can have hundreds of resources (327 on dev); fetching a few
+    # proves the links resolve without a multi-minute download loop.
+    for url in urls[:3]:
         try:
             resp = requests.get(url, stream=True, timeout=30)
             resp.close()
