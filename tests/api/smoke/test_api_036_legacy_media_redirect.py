@@ -1,43 +1,21 @@
-# tests/api/smoke/test_api_028_legacy_media_redirect.py
+# tests/api/smoke/test_api_036_legacy_media_redirect.py
 #
-# Pending coverage for DataSpaceBackend#249 ("feat(storage): move media to S3
-# and remove DVC versioning"), still open on `dev` as of this run.
+# Covers DataSpaceBackend#249 (merge 42bfef40, live on dev): the old
+# `/public/<name>` static-file route is replaced by `legacy_media_redirect`
+# (api/views/legacy_media.py). A missing public file, or a name that
+# normalizes outside the directory (path traversal), now 404s with a small
+# JSON body (`{"error": "Not found"}`) instead of Django's HTML 404.
 #
-# The PR replaces the old `/public/<name>` static-file route (Django's
-# `static()`, serving MEDIA_ROOT off local disk, open in DEBUG) with a
-# dedicated `legacy_media_redirect` view (api/views/legacy_media.py):
-#   - A missing/non-existent public file now 404s with a small JSON body
-#     (`{"error": "Not found"}`), not Django's HTML "technical 404" page.
-#   - A name that normalizes to something outside the current directory
-#     (path traversal) also 404s with that same JSON body, before storage
-#     is ever consulted.
-#
-# Confirmed directly against the PR diff (DataSpace/urls.py,
-# api/views/legacy_media.py, api/utils/storage.py) in DataSpaceBackend, not
-# from the PR title/description.
-#
-# Gated with `pending_pr`: #249 is open, not merged, so this must not run
-# unguarded. Never `readonly` — a pending test must not run in the prod gate.
-#
-# UNVERIFIED — green not executed anywhere: DataSpaceBackend cannot be run in
-# this sandbox (no Postgres/Redis/Elasticsearch/Keycloak/S3 available), so the
-# post-merge JSON-404 behaviour has only been read from the diff, never run.
-# The red assertions below *were* executed, against the real dev backend,
-# which still serves the pre-#249 code.
+# Gated with `deployed_pr`, not `readonly`: it skips wherever the backend
+# under test does not yet serve #249 (prod, until release).
 
 import pytest
 
-pytestmark = [pytest.mark.api, pytest.mark.smoke, pytest.mark.pending_pr("DataSpaceBackend#249")]
+pytestmark = [pytest.mark.api, pytest.mark.smoke, pytest.mark.deployed_pr("DataSpaceBackend#249")]
 
 
 def test_missing_public_file_404s_as_json_not_django_html(anon_api_client):
-    """Pre-#249: a missing /public/<name> 404s with Django's HTML debug page.
-
-    Post-#249 (UNVERIFIED — not executed, no deployable backend in this
-    sandbox): legacy_media_redirect returns a small JSON 404 instead
-    (`{"error": "Not found"}`), since the route no longer serves local disk.
-    A human should re-run this once #249 is on dev and drop this comment.
-    """
+    """A missing /public/<name> 404s as JSON from the legacy_media view."""
     resp = anon_api_client.get("/public/does-not-exist-pr249-probe.png")
     assert resp.status_code == 404, (
         f"expected 404 for a missing legacy media path, got {resp.status_code}: {resp.text[:200]}"
