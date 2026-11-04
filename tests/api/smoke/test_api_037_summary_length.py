@@ -24,8 +24,8 @@ KINDS = {
 
 @pytest.fixture
 def draft(graphql_client_for, request):
-    """Factory for a draft of the requested kind owned by account 1; deleted afterwards."""
-    client = graphql_client_for(1)
+    """Factory for a draft of the requested kind owned by account 2 (individual); deleted afterwards."""
+    client = graphql_client_for(2)
     made = []
 
     def make(kind):
