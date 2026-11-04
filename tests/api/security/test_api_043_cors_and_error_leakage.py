@@ -15,7 +15,7 @@ LEAK = re.compile(r"Traceback \(most recent|File \"/|\.py\", line|psycopg|sqlalc
                   r"DEBUG = True|/home/|/app/|/usr/lib", re.I)
 
 
-@pytest.mark.xfail(strict=True, reason="dev API echoes an arbitrary Origin with Allow-Credentials: true at the time of writing")
+@pytest.mark.xfail(strict=True, reason="known product defect, tracked by the backend team")
 def test_cors_does_not_reflect_arbitrary_origin_with_credentials(api_base_url):
     resp = requests.post(
         f"{api_base_url}/api/graphql", json={"query": "{ __typename }"},
@@ -33,7 +33,7 @@ def test_cors_does_not_reflect_arbitrary_origin_with_credentials(api_base_url):
     pytest.param("post", "/api/graphql", {"json": {"query": "{ datasets( "}}, id="syntax_error"),
     pytest.param("post", "/api/graphql", {"data": "not json", "headers": {"Content-Type": "application/json"}}, id="bad_json"),
     pytest.param("get", "/api/no-such-route-xyz/", {}, id="unknown_route", marks=pytest.mark.xfail(
-        strict=True, reason="dev answers unknown routes with the framework's HTML debug 404 page at the time of writing")),
+        strict=True, reason="known product defect, tracked by the backend team")),
     pytest.param("post", "/api/auth/keycloak/login/", {"json": {"token": "not-a-token"}}, id="bad_token"),
 ])
 def test_error_responses_do_not_leak_internals(api_base_url, method, path, kwargs):
