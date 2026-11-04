@@ -341,11 +341,7 @@ def test_org_header_lists_that_orgs_rows_including_drafts(owner, anon_graphql_cl
 
 
 @pytest.mark.smoke
-@pytest.mark.xfail(strict=True, reason=(
-    "DataSpaceBackend: the organization header is trusted without a membership "
-    "check (_visible_use_cases & co., same as useCases/collaboratives/aiModels), "
-    "so an anonymous caller lists any org's drafts. Verified on dev 2026-10-30."
-))
+@pytest.mark.xfail(strict=True, reason="known product defect, tracked by the backend team")
 @pytest.mark.parametrize("table", AUTH_TABLES)
 def test_org_header_does_not_expose_drafts_to_anonymous(owner, anon_graphql_client, member_org_ids, table):
     org, rows = _org_with_hidden_rows(owner, table, member_org_ids)
