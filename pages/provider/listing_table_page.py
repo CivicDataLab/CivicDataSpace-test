@@ -106,7 +106,9 @@ class ListingTablePage(BasePage):
     def search(self, text: str) -> "ListingTablePage":
         box = self.wait.until(EC.element_to_be_clickable(L.SEARCH_INPUT))
         box.click()
+        # Ctrl+A on Linux (CI), Cmd+A on macOS; one of them is a no-op.
         box.send_keys(Keys.CONTROL, "a")
+        box.send_keys(Keys.COMMAND, "a")
         box.send_keys(Keys.BACKSPACE)
         if text:
             box.send_keys(text)
