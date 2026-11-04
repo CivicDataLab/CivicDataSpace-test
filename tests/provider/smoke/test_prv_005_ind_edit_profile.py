@@ -1,4 +1,6 @@
 # tests/provider/functional/test_prv_005_ind_edit_profile.py
+import time
+
 import pytest
 from pages.home_page import HomePage
 from pages.provider.login_page import LoginPage
@@ -77,7 +79,9 @@ def test_prv_005_ind_edit_profile(driver, sample_profile_image_path, base_url, t
     )
 
     # (5b) Enter Bio Text
-    bio_text = 'Quality Assurance Engineer. Deriving Quality at CDL'
+    # Unique per run, so a save that silently doesn't persist can't pass on
+    # a value left over from an earlier run.
+    bio_text = f'Quality Assurance Engineer. Deriving Quality at CDL ({int(time.time())})'
     up_profile.enter_bio_text(bio_text)
     get_bio_text = up_profile.get_bio_text_value()
     assert get_bio_text == bio_text, (
