@@ -116,7 +116,10 @@ class BasePage:
         from selenium.webdriver.common.by import By
 
         self.wait_with_timeout(timeout).until(
-            EC.invisibility_of_element_located((By.XPATH, "//*[normalize-space(text())='Saving...']")),
+            # The header renders 'Saving…' (one ellipsis character); match both spellings.
+            EC.invisibility_of_element_located(
+                (By.XPATH, "//*[normalize-space(text())='Saving…' or normalize-space(text())='Saving...']")
+            ),
             message="Timed out waiting for the editor autosave to finish",
         )
 
