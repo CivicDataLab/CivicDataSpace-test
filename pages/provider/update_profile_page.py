@@ -25,7 +25,7 @@ class UpdateProfilePage(BasePage):
         except TimeoutException:
             # If not found, try organization profile (Save button)
             return self.wait_with_timeout(10).until(
-                EC.visibility_of_element_located((By.XPATH, "//button[normalize-space()='Save']"))
+                EC.visibility_of_element_located((By.XPATH, "//button[starts-with(normalize-space(.),'Save')]"))
             )
 
     def enter_first_name(self, url: str):
