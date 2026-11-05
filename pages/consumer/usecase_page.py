@@ -52,9 +52,9 @@ class UseCasePage(BasePage):
     # ── Use case detail page ─────────────────────────────────────────────────
 
     def open_detail(self, base_url: str, usecase_id):
-        """Open /usecases/<id> and wait for the always-rendered datasets heading."""
+        """Open /usecases/<id> and wait for its datasets or dashboards heading."""
         self.visit(f"{base_url.rstrip('/')}/usecases/{usecase_id}")
-        self.find(UseCaseLocators.DETAIL_DATASETS_HEADING)
+        self.find(UseCaseLocators.DETAIL_SECTION_HEADING)
         return self
 
     def has_dashboards_section(self, timeout: int = 10) -> bool:
@@ -66,18 +66,20 @@ class UseCasePage(BasePage):
         except TimeoutException:
             return False
 
+    def dashboards_section_hidden(self, timeout: int = 15) -> bool:
+        """True once no dashboards heading is shown. DataSpaceFrontend#512 shows it while loading."""
+        try:
+            WebDriverWait(self.driver, timeout).until(
+                EC.invisibility_of_element_located(UseCaseLocators.DETAIL_DASHBOARDS_HEADING)
+            )
+            return True
+        except TimeoutException:
+            return False
+
     def embedded_dashboards(self):
         """[{title, src}] for each dashboard iframe on the detail page."""
         frames = self.finds(UseCaseLocators.DETAIL_DASHBOARD_IFRAME)
         return [{"title": f.get_attribute("title"), "src": f.get_attribute("src")} for f in frames]
-
-    def dashboard_open_links(self):
-        """[{href, target, rel}] for each 'Open dashboard in a new tab' link."""
-        links = self.finds(UseCaseLocators.DETAIL_DASHBOARD_OPEN_LINK)
-        return [
-            {"href": a.get_attribute("href"), "target": a.get_attribute("target"), "rel": a.get_attribute("rel")}
-            for a in links
-        ]
 
     def dashboards_render_before_datasets(self) -> bool:
         dash = self.find(UseCaseLocators.DETAIL_DASHBOARDS_HEADING)

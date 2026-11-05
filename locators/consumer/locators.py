@@ -48,7 +48,12 @@ class Locators:
     SECTORS_TAB          = (By.XPATH, "//header//nav//a[contains(@href, 'sectors') or contains(., 'Sectors')]")
     SECTOR_HEADER        = (By.XPATH, "//main//div[contains(@class, 'header') or .//h1 or .//h2]")
     SECTOR_SEARCH_BAR    = (By.XPATH, "//input[@type='search' or @placeholder='Search' or contains(@placeholder, 'Search')]")
-    SECTOR_SORT_DROPDOWN = (By.XPATH, "//div[contains(@class, 'sort') or .//select or .//button[contains(., 'Sort')]]")
+    # Old native sort (prod) | DataSpaceFrontend#512's combobox after the "Sort :" label (dev)
+    SECTOR_SORT_DROPDOWN = (
+        By.XPATH,
+        "//div[contains(@class, 'sort') or .//select or .//button[contains(., 'Sort')]]"
+        " | //*[normalize-space()='Sort :' or normalize-space()='Sort:']/following::button[@role='combobox'][1]",
+    )
     SECTOR_CARD          = (By.XPATH, "//main//a[@href[contains(., '/sectors/')]]")
     SECTOR_MOBILE_TAB    = (By.XPATH, "//div[@role='dialog' or contains(@class, 'mobile')]//a[contains(., 'Sectors')]")
     SECTOR_SORT_DROPDOWN_MOBILE = (By.XPATH, "//select[contains(@name, 'sort') or contains(@class, 'sort')]")
