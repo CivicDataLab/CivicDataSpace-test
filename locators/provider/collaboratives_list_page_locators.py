@@ -3,7 +3,7 @@ from selenium.webdriver.common.by import By
 
 class CollaborativesListPageLocators:
     # Broad locator used only for page-load detection (not for clicking)
-    ADD_NEW_COLLABORATIVE_BUTTON = (By.XPATH, "//*[contains(normalize-space(), 'Add New Collaborative')]")
+    ADD_NEW_COLLABORATIVE_BUTTON = (By.XPATH, "//*[contains(normalize-space(), 'Create Collaborative')]")
 
     # Empty-list states. Which one renders depends on the drafts/published tab.
     EMPTY_DRAFTS_MESSAGE = (By.XPATH, "//*[normalize-space(text())='You have not added any collaborative yet.']")

@@ -24,7 +24,7 @@ class CollaborativesListPage(BasePage):
 
     def click_add_new_collaborative(self):
         """
-        Click the "Add New Collaborative" button and wait for the create collaborative form to load.
+        Click the "Create Collaborative" button and wait for the create collaborative form to load.
 
         Returns:
             CreateCollaborativePage instance after the form has loaded
@@ -34,14 +34,14 @@ class CollaborativesListPage(BasePage):
 
         url_before = self.driver.current_url
 
-        # Use JavaScript to find the deepest element with "Add New Collaborative" text
+        # Use JavaScript to find the deepest element with "Create Collaborative" text
         # The broad XPath locator matches <html>, so JS is needed to find the actual clickable span
         js_element = self.driver.execute_script("""
             var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
             var found = null;
             while (walker.nextNode()) {
                 var el = walker.currentNode;
-                if (el.textContent.trim() === 'Add New Collaborative') {
+                if (el.textContent.trim() === 'Create Collaborative') {
                     found = el;  // keep going to find deepest match
                 }
             }
@@ -55,11 +55,11 @@ class CollaborativesListPage(BasePage):
         # NOTE: broad locator is intentionally excluded here (it matches <html>, not the button)
         button = None
         for locator in [
-            (By.XPATH, "//span[contains(@class,'Button-module_removeUnderline') and normalize-space()='Add New Collaborative']"),
-            (By.XPATH, "//span[normalize-space()='Add New Collaborative']"),
-            (By.XPATH, "//a[contains(normalize-space(.), 'Add New Collaborative')]"),
-            (By.XPATH, "//button[contains(normalize-space(.), 'Add New Collaborative')]"),
-            (By.XPATH, "//*[normalize-space()='Add New Collaborative' and not(self::html) and not(self::body) and not(self::div[@id='__next'])]"),
+            (By.XPATH, "//span[contains(@class,'Button-module_removeUnderline') and normalize-space()='Create Collaborative']"),
+            (By.XPATH, "//span[normalize-space()='Create Collaborative']"),
+            (By.XPATH, "//a[contains(normalize-space(.), 'Create Collaborative')]"),
+            (By.XPATH, "//button[contains(normalize-space(.), 'Create Collaborative')]"),
+            (By.XPATH, "//*[normalize-space()='Create Collaborative' and not(self::html) and not(self::body) and not(self::div[@id='__next'])]"),
         ]:
             try:
                 button = self.wait_with_timeout(3).until(EC.element_to_be_clickable(locator))
@@ -72,7 +72,7 @@ class CollaborativesListPage(BasePage):
             button = js_element['el']
 
         if not button:
-            raise TimeoutException("Could not find 'Add New Collaborative' button to click")
+            raise TimeoutException("Could not find 'Create Collaborative' button to click")
 
         try:
             button.click()
