@@ -3,11 +3,11 @@ from selenium.webdriver.common.by import By
 
 class UpdateProfilePageLocators:
 
-    My_Profile_HEADING = (By.XPATH, '//span[normalize-space()="My Profile"]')
+    My_Profile_HEADING = (By.XPATH, '//*[self::h1 or self::span][normalize-space()="My Profile"]')
     FIRST_NAME_INPUT = (By.XPATH, '//input[@name="firstName" or @name="name"]')
     LAST_NAME_INPUT = (By.XPATH, '//input[@name="lastName"] | //textarea[@name="description"]')
     BIO_TEXT_INPUT = (By.XPATH, '//textarea[@name="bio"] | //textarea[@name="description"]')
-    SAVE_BUTTON = (By.XPATH, '//span[contains(text(),"Save")]')
+    SAVE_BUTTON = (By.XPATH, '//button[contains(normalize-space(.),"Save")]')
 
     # ─── Fields Used for Value Retrieval / Assertions ──────────────────────────
     GET_FIRST_NAME_INPUT = (By.XPATH, '//input[@name="firstName" or @name="name"]')
