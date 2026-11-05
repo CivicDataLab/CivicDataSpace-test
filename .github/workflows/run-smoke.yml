@@ -77,8 +77,31 @@ env:
   GH_PR_TOKEN: ${{ github.token }}
 
 jobs:
+  # A caller that passes deployed_sha may start this at the same moment its
+  # deploy starts (PR Gate does, on a merge into dev). Hold the suites until the
+  # live container reports that commit, so they don't test the previous build.
+  # Times out without failing: api-smoke's sha test then reports the mismatch.
+  wait-deploy:
+    if: ${{ inputs.deployed_sha != '' && inputs.api_base_url != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      API_BASE_URL: ${{ inputs.api_base_url }}
+      EXPECTED_SHA: ${{ inputs.deployed_sha }}
+    steps:
+      - name: Wait for /health/ to report the expected git_sha
+        run: |
+          for i in $(seq 1 75); do
+            live=$(curl -sS --max-time 10 "$API_BASE_URL/health/" | jq -r '.git_sha // empty' || true)
+            if [ "$live" = "$EXPECTED_SHA" ]; then echo "live is $live"; exit 0; fi
+            echo "[$i/75] live=${live:-none} expected=$EXPECTED_SHA"
+            sleep 20
+          done
+          echo "::warning::Deploy of $EXPECTED_SHA not live after 25 min; running suites anyway"
+
   consumer-smoke:
-    if: ${{ !inputs.only_provider }}
+    needs: wait-deploy
+    if: ${{ !cancelled() && !inputs.only_provider }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -223,7 +246,8 @@ jobs:
           fi
 
   api-smoke:
-    if: ${{ !inputs.only_provider }}
+    needs: wait-deploy
+    if: ${{ !cancelled() && !inputs.only_provider }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -447,7 +471,8 @@ jobs:
   provider-smoke:
     # Negated so push/pull_request/workflow_dispatch runs (where inputs.* is
     # null, which GitHub coerces like false) still run it.
-    if: ${{ !inputs.skip_provider && inputs.suite != 'readonly' }}
+    needs: wait-deploy
+    if: ${{ !cancelled() && !inputs.skip_provider && inputs.suite != 'readonly' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
