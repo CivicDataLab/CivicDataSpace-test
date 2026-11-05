@@ -293,7 +293,7 @@ class OrganizationsPage(BasePage):
         # Wait for the organization profile page to load
         # Organization profiles don't have "My Profile" heading - wait for Save button instead
         self.wait_with_timeout(15).until(
-            EC.visibility_of_element_located((By.XPATH, "//button[normalize-space()='Save']")),
+            EC.visibility_of_element_located((By.XPATH, "//button[starts-with(normalize-space(.),'Save')]")),
             message="Timed out waiting for Organization Profile page to load"
         )
 
