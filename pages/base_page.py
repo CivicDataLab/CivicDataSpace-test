@@ -344,22 +344,27 @@ class BasePage:
         """
         last = None
         for attempt in range(attempts):
-            el = self.wait.until(EC.element_to_be_clickable(locator))
-            self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
             # First attempt native, later attempts JS. A native click can be
             # swallowed by an overlay at those coordinates WITHOUT Selenium
             # raising ElementClickIntercepted -- it reports success and the
             # handler never runs (test_prv_006: three clicks, and the network
             # log shows no mutation was ever sent). A dispatched JS click goes
             # straight to the element and still bubbles to React's listener.
-            if attempt == 0:
-                try:
-                    el.click()
-                except (ElementClickInterceptedException, StaleElementReferenceException) as exc:
-                    last = exc
+            try:
+                el = self.wait.until(EC.element_to_be_clickable(locator))
+                self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+                if attempt == 0:
+                    try:
+                        el.click()
+                    except ElementClickInterceptedException as exc:
+                        last = exc
+                        self.driver.execute_script("arguments[0].click();", el)
+                else:
                     self.driver.execute_script("arguments[0].click();", el)
-            else:
-                self.driver.execute_script("arguments[0].click();", el)
+            except StaleElementReferenceException as exc:
+                # A re-render replaced the element; find it again next attempt.
+                last = exc
+                continue
             try:
                 return self.wait_with_timeout(wait_each).until(condition)
             except TimeoutException as exc:
