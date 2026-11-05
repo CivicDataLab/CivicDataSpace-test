@@ -21,10 +21,6 @@ class DatasetTestData:
     # Description templates
     DESCRIPTION_TEMPLATE = "Automated test description {timestamp}"
 
-    # Sectors
-    SECTORS = ["Budgets"]
-    SECTORS_ALTERNATIVE = ["Education"]
-
     # Tags
     TAGS = ["Finance"]
     TAGS_ALTERNATIVE = ["Budget", "Transparency"]
@@ -56,7 +52,6 @@ class DatasetTestData:
         """Get complete dataset test data as dictionary"""
         return {
             'description': DatasetTestData.get_description(),
-            'sectors': DatasetTestData.SECTORS,
             'tags': DatasetTestData.TAGS,
             'geography': DatasetTestData.GEOGRAPHY,
             'date': DatasetTestData.DATE_INPUT_FORMAT,
@@ -88,10 +83,6 @@ class UseCaseTestData:
     # Tags
     TAGS = ["Budget"]
     TAGS_ALTERNATIVE = ["Transparency"]
-
-    # Sectors
-    SECTORS = ["Budgets"]
-    SECTORS_ALTERNATIVE = ["Education"]
 
     # Geography
     GEOGRAPHY = "India"
@@ -139,7 +130,6 @@ class UseCaseTestData:
             'platform_url': UseCaseTestData.get_platform_url(user_type),
             'status': UseCaseTestData.STATUS_ONGOING,
             'tags': UseCaseTestData.TAGS,
-            'sectors': UseCaseTestData.SECTORS,
             'geography': UseCaseTestData.GEOGRAPHY,
             'sdg_goals': UseCaseTestData.SDG_GOALS,
             'start_date': UseCaseTestData.START_DATE_INPUT,
@@ -172,10 +162,6 @@ class CollaborativeTestData:
     # Tags
     TAGS = ["Budget"]
     TAGS_ALTERNATIVE = ["Transparency", "Collaboration"]
-
-    # Sectors
-    SECTORS = ["Budgets"]
-    SECTORS_ALTERNATIVE = ["Education"]
 
     # Geography
     GEOGRAPHY = "India"
@@ -220,7 +206,6 @@ class CollaborativeTestData:
             'summary': CollaborativeTestData.get_summary(),
             'platform_url': CollaborativeTestData.get_platform_url(user_type),
             'tags': CollaborativeTestData.TAGS,
-            'sectors': CollaborativeTestData.SECTORS,
             'geography': CollaborativeTestData.GEOGRAPHY,
             'sdg_goals': CollaborativeTestData.SDG_GOALS,
             'start_date': CollaborativeTestData.START_DATE_INPUT,
@@ -329,7 +314,6 @@ class FileTestData:
 
 # Dataset
 DATASET_DESCRIPTION = DatasetTestData.DESCRIPTION_TEMPLATE
-DATASET_SECTORS = DatasetTestData.SECTORS
 DATASET_TAGS = DatasetTestData.TAGS
 DATASET_GEOGRAPHY = DatasetTestData.GEOGRAPHY
 DATASET_SOURCE_URL = DatasetTestData.SOURCE_URL
@@ -341,7 +325,6 @@ USECASE_PLATFORM_URL = UseCaseTestData.PLATFORM_URL_IND
 USECASE_STATUS_ONGOING = UseCaseTestData.STATUS_ONGOING
 USECASE_STATUS_COMPLETED = UseCaseTestData.STATUS_COMPLETED
 USECASE_SDG_GOAL = UseCaseTestData.SDG_GOALS
-USECASE_SECTORS = UseCaseTestData.SECTORS
 USECASE_TAGS = UseCaseTestData.TAGS
 
 # Profile

@@ -41,6 +41,24 @@ class ChartsListPage(BasePage):
         time.sleep(1)  # resource dropdown populates after dataset is chosen
         return self
 
+    def select_first_dataset_with_resource(self) -> tuple[str, str] | None:
+        """Select the first dataset that lists a resource, then that resource.
+
+        Returns (dataset, resource), or None if no dataset on the account has one.
+        """
+        for dataset in self._option_texts(ChartsLocators.CHART_SELECT_DATASET):
+            self.select_dataset(dataset)
+            resources = self._option_texts(ChartsLocators.CHART_SELECT_RESOURCE)
+            if resources:
+                self.select_resource(resources[0])
+                return dataset, resources[0]
+        return None
+
+    def _option_texts(self, locator) -> list[str]:
+        el = self.wait_with_timeout(10).until(EC.presence_of_element_located(locator))
+        # Options with an empty value are placeholders like "Select a dataset".
+        return [o.text.strip() for o in Select(el).options if o.get_attribute("value")]
+
     def select_resource(self, resource_name: str) -> "ChartsListPage":
         self.set_react_select_by_text(ChartsLocators.CHART_SELECT_RESOURCE, resource_name)
         return self

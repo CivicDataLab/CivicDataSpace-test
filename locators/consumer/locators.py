@@ -18,13 +18,15 @@ class Locators:
     # Footer elements
     ABOUT_LINK             = (By.XPATH, "//footer//a[contains(@href, '/about-us')]")
     CONTACT_SECTION        = (By.XPATH, "//footer//a[contains(., 'Contact')]//span")
+    # Matches the <a> itself, not its inner <span>, so the test can read @href.
+    PRIVACY_LINK           = (By.XPATH, "//footer//a[.//span[normalize-space()='Privacy'] or normalize-space()='Privacy']")
 
     # Social media icons (footer)
     TWITTER_ICON           = (By.XPATH, "//footer//a[contains(@href, 'twitter')]//svg")
     LINKEDIN_ICON          = (By.XPATH, "//footer//a[contains(@href, 'linkedin')]//svg")
     FACEBOOK_ICON          = (By.XPATH, "//footer//a[contains(@href, 'facebook')]//svg")
     GITHUB_ICON            = (By.XPATH, "//footer//a[contains(@href, 'github')]//svg")
-    CDL_REDIRECT_ELEMENT   = (By.XPATH, "//footer//a[contains(@href, 'civicdatalab') or contains(., 'CivicDataLab')]")
+    CDL_REDIRECT_ELEMENT   = (By.XPATH, "//footer//a[starts-with(@href, 'https://www.civicdatalab.in')]")
 
     # Mobile navigation
     MOBILE_BURGER_MENU     = (By.XPATH, "//header//nav//button[@aria-label='Menu' or contains(@class, 'menu') or contains(@class, 'burger')]")
@@ -33,15 +35,11 @@ class Locators:
     # DATASET TAB
     # ═══════════════════════════════════════════════════════════════════════════
 
-    DATASET_TAB               = (By.XPATH, "//header//nav//a[contains(@href, 'datasets') or contains(., 'Datasets')]")
-    DATASET_SEARCH_FIELD      = (By.XPATH, "//input[@type='search' or @placeholder='Search datasets' or contains(@name, 'search')]")
-    DATASET_FILTER_RESET_BUTTON = (By.XPATH, "//button[contains(., 'Reset') or contains(., 'Clear')]")
+    DATASET_SEARCH_FIELD      = (By.XPATH, "//input[@name='Search']")
+    DATASET_FILTER_RESET_BUTTON = (By.XPATH, "//button[normalize-space()='RESET']")
     DATASET_SECTOR_DROPDOWN   = (By.XPATH, "//h3//button[contains(., 'Sector') or preceding-sibling::*[contains(., 'Sector')]]")
     DATASET_TAGS_DROPDOWN     = (By.XPATH, "//h3//button[contains(., 'Tags') or preceding-sibling::*[contains(., 'Tags')]]")
-    DATASET_TOGGLE_GRID       = (By.XPATH, "//button[@aria-label='Grid view' or contains(@class, 'grid')]")
-    DATASET_TOGGLE_LIST       = (By.XPATH, "//button[@aria-label='List view' or contains(@class, 'list')]")
-    DATASET_CARD              = (By.XPATH, "//div[contains(@class, 'dataset-card') or contains(@class, 'DatasetCard')]")
-    DATASET_VIEW_DETAILS_LINK = (By.XPATH, "//a[contains(., 'View Details') or contains(., 'Details')]")
+    DATASET_CARD              = (By.XPATH, "//main//a[starts-with(@href, '/datasets/')]")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # SECTORS TAB

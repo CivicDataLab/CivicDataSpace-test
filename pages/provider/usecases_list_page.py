@@ -13,6 +13,10 @@ class UseCasesListPage(BasePage):
     def __init__(self, driver):
         super().__init__(driver)  # Initialize BasePage with self.wait
 
+    def view_state(self) -> str:
+        """'drafts_empty', 'published_empty' or 'rows' (see BasePage.list_view_state)."""
+        return self.list_view_state(UseCaseListPageLocators)
+
     def is_loaded(self):
         return self.wait_with_timeout(10).until(
             EC.presence_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON)

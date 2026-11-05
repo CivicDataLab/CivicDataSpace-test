@@ -60,7 +60,7 @@ class CreateCollaborativePage(BasePage):
 
         for strategy in strategies:
             try:
-                name_input = self.wait_with_timeout(10).until(
+                name_input = self.wait_with_timeout(15).until(
                     EC.visibility_of_element_located(strategy)
                 )
                 break
@@ -86,24 +86,7 @@ class CreateCollaborativePage(BasePage):
 
     def enter_summary(self, text: str):
         """Enter summary text in the rich text editor."""
-        # Try to wait for toast/overlay to disappear, but don't fail if they persist
-        try:
-            self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=3)
-        except TimeoutException:
-            pass  # Continue anyway
-
-        fld = self.wait.until(
-            EC.visibility_of_element_located(CreateCollaborativeLocators.COLLABORATIVE_SUMMARY_INPUT),
-            message="Could not find Collaborative summary editor"
-        )
-        # For Quill editor (contenteditable div), clear using Ctrl+A then type
-        fld.click()
-        # Ctrl+A works cross-platform (Selenium maps to Cmd+A on Mac)
-        fld.send_keys(Keys.CONTROL + 'a')
-        fld.send_keys(Keys.DELETE)
-        fld.send_keys(text)
-        # Send text twice (application-specific behavior)
-        fld.send_keys(text)
+        self.type_into_rich_editor(CreateCollaborativeLocators.COLLABORATIVE_SUMMARY_INPUT, text)
         return self
 
     def enter_platform_url(self, url: str):
@@ -126,6 +109,7 @@ class CreateCollaborativePage(BasePage):
 
     def select_sdg_goals(self, value: str):
         """Select SDG goal from dropdown."""
+        self.wait_until_saved()
         # Try multiple strategies to find the SDG goals container
         toggle = None
         strategies = [
@@ -136,7 +120,7 @@ class CreateCollaborativePage(BasePage):
 
         for strategy in strategies:
             try:
-                toggle = self.wait_with_timeout(10).until(EC.element_to_be_clickable(strategy))
+                toggle = self.wait_with_timeout(15).until(EC.element_to_be_clickable(strategy))
                 break
             except TimeoutException:
                 continue
@@ -147,7 +131,7 @@ class CreateCollaborativePage(BasePage):
         toggle.click()
         time.sleep(1)  # Wait for dropdown to appear
 
-        opt = self.wait_with_timeout(10).until(EC.element_to_be_clickable(
+        opt = self.wait_with_timeout(15).until(EC.element_to_be_clickable(
             (By.XPATH, CreateCollaborativeLocators.SDG_GOALS_OPTION.format(value=value))
         ))
         try:
@@ -177,6 +161,7 @@ class CreateCollaborativePage(BasePage):
 
     def select_geography(self, value: str):
         """Select geography from dropdown."""
+        self.wait_until_saved()
         import time
         # Wait for geography input to be clickable
         toggle = self.wait.until(EC.element_to_be_clickable(CreateCollaborativeLocators.GEOGRAPHY_CONTAINER))
@@ -557,7 +542,7 @@ class CreateCollaborativePage(BasePage):
 
     def go_to_publish_tab(self):
         """Click on the Publish tab."""
-        self.wait_with_timeout(10).until(
+        self.wait_with_timeout(15).until(
             EC.element_to_be_clickable(CreateCollaborativeLocators.PUBLISH_TAB),
             message="Timed out waiting for Publish tab"
         ).click()

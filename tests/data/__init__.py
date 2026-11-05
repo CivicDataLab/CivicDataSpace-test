@@ -13,7 +13,6 @@ from .test_data import (
     FileTestData,
     # Legacy constants
     DATASET_DESCRIPTION,
-    DATASET_SECTORS,
     DATASET_TAGS,
     DATASET_GEOGRAPHY,
     DATASET_SOURCE_URL,
@@ -23,7 +22,6 @@ from .test_data import (
     USECASE_STATUS_ONGOING,
     USECASE_STATUS_COMPLETED,
     USECASE_SDG_GOAL,
-    USECASE_SECTORS,
     USECASE_TAGS,
     PROFILE_FIRST_NAME,
     PROFILE_LAST_NAME,
@@ -46,7 +44,6 @@ __all__ = [
     'FileTestData',
     # Legacy constants
     'DATASET_DESCRIPTION',
-    'DATASET_SECTORS',
     'DATASET_TAGS',
     'DATASET_GEOGRAPHY',
     'DATASET_SOURCE_URL',
@@ -56,7 +53,6 @@ __all__ = [
     'USECASE_STATUS_ONGOING',
     'USECASE_STATUS_COMPLETED',
     'USECASE_SDG_GOAL',
-    'USECASE_SECTORS',
     'USECASE_TAGS',
     'PROFILE_FIRST_NAME',
     'PROFILE_LAST_NAME',

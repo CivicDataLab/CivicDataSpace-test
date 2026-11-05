@@ -17,7 +17,22 @@ from pages.provider.create_usecase_page import CreateUsecasePage
 from pages.provider.organizations_page import OrganizationsPage
 
 @pytest.mark.functional
-def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_credentials, org_add_permission):
+@pytest.mark.smoke
+# Previously failed reproducibly under concurrent (-n 3) provider-smoke CI runs
+# (AssertionError: Summary mismatch, Found: '' - a race on the same worker that
+# also failed test_prv_006, in the same run). Root cause: addUseCase's
+# auto-generated title has 1-second resolution and both title and slug are
+# globally unique, so two use cases created in the same second by any
+# concurrent worker collided - the mutation raised instead of returning a
+# usable record, leaving the newly-navigated-to usecase edit page in a broken
+# state, so the summary field this test types into read back empty. Not a
+# render/timing issue in the Quill editor - a genuine backend write race,
+# independent of the org-collision theory ruled out earlier. Fixed in
+# DataSpaceBackend PR #203 (retry-with-disambiguated-title/slug on collision),
+# merged and deployed to dev 2026-09-18. Re-added smoke after confirming green
+# under real -n 3 concurrent load against dev (0 reruns needed, vs failing
+# every attempt pre-fix).
+def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_credentials, writable_org, sector_name):
     """
     Test Case ID: test_prv_007_org_create_usecase
     Verify User is able to create a UseCase end-to-end as an Organization provider.
@@ -59,7 +74,7 @@ def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_cre
     )
 
     # ─── Step 4: Select one of the organizations ─────────────────────────────────────
-    select_org = org_dash.select_org()
+    select_org = org_dash.select_org(writable_org)
     assert isinstance(select_org, OrganizationsPage), (
         "test_prv_007: expected select_org() to return OrganizationsPage"
     )
@@ -80,7 +95,7 @@ def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_cre
     test_summary = f"Automated Org UseCase Test – {datetime.now().date()}"
     create_uc.enter_summary(test_summary)
     actual_summary = create_uc.get_summary_value()
-    assert actual_summary == test_summary + test_summary, (
+    assert actual_summary == test_summary, (
         f"Step 7a failure: Summary mismatch. Expected: '{test_summary}', Found: '{actual_summary}'."
     )
 
@@ -108,9 +123,9 @@ def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_cre
     )
 
     # (7e) Sectors
-    create_uc.select_sectors(["Budgets"])
+    create_uc.select_sectors([sector_name])
     selected_sectors = create_uc.get_selected_sectors()
-    assert "Budgets" in selected_sectors, (
+    assert sector_name in selected_sectors, (
         f"Step 7e failure: Sector not selected correctly. Current sectors: {selected_sectors}"
     )
 

@@ -20,15 +20,28 @@ class OrganizationsPage(BasePage):
         """Check if the Organizations page is loaded (an org card is present)."""
         return self.find(self.ORG_CARD_ANY).is_displayed()
 
-    def select_org(self) -> "OrganizationsPage":
+    def select_org(self, org_name: str) -> "OrganizationsPage":
         """
-        Select the test organization to access its dashboard.
+        Select an organization to access its dashboard.
 
         After clicking, the page redirects to:
-        /dashboard/organization/my-test-agency/dataset
+        /dashboard/organization/{org-slug}/dataset
 
         This loads a dashboard identical to MyDashboard, with the Datasets
         section already visible.
+
+        Args:
+            org_name: the organization this account actually has canAdd on
+                (e.g. from the `org_add_permission` fixture). When given, that
+                org's card is clicked directly by id -- **not** the hardcoded
+                "my test agency" preference below, which only checks whether
+                the card is clickable, not whether the logged-in account can
+                write to it. An account that merely belongs to "my test
+                agency" in a read-only role still lands there under the old
+                behavior and every create-flow step after it times out.
+                Selenium-flakiness-shaped failures on org-scoped create tests
+                that trace back here are a permission mismatch, not a race
+                condition -- see CivicDataSpace-test#103 investigation notes.
         """
         # Wait for the org list page to finish rendering before looking for cards
         self.wait_with_timeout(20).until(
@@ -36,12 +49,21 @@ class OrganizationsPage(BasePage):
             message="Organizations list page did not load"
         )
 
-        # Try the specific test org first; fall back to the first available org card
+        if not org_name:
+            raise ValueError(
+                "select_org() requires an org name -- use the `writable_org` "
+                "fixture. It used to fall back to 'my test agency', which two "
+                "accounts can both write to, so concurrent workers edited and "
+                "created under the same org row (CivicDataSpace-test#103)."
+            )
+
+        # Only the requested org. No "first available card" fallback: that is how
+        # a worker silently ended up on an org another worker was writing to.
+        slug = org_name.lower().replace(" ", "-")
+        locators = [(By.XPATH, f'//a[@id="{slug}"]')]
+
         org_el = None
-        for locator in [
-            OrgLocators.ORG_TEST,
-            (By.XPATH, "//a[contains(@href,'/dashboard/organization/')]"),
-        ]:
+        for locator in locators:
             try:
                 org_el = self.wait_with_timeout(25).until(
                     EC.element_to_be_clickable(locator)
@@ -51,7 +73,8 @@ class OrganizationsPage(BasePage):
                 continue
 
         if org_el is None:
-            raise TimeoutException("Timed out waiting for the 'my test agency' org card to be clickable")
+            wanted = f"'{org_name}'" if org_name else "the default"
+            raise TimeoutException(f"Timed out waiting for the {wanted} org card to be clickable")
 
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", org_el)
         self.driver.execute_script("arguments[0].click();", org_el)
@@ -95,17 +118,17 @@ class OrganizationsPage(BasePage):
         data_dataset_card.click()
 
         # Confirm with "Create Dataset"
-        create_btn = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.CREATE_DATASET_BUTTON)),
-            message="Timed out waiting for 'Create Dataset' button to be clickable"
-        )
-        create_btn.click()
-
-        # Wait for metadata tab
-        self.wait_with_timeout(30).until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
-            message="Timed out waiting for Metadata tab to appear after creating dataset"
-        )
+        # Retry the submit until the Metadata tab actually appears: a
+        # pre-hydration click on this button does nothing at all, silently.
+        try:
+            self.click_until(
+                (By.XPATH, CreateDatasetLocators.CREATE_DATASET_BUTTON),
+                EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
+                message="'Create Dataset' never took effect -- modal stayed open",
+            )
+        except TimeoutException:
+            self.save_failure_artifacts("org_create_dataset_metadata_tab")
+            raise
 
         return CreateDatasetPage(self.driver)
 
@@ -141,10 +164,17 @@ class OrganizationsPage(BasePage):
         )
         create_btn.click()
 
-        self.wait_with_timeout(30).until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
-            message="Timed out waiting for Metadata tab after creating prompt dataset"
-        )
+        # The create mutation plus the navigation it triggers is the slow step;
+        # 30s was not enough under concurrent load. The org flow does not land
+        # on an /edit URL, so wait on the tab itself rather than the URL.
+        try:
+            self.wait_with_timeout(60).until(
+                EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.TAB_METADATA)),
+                message="Timed out waiting for Metadata tab after creating prompt dataset"
+            )
+        except TimeoutException:
+            self.save_failure_artifacts("org_create_prompt_dataset_metadata_tab")
+            raise
 
         return CreateDatasetPage(self.driver)
 
@@ -181,6 +211,12 @@ class OrganizationsPage(BasePage):
 
         return UseCasesListPage(self.driver)
 
+    def click_charts_card(self):
+        """Open 'Add & Manage Charts'. The org sidebar matches MyDashboard's."""
+        from pages.provider.my_dashboard_page import MyDashboardPage
+
+        return MyDashboardPage(self.driver).click_charts_card()
+
     def click_collaboratives_card(self):
         """
         Click the Collaboratives navigation link in the organization dashboard.
@@ -195,7 +231,7 @@ class OrganizationsPage(BasePage):
         import time
 
         # Wait for and click the Collaboratives navigation link
-        collaboratives_link = self.wait_with_timeout(10).until(
+        collaboratives_link = self.wait_with_timeout(15).until(
             EC.element_to_be_clickable(OrgLocators.COLLABORATIVES_NAV_LINK),
             message="Timed out waiting for the 'Collaboratives' link to be clickable"
         )

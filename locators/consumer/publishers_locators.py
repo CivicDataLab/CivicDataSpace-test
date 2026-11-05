@@ -7,7 +7,11 @@ class PublishersLocators:
     """XPaths for elements on the Publishers page."""
 
     # The page header ("Our Publishers")
-    HEADER = (By.XPATH, "//span[normalize-space(.)='Our Publishers']")
+    # Confirmed from a real captured DOM at failure time (test_con_008's new
+    # diagnostics): the heading is an actual <h1>, not a span -- the opposite
+    # mistake from the privacy page's locator, and the actual root cause of
+    # every "timeout" here (two timeout bumps never had a chance to help).
+    HEADER = (By.XPATH, "//h1[normalize-space(.)='Our Publishers']")
 
     # The three tab buttons
     TAB_ALL = (By.XPATH, "//button[normalize-space(.)='All Publishers']")

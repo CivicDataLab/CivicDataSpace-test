@@ -15,10 +15,10 @@ class CreateDatasetLocators:
     # ---- Metadata fields ----
     DESCRIPTION         = "//div[contains(@class, 'ql-editor') and @contenteditable='true']"
 
-    SECTOR_INPUT        = "//label[normalize-space()='Sectors *']/following::input[@role='combobox'][1]"
+    SECTOR_INPUT        = "//label[normalize-space()='Sectors *']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
     SECTOR_DROPDOWN_ITEM = "//div[@role='option'][normalize-space(.)='{value}']"
 
-    TAGS_INPUT           = "//label[normalize-space()='Tags' or normalize-space()='Tags *']/following::input[@role='combobox'][1]"
+    TAGS_INPUT           = "//label[normalize-space()='Tags' or normalize-space()='Tags *']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
     TAG_DROPDOWN_ITEM    = "//div[@role='option' and normalize-space(.)='{value}']"
 
     GEOGRAPHY_CONTAINER = "//label[normalize-space()='Geographies']/following::input[1]"
@@ -45,18 +45,20 @@ class CreateDatasetLocators:
     #Getter locators :
     # 5b) After selecting sectors, each chosen sector usually appears as a "pill"
     SECTOR_SELECTED_PILL = (
-        "//div[contains(@class,'Input-module_tags')]"
+        "//label[normalize-space()='Sectors' or normalize-space()='Sectors *']"
+        "/ancestor::div[.//input[@role='combobox']][1]"
         "//span[contains(@class,'Tag-module_TagText')]"
     )
     # 5c) Tag pills (after selecting tags, each chosen tag appears)
     TAG_SELECTED_PILL = (
-        "//div[contains(@class,'Input-module_tags')]"
+        "//label[normalize-space()='Tags' or normalize-space()='Tags *']"
+        "/ancestor::div[.//input[@role='combobox']][1]"
         "//span[contains(@class,'Tag-module_TagText')]"
     )
     # 5d) Selected geography appears as a single “pill” or dropdown value
     GEOGRAPHY_SELECTED_PILL = (
         "//label[normalize-space(text())='Geographies']"
-        "/following::div[contains(@class,'Input-module_tags')][1]"
+        "/ancestor::div[.//input[@role='combobox']][1]"
         "//span[contains(@class,'Tag-module_TagText')]"
     )
 
@@ -101,10 +103,12 @@ class CreateDatasetLocators:
 
     # ─── Prompt Dataset Metadata section ──────────────────────────────────────
     # Anchored to each field's label div — works regardless of heading tag type.
-    TASK_TYPE_INPUT          = "//label[normalize-space()='Task Type']/following::input[@role='combobox'][1]"
-    DOMAIN_INPUT             = "//label[normalize-space()='Domain']/following::input[@role='combobox'][1]"
-    TARGET_LANGUAGES_INPUT   = "//label[normalize-space()='Target Languages']/following::input[@role='combobox'][1]"
-    TARGET_MODEL_TYPES_INPUT = "//label[normalize-space()='Target Model Types']/following::input[@role='combobox'][1]"
+    TASK_TYPE_INPUT          = "//label[normalize-space()='Task Type']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
+    DOMAIN_INPUT             = "//label[normalize-space()='Domain']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
+    TARGET_LANGUAGES_INPUT   = "//label[normalize-space()='Target Languages']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
+    # Any labelled combobox on the prompt dataset forms, e.g. .format('Prompt Format').
+    COMBOBOX_BY_LABEL        = "//label[normalize-space()='{}']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
+    TARGET_MODEL_TYPES_INPUT = "//label[normalize-space()='Target Model Types']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
 
     TASK_TYPE_SELECTED_PILL = (
         "//div[./div[normalize-space(.)='Task Type']]"
