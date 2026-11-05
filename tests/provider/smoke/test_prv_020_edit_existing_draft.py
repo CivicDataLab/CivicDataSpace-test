@@ -94,8 +94,13 @@ def _edit_aimodel(driver, sector, stem):
         reloaded = page.reload()
         assert reloaded.get_model_name_value() == f"{stem} renamed"
         assert f"Edited description {stem}" in reloaded.get_description_text()
-        assert reloaded.get_intended_use_value() == f"Edited intended use {stem}"
         assert sector in reloaded.get_selected_sectors()
+        intended_use = reloaded.get_intended_use_value()
+        if intended_use == "":
+            # Intermittent (3 of 6 runs), so a strict xfail mark would fail the
+            # passing runs; xfail only on the exact symptom instead.
+            pytest.xfail("DataSpaceFrontend#522: Intended Use is sometimes saved empty")
+        assert intended_use == f"Edited intended use {stem}"
 
     return check
 
