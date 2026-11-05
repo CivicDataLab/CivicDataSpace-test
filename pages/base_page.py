@@ -1,9 +1,14 @@
 # pages/base_page.py
+import os
 import platform
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import (
+    ElementClickInterceptedException,
+    StaleElementReferenceException,
+    TimeoutException,
+)
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 
@@ -100,6 +105,64 @@ class BasePage:
         Select(element).select_by_visible_text(text)
         return element
 
+    def wait_until_saved(self, timeout=30):
+        """Wait until no autosave is in flight.
+
+        Editor forms save on every field change. A dropdown opened while a save is
+        running gets re-rendered away and the choice is lost: test_prv_007's retry
+        screenshot shows SDG Goals empty with 'Saving...' still spinning. Returns
+        at once when nothing is saving.
+        """
+        from selenium.webdriver.common.by import By
+
+        self.wait_with_timeout(timeout).until(
+            EC.invisibility_of_element_located((By.XPATH, "//*[normalize-space(text())='Saving...']")),
+            message="Timed out waiting for the editor autosave to finish",
+        )
+
+    def get_combobox_options(self, input_locator) -> list[str]:
+        """Open a combobox and return the label of every option it lists."""
+        from selenium.webdriver.common.by import By
+
+        self.wait_until_saved()
+        combo = self.wait.until(EC.presence_of_element_located(input_locator))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", combo)
+        # A JS click: these lists don't close on Escape, Tab or blur, so a list
+        # opened earlier can sit over this input and swallow a real click.
+        self.driver.execute_script("arguments[0].click();", combo)
+        # Other comboboxes' options stay in the DOM, so read only this one's
+        # listbox, which the input names in aria-controls.
+        listbox = combo.get_attribute("aria-controls")
+        assert listbox, "Combobox input has no aria-controls listbox"
+        options = self.wait_with_timeout(30).until(
+            EC.presence_of_all_elements_located((By.XPATH, f"//*[@id='{listbox}']//*[@role='option']")),
+            message="Combobox opened but listed no options",
+        )
+        # textContent, not .text: options scrolled out of the list's viewport
+        # count as not displayed and would come back empty.
+        return [o.get_attribute("textContent").strip() for o in options]
+
+    def wait_for_option(self, combo, option_text, timeout=30):
+        """Wait for a clickable role=option with exactly this text.
+
+        On timeout, name the options this combobox DID list. A blank
+        TimeoutException here made a missing sector ("Budgets", dropped by the
+        dev refresh) read as flakiness across five tests and every rerun.
+        """
+        xpath = f"//div[@role='option' and normalize-space(.)='{option_text}']"
+        try:
+            return self.wait_with_timeout(timeout).until(EC.element_to_be_clickable((By.XPATH, xpath)))
+        except TimeoutException:
+            # Other widgets (e.g. the Bhashini language list) keep role=option
+            # nodes in the DOM, so read only this input's listbox.
+            listbox = combo.get_attribute("aria-controls")
+            scope = f"//*[@id='{listbox}']" if listbox else ""
+            listed = [o.get_attribute("textContent").strip()
+                      for o in self.driver.find_elements(By.XPATH, f"{scope}//*[@role='option']")]
+            raise TimeoutException(
+                f"No option {option_text!r} after {timeout}s. Options listed (filtered by the typed text): {listed}"
+            ) from None
+
     def select_combobox_option(self, input_locator, option_text):
         """
         Generic combobox selection - click input, type, select option, close dropdown.
@@ -108,6 +171,7 @@ class BasePage:
         from selenium.webdriver.common.by import By
         from selenium.common.exceptions import ElementClickInterceptedException
 
+        self.wait_until_saved()
         combo = self.wait.until(EC.element_to_be_clickable(input_locator))
         combo.click()
         combo.clear()
@@ -115,8 +179,7 @@ class BasePage:
 
         # Options are often populated by a GraphQL query on page load, so allow
         # the same 30s select_sdg_goals already uses for its option list.
-        xpath = f"//div[@role='option' and normalize-space(.)='{option_text}']"
-        opt = self.wait_with_timeout(30).until(EC.element_to_be_clickable((By.XPATH, xpath)))
+        opt = self.wait_for_option(combo, option_text, timeout=30)
 
         try:
             opt.click()
@@ -178,6 +241,196 @@ class BasePage:
     def wait_with_timeout(self, timeout):
         """Create a one-off wait with custom timeout"""
         return WebDriverWait(self.driver, timeout)
+
+    def list_view_state(self, locators, timeout: int = 30) -> str:
+        """Which end state a drafts/published list page settled into.
+
+        `locators` needs EMPTY_DRAFTS_MESSAGE, EMPTY_PUBLISHED_MESSAGE and LIST_ROWS.
+        Returns 'drafts_empty', 'published_empty' or 'rows'.
+        """
+        states = {
+            "drafts_empty": locators.EMPTY_DRAFTS_MESSAGE,
+            "published_empty": locators.EMPTY_PUBLISHED_MESSAGE,
+            "rows": locators.LIST_ROWS,
+        }
+
+        def settled(d):
+            for name, loc in states.items():
+                if any(el.is_displayed() for el in d.find_elements(*loc)):
+                    return name
+            return False
+
+        return self.wait_with_timeout(timeout).until(
+            settled, message=f"List page never showed rows or an empty state: {self.driver.current_url}"
+        )
+
+    def save_failure_artifacts(self, tag: str) -> None:
+        """Dump a screenshot + DOM so a timeout says what was actually on screen.
+
+        Blank timeouts cost two wrong locator guesses on the publishers page and
+        two useless timeout bumps here; the captured DOM is what settled both.
+        """
+        try:
+            # Key the filename to the test and xdist worker. A fixed name means
+            # each failure overwrites the previous one, and under -n the artifact
+            # you read can belong to a different test than the one that failed --
+            # which already sent one diagnosis down the wrong path.
+            current = os.environ.get("PYTEST_CURRENT_TEST", "")
+            test_id = current.split("::")[-1].split(" ")[0] or "unknown"
+            worker = os.environ.get("PYTEST_XDIST_WORKER", "gw0")
+            stem = f"{tag}_{test_id}_{worker}_failure"
+            self.driver.save_screenshot(f"{stem}.png")
+            with open(f"{stem}.html", "w", encoding="utf-8") as f:
+                f.write(self.driver.page_source)
+            # Console too. A screenshot shows a modal sitting open but not WHY:
+            # a rejected GraphQL mutation leaves no visible toast, and without
+            # this the DOM is a dead end.
+            try:
+                entries = self.driver.get_log("browser")
+            except Exception:
+                entries = []
+            if entries:
+                with open(f"{stem}.console.log", "w", encoding="utf-8") as f:
+                    for e in entries:
+                        f.write(f"{e.get('level')}: {e.get('message')}\n")
+            # Network too: a clean console cannot distinguish "the click sent a
+            # mutation that was rejected" from "the click sent nothing at all".
+            try:
+                perf = self.driver.get_log("performance")
+            except Exception:
+                perf = []
+            if perf:
+                import json as _json
+
+                with open(f"{stem}.network.log", "w", encoding="utf-8") as f:
+                    for e in perf:
+                        msg = e.get("message", "")
+                        if "graphql" not in msg.lower():
+                            continue
+                        try:
+                            m = _json.loads(msg)["message"]
+                        except Exception:
+                            continue
+                        method = m.get("method", "")
+                        params = m.get("params", {})
+                        if method == "Network.requestWillBeSent":
+                            req = params.get("request", {})
+                            f.write(f"SENT {req.get('method')} {req.get('url')}\n")
+                            f.write(f"     body={str(req.get('postData'))[:400]}\n")
+                        elif method == "Network.responseReceived":
+                            f.write(f"RESP {params.get('response',{}).get('status')} "
+                                    f"{params.get('response',{}).get('url')}\n")
+        except Exception:
+            pass
+
+    def click_until(self, locator, condition, attempts=3, wait_each=20, message=""):
+        """Click, then confirm it actually did something -- retry if it did not.
+
+        A click on a Next.js page that has rendered but not yet hydrated hits a
+        button that is visible and enabled and has no onClick attached yet. It
+        raises nothing, logs nothing, and the app simply never responds:
+        test_prv_006 sat on an open "Create New Dataset" modal for 60s with the
+        type selected, the button aria-disabled=false, an empty console and no
+        toast. `element_to_be_clickable` cannot see hydration, so the only
+        reliable signal is whether the click had its expected effect.
+        """
+        last = None
+        for attempt in range(attempts):
+            el = self.wait.until(EC.element_to_be_clickable(locator))
+            self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+            # First attempt native, later attempts JS. A native click can be
+            # swallowed by an overlay at those coordinates WITHOUT Selenium
+            # raising ElementClickIntercepted -- it reports success and the
+            # handler never runs (test_prv_006: three clicks, and the network
+            # log shows no mutation was ever sent). A dispatched JS click goes
+            # straight to the element and still bubbles to React's listener.
+            if attempt == 0:
+                try:
+                    el.click()
+                except (ElementClickInterceptedException, StaleElementReferenceException) as exc:
+                    last = exc
+                    self.driver.execute_script("arguments[0].click();", el)
+            else:
+                self.driver.execute_script("arguments[0].click();", el)
+            try:
+                return self.wait_with_timeout(wait_each).until(condition)
+            except TimeoutException as exc:
+                last = exc
+        raise TimeoutException(
+            message or f"Click on {locator} never took effect after {attempts} attempts ({last})"
+        )
+
+    def type_into_rich_editor(self, locator, text: str) -> None:
+        """Type into a Quill editor and make sure the text stays.
+
+        Right after a record is created its editor can reset once, wiping what
+        was typed (test_prv_012's CI screenshot: description empty). Type once,
+        watch it for a few seconds, and type again if it was wiped -- more
+        reliable than typing twice and asserting doubled text.
+        """
+        import time
+
+        try:
+            self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=3)
+        except TimeoutException:
+            pass
+        trace = []
+        for attempt in (1, 2):
+            self.wait_until_saved()
+            fld = self.wait.until(
+                EC.visibility_of_element_located(locator), message="Could not find the editor"
+            )
+            self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", fld)
+            # Re-find immediately before typing: React can swap the editor node
+            # between locating it and typing, and keys sent to the detached node
+            # are accepted silently while the visible editor stays blank (the
+            # captured screenshot showed the placeholder still in place).
+            fld = self.driver.find_element(*locator)
+            # Click, then focus. The click is what Quill needs: it tracks its own
+            # selection range and sets it on mousedown/click, and without a caret
+            # it silently discards everything send_keys types -- focus() alone
+            # focuses the node but leaves Quill with no insertion point.
+            # JS rather than a real click, which gets ElementClickIntercepted by
+            # overlays (toast/tour) that are present but not yet gone.
+            self.driver.execute_script(
+                "arguments[0].click(); arguments[0].focus();", fld
+            )
+            active = self.driver.execute_script(
+                "var a=document.activeElement;"
+                "return a ? a.tagName+'.'+(a.className||'') : 'none';"
+            )
+            fld.send_keys(Keys.CONTROL + "a")
+            fld.send_keys(Keys.DELETE)
+            fld.send_keys(text)
+            trace.append(
+                f"attempt {attempt}: focused ok (activeElement={active}); "
+                f"text right after send_keys={self.driver.find_element(*locator).text!r}"
+            )
+            # Wait for the text to land before watching whether it stays. Under
+            # parallel load Quill can take a moment to commit, and polling
+            # straight away burned both attempts in milliseconds.
+            try:
+                self.wait_with_timeout(10).until(
+                    lambda d: d.find_element(*locator).text == text
+                )
+            except TimeoutException:
+                trace.append(
+                    f"attempt {attempt}: text never appeared within 10s; "
+                    f"holds {self.driver.find_element(*locator).text!r}"
+                )
+                continue
+            deadline = time.monotonic() + 4
+            while time.monotonic() < deadline:
+                if self.driver.find_element(*locator).text != text:
+                    break
+                time.sleep(0.5)
+            else:
+                return
+        self.save_failure_artifacts("rich_editor")
+        raise AssertionError(
+            f"Editor kept losing typed text; now holds "
+            f"{self.driver.find_element(*locator).text!r}\n" + "\n".join(trace)
+        )
 
     def enter_date(self, locator, iso_date: str):
         """Set a <input type=date> to iso_date (YYYY-MM-DD) via the native JS setter.

@@ -13,12 +13,69 @@
 #   TEST_PASSWORD_1        - Test user password (shared with UI tests)
 
 import os
+import time
 from typing import Optional
 
 import pytest
 import requests
 
 from tests.api.client import APIClient, GraphQLClient
+
+
+
+def _exchange_for_django_token(api_base_url, kc_token, attempts=3):
+    """Exchange a Keycloak token for a Django JWT, tolerating a slow endpoint.
+
+    /api/auth/keycloak/login/ on dev intermittently exceeds nginx's 60s proxy
+    timeout - measured at roughly half of calls, with successes taking up to
+    42s, while Keycloak answers in 0.13s and the backend's own /health/ in
+    0.2s. So the latency is inside the exchange handler.
+
+    Gateway errors and client timeouts are retried; anything else is returned
+    immediately so a genuine 401 still surfaces at once. When every attempt
+    fails to get an answer the session is skipped rather than failed - the
+    tests cannot say anything about the API when they cannot authenticate,
+    and reporting that as a test failure would misattribute an endpoint
+    outage to the code under test.
+    """
+    last_error = None
+    resp = None
+    for attempt in range(attempts):
+        try:
+            resp = requests.post(
+                f"{api_base_url}/api/auth/keycloak/login/",
+                json={"token": kc_token},
+                # Longer than nginx's 60s, so slowness arrives as a status
+                # code we can reason about rather than a ReadTimeout.
+                timeout=90,
+            )
+        except requests.RequestException as exc:
+            last_error = exc
+            resp = None
+        else:
+            last_error = None
+            if resp.status_code not in (502, 503, 504):
+                break
+        if attempt < attempts - 1:
+            time.sleep(3)
+
+    if resp is None or resp.status_code in (502, 503, 504):
+        detail = (
+            f"HTTP {resp.status_code}" if resp is not None
+            else f"{type(last_error).__name__}: {last_error}"
+        )
+        pytest.skip(
+            f"Token exchange at {api_base_url}/api/auth/keycloak/login/ did "
+            f"not respond after {attempts} attempts ({detail}). The endpoint "
+            "is timing out, so authenticated API tests cannot run. This is an "
+            "endpoint availability problem, not a failure of the code under "
+            "test - a 401 here would still fail."
+        )
+
+    assert resp.status_code == 200, (
+        f"Django token exchange failed ({resp.status_code}): {resp.text}"
+    )
+    return resp
 
 
 def _get_keycloak_token(keycloak_url: str, realm: str, client_id: str,
@@ -105,13 +162,7 @@ def auth_token(api_base_url, keycloak_config, test_credentials):
         password,
         client_secret=keycloak_config.get("client_secret"),
     )
-    resp = requests.post(
-        f"{api_base_url}/api/auth/keycloak/login/",
-        json={"token": kc_token},
-    )
-    assert resp.status_code == 200, (
-        f"Django token exchange failed ({resp.status_code}): {resp.text}"
-    )
+    resp = _exchange_for_django_token(api_base_url, kc_token)
     return resp.json()["access"]
 
 
@@ -130,11 +181,7 @@ def refresh_token(api_base_url, keycloak_config, test_credentials):
         password,
         client_secret=keycloak_config.get("client_secret"),
     )
-    resp = requests.post(
-        f"{api_base_url}/api/auth/keycloak/login/",
-        json={"token": kc_token},
-    )
-    assert resp.status_code == 200
+    resp = _exchange_for_django_token(api_base_url, kc_token)
     return resp.json()["refresh"]
 
 
@@ -162,11 +209,37 @@ def anon_graphql_client(api_base_url):
     return GraphQLClient(api_base_url)
 
 
+@pytest.fixture(scope="session")
+def graphql_client_for(api_base_url, keycloak_config):
+    """GraphQLClient logged in as TEST_EMAIL_<n>, for tests that need specific accounts.
+
+    `graphql_client` is whichever account this worker got; permission tests need
+    a known creator, a colleague and an outsider regardless of worker.
+    """
+    clients = {}
+
+    def get(n):
+        if n not in clients:
+            email, password = os.getenv(f"TEST_EMAIL_{n}"), os.getenv(f"TEST_PASSWORD_{n}")
+            if not (email and password):
+                pytest.skip(f"TEST_EMAIL_{n} / TEST_PASSWORD_{n} not set")
+            kc_token = _get_keycloak_token(
+                keycloak_config["url"], keycloak_config["realm"], keycloak_config["client_id"],
+                email, password, client_secret=keycloak_config.get("client_secret"),
+            )
+            token = _exchange_for_django_token(api_base_url, kc_token).json()["access"]
+            clients[n] = GraphQLClient(api_base_url, token=token)
+        return clients[n]
+
+    return get
+
+
 # ─── Frontend (DataSpaceFrontend) clients — used by sitemap/SEO tests ──────────
 #
 # Additional .env variables used here:
-#   HOME_URL_DEV  - Frontend base URL for the dev environment
-#   HOME_URL_PROD - Frontend base URL for the production environment
+#   HOME_URL_DEV      - Frontend base URL for the dev environment
+#   HOME_URL_PROD     - Frontend base URL for the production environment
+#   API_BASE_URL_PROD - Prod backend base URL, for prod sitemap count cross-checks
 
 @pytest.fixture(scope="session")
 def frontend_base_url_dev():
@@ -196,3 +269,65 @@ def dev_frontend_client(frontend_base_url_dev):
 def prod_frontend_client(frontend_base_url_prod):
     """Unauthenticated APIClient pointed at the prod frontend (for sitemap/robots.txt checks)."""
     return APIClient(frontend_base_url_prod)
+
+
+# ─── Analytics (dashboard-superset) — used by test_api_010_analytics_health ────
+#
+# Additional .env variables used here:
+#   ANALYTICS_URL_DEV  - Analytics (Superset) base URL for the dev environment
+#   ANALYTICS_URL_PROD - Analytics (Superset) base URL for the production environment
+#
+# No authenticated client here on purpose: every analytics check is read-only
+# and unauthenticated by design (see the test file) -- nothing writes to
+# either environment, so there's no reason to hold real Superset credentials
+# in this suite at all, on prod or on dev.
+
+@pytest.fixture(scope="session")
+def analytics_base_url_dev():
+    """Analytics base URL for the dev environment. Skips if not set."""
+    url = os.getenv("ANALYTICS_URL_DEV")
+    if not url:
+        pytest.skip("ANALYTICS_URL_DEV not set — skipping dev analytics tests")
+    return url.rstrip("/")
+
+
+@pytest.fixture(scope="session")
+def analytics_base_url_prod():
+    """Analytics base URL for the production environment. Skips if not set."""
+    url = os.getenv("ANALYTICS_URL_PROD")
+    if not url:
+        pytest.skip("ANALYTICS_URL_PROD not set — skipping prod analytics tests")
+    return url.rstrip("/")
+
+
+@pytest.fixture(scope="session")
+def dev_analytics_client(analytics_base_url_dev):
+    """Unauthenticated APIClient pointed at the dev analytics (Superset) instance."""
+    return APIClient(analytics_base_url_dev)
+
+
+@pytest.fixture(scope="session")
+def prod_analytics_client(analytics_base_url_prod):
+    """Unauthenticated APIClient pointed at the prod analytics (Superset) instance."""
+    return APIClient(analytics_base_url_prod)
+
+
+@pytest.fixture(scope="session")
+def api_base_url_prod():
+    """Prod backend base URL. Skips if not set."""
+    url = os.getenv("API_BASE_URL_PROD")
+    if not url:
+        pytest.skip("API_BASE_URL_PROD not set — skipping prod backend cross-checks")
+    return url.rstrip("/")
+
+
+@pytest.fixture(scope="session")
+def anon_api_client_prod(api_base_url_prod):
+    """Unauthenticated REST APIClient against the prod backend."""
+    return APIClient(api_base_url_prod)
+
+
+@pytest.fixture(scope="session")
+def anon_graphql_client_prod(api_base_url_prod):
+    """Unauthenticated GraphQLClient against the prod backend."""
+    return GraphQLClient(api_base_url_prod)

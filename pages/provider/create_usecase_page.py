@@ -40,24 +40,7 @@ class CreateUsecasePage(BasePage):
         return self  # for method chaining
 
     def enter_summary(self, text: str):
-        # Try to wait for toast/overlay to disappear, but don't fail if they persist
-        try:
-            self.wait_for_invisibility((By.CLASS_NAME, "toast"), timeout=3)
-        except TimeoutException:
-            pass  # Continue anyway
-
-        fld = self.wait.until(
-            EC.visibility_of_element_located(CreateUsecaseLocators.USECASE_SUMMARY_INPUT),
-            message="Could not find UseCase summary editor"
-        )
-        # For Quill editor (contenteditable div), clear using Ctrl+A then type
-        fld.click()
-        # Ctrl+A works cross-platform (Selenium maps to Cmd+A on Mac)
-        fld.send_keys(Keys.CONTROL + 'a')
-        fld.send_keys(Keys.DELETE)
-        fld.send_keys(text)
-        # Send text twice (application-specific behavior)
-        fld.send_keys(text)
+        self.type_into_rich_editor(CreateUsecaseLocators.USECASE_SUMMARY_INPUT, text)
         return self
 
     def enter_platform_url(self, url: str):
@@ -97,6 +80,7 @@ class CreateUsecasePage(BasePage):
         return self
 
     def select_geography(self, value: str):
+        self.wait_until_saved()
         import time
         # Wait for geography input to be clickable
         toggle = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.GEOGRAPHY_CONTAINER))
@@ -113,6 +97,7 @@ class CreateUsecasePage(BasePage):
         return self
 
     def select_sdg_goals(self, value: str):
+        self.wait_until_saved()
         import time
         toggle = self.wait.until(EC.element_to_be_clickable(CreateUsecaseLocators.SDG_GOALS_CONTAINER))
         toggle.click()
@@ -168,16 +153,18 @@ class CreateUsecasePage(BasePage):
     def get_platform_url_value(self):
         return self.driver.find_element(*CreateUsecaseLocators.PLATFORM_URL_INPUT).get_attribute("value")
 
-    def get_selected_tags(self) -> list[str]:
-        elements = self.driver.find_elements(By.XPATH, CreateUsecaseLocators.SELECTED_TAGS)
+    def _get_pill_texts(self, xpath: str) -> list[str]:
+        try:
+            elements = self.wait.until(EC.presence_of_all_elements_located((By.XPATH, xpath)))
+        except TimeoutException:
+            return []
         return [el.text.strip() for el in elements if el.text.strip()]
 
+    def get_selected_tags(self) -> list[str]:
+        return self._get_pill_texts(CreateUsecaseLocators.SELECTED_TAGS)
+
     def get_selected_sectors(self) -> list[str]:
-        # Assuming each selected‐tag appears as a "pill" with text inside
-        elements = self.driver.find_elements(
-            By.XPATH, CreateUsecaseLocators.SELECTED_SECTORS
-        )
-        return [el.text.strip() for el in elements]
+        return self._get_pill_texts(CreateUsecaseLocators.SELECTED_SECTORS)
 
     def get_selected_geography(self) -> str:
         elt = self.wait.until(

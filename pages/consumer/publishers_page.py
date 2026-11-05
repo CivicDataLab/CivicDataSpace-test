@@ -14,8 +14,19 @@ logger = logging.getLogger(__name__)
 
 class PublishersPage(BasePage):
     def is_loaded(self) -> bool:
-        """Wait for 'Our Publishers' header to be visible."""
-        return self.find(PublishersLocators.HEADER).is_displayed()
+        """Wait for 'Our Publishers' header to be visible.
+
+        The text is already in the SSR HTML, so this is normally fast -- but
+        the base 15s wait timed out under real concurrent CI load
+        (test_con_008); a first bump to 30s still wasn't enough. Ruled out a
+        locator/duplicate-element bug (confirmed live: the only other match
+        for the text is inside a JSON-LD <script> block, not a real span).
+        60s now, matching the same class of issue already worked around
+        elsewhere in this suite (the provider create-flow waits).
+        """
+        return self.wait_with_timeout(60).until(
+            EC.visibility_of_element_located(PublishersLocators.HEADER)
+        ).is_displayed()
 
     def _select_tab(self, locator: tuple, timeout: int = 10) -> None:
         """

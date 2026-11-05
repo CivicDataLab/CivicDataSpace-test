@@ -25,10 +25,14 @@ class CreateDatasetPage(BasePage):
 
     # ---- Tab navigation ----
     def go_to_metadata_tab(self):
-        self.click((By.XPATH, CreateDatasetLocators.TAB_METADATA))
-        self.wait.until(EC.visibility_of_element_located(
-            (By.XPATH, CreateDatasetLocators.DESCRIPTION)
-        ))
+        # After "Dataset created successfully" the form can drop back to a full
+        # "Loading" render once more, so a tab that was clickable a moment ago gets
+        # covered mid-click (test_prv_002: ElementClickIntercepted). Retry until
+        # the Metadata form is actually showing.
+        self.click_until(
+            (By.XPATH, CreateDatasetLocators.TAB_METADATA),
+            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.DESCRIPTION)),
+        )
         return self
 
     def go_to_datafiles_tab(self):
@@ -62,11 +66,11 @@ class CreateDatasetPage(BasePage):
 
     # ---- Metadata entry ----
     def enter_description(self, text: str):
-        fld = self.find((By.XPATH, CreateDatasetLocators.DESCRIPTION))
-        fld.click()
-        fld.send_keys(Keys.CONTROL + 'a')
-        fld.send_keys(Keys.DELETE)
-        fld.send_keys(text)
+        # Same Quill editor as the usecase/collaborative/ai-model summary fields,
+        # and the same failure: a plain send_keys can leave it empty, so
+        # test_prv_006 step 5a asserted description == '' . This was the one
+        # enter_description never converted when the others moved to the helper.
+        self.type_into_rich_editor((By.XPATH, CreateDatasetLocators.DESCRIPTION), text)
         return self
 
     def select_sectors(self, items: list[str]):
@@ -87,6 +91,7 @@ class CreateDatasetPage(BasePage):
         return self
 
     def select_geography(self, value: str):
+        self.wait_until_saved()
         import time
 
         toggle = self.wait_with_timeout(10).until(EC.element_to_be_clickable(
@@ -185,48 +190,62 @@ class CreateDatasetPage(BasePage):
         els = self.driver.find_elements(By.XPATH, CreateDatasetLocators.TARGET_MODEL_TYPES_SELECTED_PILL)
         return [el.text.strip() for el in els]
 
+    def get_prompt_field_options(self, label: str) -> list[str]:
+        """Every option the prompt dropdown labelled `label` offers, e.g. 'Task Type'."""
+        loc = (By.XPATH, CreateDatasetLocators.COMBOBOX_BY_LABEL.format(label))
+        self._scroll_to_locator(loc)
+        return self.get_combobox_options(loc)
+
     # ---- File upload ----
-    def upload_datafile(self, path: str):
+    def _upload(self, path: str) -> str:
+        """Upload a file and wait until its edit view shows it. Returns the file name."""
+        import os
 
-        # locate the file‐input directly
+        filename = os.path.basename(path)
         inp = self.wait.until(EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.DATAFILES_INPUT)))
-
-        # send the absolute file-path to it (this triggers the upload)
         inp.send_keys(path)
 
-        # Wait for back button to be present (indicates upload initiated)
-        btn = self.wait_with_timeout(10).until(
-            EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.BACK_BUTTON))
+        # The edit view for this upload names the file once the upload is done.
+        self.wait_with_timeout(60).until(
+            EC.presence_of_element_located((By.XPATH, f"//*[normalize-space(text())='{filename}']")),
+            message=f"Timed out waiting for '{filename}' to finish uploading",
         )
-        btn.click()
+        self.wait_until_saved()
+        return filename
 
-        # Wait a moment for navigation to complete
-        import time
-        time.sleep(2)
+    def upload_prompt_file_and_open(self, path: str):
+        """Upload a prompt file and stay on its edit view (where Prompt Format lives)."""
+        self._upload(path)
+        return self
 
-        # After clicking back, the page navigates to metadata
-        # We need to explicitly go back to the Data Files tab
-        self.go_to_datafiles_tab()
+    def _upload_and_return_to_list(self, path: str, go_to_tab) -> None:
+        """Upload a file, wait until it has really landed, then return to the file list.
 
-        # Wait for the uploaded file to appear in the resource list
-        time.sleep(2)
+        When an upload finishes the app opens that file's edit view. Clicking back
+        as soon as the back arrow appears could land mid-upload; the completed
+        upload then reopened the edit view, and the resource-name getter fell back
+        to its schema table and returned column names (test_prv_002b).
+        """
+        filename = self._upload(path)
+        self.wait_with_timeout(10).until(
+            EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.BACK_BUTTON))
+        ).click()
 
+        go_to_tab()
+        self.wait_with_timeout(30).until(
+            lambda d: any(
+                el.text.strip() == filename
+                for el in d.find_elements(By.XPATH, CreateDatasetLocators.RESOURCE_NAME_CELLS)
+            ),
+            message=f"Timed out waiting for '{filename}' in the uploaded file list",
+        )
+
+    def upload_datafile(self, path: str):
+        self._upload_and_return_to_list(path, self.go_to_datafiles_tab)
         return self
 
     def upload_prompt_file(self, path: str):
-        inp = self.wait.until(EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.DATAFILES_INPUT)))
-        inp.send_keys(path)
-
-        btn = self.wait_with_timeout(10).until(
-            EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.BACK_BUTTON))
-        )
-        btn.click()
-
-        import time
-        time.sleep(2)
-
-        self.go_to_prompt_files_tab()
-        time.sleep(2)
+        self._upload_and_return_to_list(path, self.go_to_prompt_files_tab)
         return self
 
     # ---- Final publish ----
@@ -325,9 +344,15 @@ class CreateDatasetPage(BasePage):
         Returns:
             True if we can successfully navigate to the Published tab, False otherwise
         """
-        # Wait for URL to change to drafts tab (confirms redirect after publish)
+        # Wait for the redirect away from the publish route (confirms publish
+        # succeeded). DataSpaceFrontend#471 switched the drafts/published tab
+        # to a silent default (nuqs `withDefault('drafts')`) instead of writing
+        # `?tab=drafts` into the URL, so the post-publish redirect
+        # (`router.push('/dashboard/.../dataset')`, no query string - see
+        # publish/page.tsx) never contains that substring anymore. Checking
+        # for the publish route disappearing is what's actually true post-#471.
         self.wait_with_timeout(10).until(
-            lambda d: "?tab=drafts" in d.current_url
+            lambda d: "/edit/publish" not in d.current_url
         )
 
         # Wait a moment for the UI to update after redirect

@@ -9,7 +9,8 @@ from pages.provider.organizations_page import OrganizationsPage
 
 
 @pytest.mark.functional
-def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, test_credentials):
+@pytest.mark.smoke
+def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, test_credentials, writable_org):
     """
     Test Case ID: test_prv_009_org_edit_profile
     Verify User is able to edit organization profile details.
@@ -54,7 +55,7 @@ def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, t
     )
 
     # Step 4: Select one of the organizations
-    select_org = org_dash.select_org()
+    select_org = org_dash.select_org(writable_org)
     assert isinstance(select_org, OrganizationsPage), (
         "test_prv_009: expected select_org() to return OrganizationsPage"
     )

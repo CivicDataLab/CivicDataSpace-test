@@ -10,6 +10,7 @@
 #
 # These tests run against real data — they create and delete actual records.
 
+import time
 from datetime import datetime
 
 import pytest
@@ -276,3 +277,94 @@ def test_delete_dataset_removes_from_list(graphql_client):
     assert dataset_id not in dataset_ids, (
         f"Deleted dataset {dataset_id} still appears in datasets list"
     )
+
+
+# ─── Search reflects publish / unpublish (DataSpaceBackend#193) ──────────────────
+# Search results are cached for an hour under a version key that publishing bumps.
+# Before #193 the bump ran before the Elasticsearch write, so a search right after
+# publishing re-cached the old results under the new version for the full hour.
+
+def _search_ids(anon_api_client) -> list[str]:
+    """Ids of published datasets tagged automated-test, i.e. this suite's own.
+
+    Filters on the tag (an exact keyword match) rather than a text query: title
+    search runs a fuzzy term query against 4-gram tokens, so long queries match
+    nothing.
+    """
+    resp = anon_api_client.get("/api/search/dataset/", params={"tags": "automated-test", "size": 100})
+    assert resp.status_code == 200, f"dataset search failed ({resp.status_code}): {resp.text}"
+    return [r["id"] for r in resp.json().get("results", [])]
+
+
+def _create_titled_dataset(graphql_client, title: str) -> str:
+    created = graphql_client.query(CREATE_DATASET_MUTATION, {"datasetType": "DATA"})
+    assert created["addDataset"]["success"], f"Create failed: {created}"
+    dataset_id = created["addDataset"]["data"]["id"]
+    graphql_client.query(UPDATE_DATASET_MUTATION, {
+        "dataset": dataset_id,
+        "title": title,
+        "description": _unique_description(),
+        "tags": ["automated-test"],
+        "accessType": "PUBLIC",
+    })
+    return dataset_id
+
+
+def _wait_for(check, timeout: float = 20, interval: float = 2) -> bool:
+    deadline = time.monotonic() + timeout
+    while True:
+        if check():
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(interval)
+
+
+@pytest.mark.api
+@pytest.mark.functional
+def test_published_dataset_is_searchable(graphql_client, anon_api_client):
+    """Publishing makes a dataset findable in search; unpublishing removes it."""
+    title = _unique_title()
+    dataset_id = _create_titled_dataset(graphql_client, title)
+    try:
+        published = graphql_client.query(PUBLISH_DATASET_MUTATION, {"datasetId": dataset_id})
+        assert published["publishDataset"]["status"] == "PUBLISHED", f"Publish failed: {published}"
+        assert _wait_for(lambda: dataset_id in _search_ids(anon_api_client)), (
+            f"Published dataset {dataset_id} ('{title}') never appeared in search"
+        )
+
+        graphql_client.query(UNPUBLISH_DATASET_MUTATION, {"datasetId": dataset_id})
+        assert _wait_for(lambda: dataset_id not in _search_ids(anon_api_client)), (
+            f"Unpublished dataset {dataset_id} ('{title}') is still in search"
+        )
+    finally:
+        graphql_client.query(DELETE_DATASET_MUTATION, {"datasetId": dataset_id})
+
+
+@pytest.mark.api
+@pytest.mark.regression
+def test_search_reflects_publish_without_waiting(graphql_client, anon_api_client):
+    """Search is right the moment publish/unpublish returns, even for a cached query.
+
+    The search before publishing caches an empty result for this exact query. If
+    invalidation runs before the index write, or the write isn't refreshed, the
+    reads below return that stale result: DataSpaceBackend#193.
+    """
+    title = _unique_title()
+    dataset_id = _create_titled_dataset(graphql_client, title)
+    try:
+        assert dataset_id not in _search_ids(anon_api_client), (
+            f"Draft dataset {dataset_id} is already in search before publishing"
+        )
+
+        graphql_client.query(PUBLISH_DATASET_MUTATION, {"datasetId": dataset_id})
+        assert dataset_id in _search_ids(anon_api_client), (
+            f"Search right after publishing is stale: {dataset_id} ('{title}') missing"
+        )
+
+        graphql_client.query(UNPUBLISH_DATASET_MUTATION, {"datasetId": dataset_id})
+        assert dataset_id not in _search_ids(anon_api_client), (
+            f"Search right after unpublishing is stale: {dataset_id} ('{title}') still listed"
+        )
+    finally:
+        graphql_client.query(DELETE_DATASET_MUTATION, {"datasetId": dataset_id})

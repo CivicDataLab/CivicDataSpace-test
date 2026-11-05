@@ -9,7 +9,6 @@ from pages.provider.charts_list_page import ChartsListPage
 
 
 @pytest.mark.functional
-@pytest.mark.xfail(reason="Charts feature isn't fully built yet", strict=False)
 def test_prv_004_ind_add_charts(driver, base_url, test_credentials):
     """
     Test Case ID: test_prv_004_ind_add_charts
@@ -59,18 +58,16 @@ def test_prv_004_ind_add_charts(driver, base_url, test_credentials):
     # ── Step 5: Open the chart editor ─────────────────────────────────────────────
     charts_page.click_add_chart()
 
-    # ── Step 6: Select dataset ────────────────────────────────────────────────────
-    charts_page.select_dataset("Peta")
-    actual_dataset = charts_page.get_selected_dataset()
-    assert actual_dataset == "Peta", (
-        f"Step 6 failure: Expected dataset 'Peta', got '{actual_dataset}'"
+    # ── Steps 6-7: Select a dataset and resource from live data ──────────────────
+    # A hardcoded name ("Peta") broke when the dev data was refreshed.
+    picked = charts_page.select_first_dataset_with_resource()
+    assert picked, "Step 6 failure: no dataset on this account has a resource to chart"
+    dataset, resource = picked
+    assert charts_page.get_selected_dataset() == dataset, (
+        f"Step 6 failure: Expected dataset '{dataset}', got '{charts_page.get_selected_dataset()}'"
     )
-
-    # ── Step 7: Select resource ───────────────────────────────────────────────────
-    charts_page.select_resource("Peta.csv")
-    actual_resource = charts_page.get_selected_resource()
-    assert actual_resource == "Peta.csv", (
-        f"Step 7 failure: Expected resource 'Peta.csv', got '{actual_resource}'"
+    assert charts_page.get_selected_resource() == resource, (
+        f"Step 7 failure: Expected resource '{resource}', got '{charts_page.get_selected_resource()}'"
     )
 
     # ── Step 8: Select chart type ─────────────────────────────────────────────────
