@@ -2,6 +2,6 @@
 
 class MyDatasetLocators:
 
-    ADD_NEW_DATASET_BTN = "//span[normalize-space(.)='Add New Dataset']/ancestor::button[1]"
+    ADD_NEW_DATASET_BTN = "//button[normalize-space(.)='Create Dataset']"
     # you can also verify the Drafts tab is up
-    DRAFTS_TAB = "//span[normalize-space(.)='Drafts']"
+    DRAFTS_TAB = "//button[starts-with(normalize-space(.),'Draft')]"

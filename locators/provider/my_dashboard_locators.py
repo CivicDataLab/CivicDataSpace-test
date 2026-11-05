@@ -19,7 +19,7 @@ class MyDashboardLocators:
     PROFILE_NAV_LINK = (By.XPATH, '//span[normalize-space()="Profile"]')
 
     # (3) Inside the "Datasets" panel, the "Drafts" tab is visible by default.
-    DRAFTS_TAB = (By.XPATH, "//span[normalize-space(.)='Drafts']")
+    DRAFTS_TAB = (By.XPATH, "//button[starts-with(normalize-space(.),'Draft')]")
 
     # (4) The orange "Add New Dataset" button lives inside the "Drafts" tab panel.
-    ADD_NEW_DATASET_BTN = (By.XPATH, "//button[normalize-space(.)='Add New Dataset']")
+    ADD_NEW_DATASET_BTN = (By.XPATH, "//button[normalize-space(.)='Create Dataset']")
