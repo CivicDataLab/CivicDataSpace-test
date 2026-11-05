@@ -52,15 +52,25 @@ class UseCasePage(BasePage):
     # ── Use case detail page ─────────────────────────────────────────────────
 
     def open_detail(self, base_url: str, usecase_id):
-        """Open /usecases/<id> and wait for the always-rendered datasets heading."""
+        """Open /usecases/<id> and wait for its datasets or dashboards heading."""
         self.visit(f"{base_url.rstrip('/')}/usecases/{usecase_id}")
-        self.find(UseCaseLocators.DETAIL_DATASETS_HEADING)
+        self.find(UseCaseLocators.DETAIL_SECTION_HEADING)
         return self
 
     def has_dashboards_section(self, timeout: int = 10) -> bool:
         try:
             WebDriverWait(self.driver, timeout).until(
                 EC.presence_of_element_located(UseCaseLocators.DETAIL_DASHBOARDS_HEADING)
+            )
+            return True
+        except TimeoutException:
+            return False
+
+    def dashboards_section_hidden(self, timeout: int = 15) -> bool:
+        """True once no dashboards heading is shown. DataSpaceFrontend#512 shows it while loading."""
+        try:
+            WebDriverWait(self.driver, timeout).until(
+                EC.invisibility_of_element_located(UseCaseLocators.DETAIL_DASHBOARDS_HEADING)
             )
             return True
         except TimeoutException:

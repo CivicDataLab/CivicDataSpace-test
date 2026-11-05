@@ -106,6 +106,6 @@ def test_section_hidden_without_embeddable_dashboards(uc_page, dashboards_by_use
     if uc_id is None:
         pytest.skip(f"No published use case for case {case!r}")
     uc_page.open_detail(BASE_URL, uc_id)
-    assert not uc_page.has_dashboards_section(timeout=8), (
+    assert uc_page.dashboards_section_hidden(), (
         f"use case {uc_id} ({case}): dashboards section rendered with nothing embeddable to show"
     )
