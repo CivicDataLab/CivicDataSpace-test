@@ -45,7 +45,13 @@ class UpdateProfilePage(BasePage):
         Triggers logo upload by clicking visible DropZone and sending keys to hidden input.
         Uses BasePage utility method to eliminate code duplication.
         """
+        self._srcs_before = self._image_srcs()
         return self.upload_file_to_dropzone(path_to_file)
+
+    def _image_srcs(self):
+        return self.driver.execute_script(
+            "return [...document.querySelectorAll('main img')].map(i => i.src)"
+        )
 
     def click_save(self):
         btn = self.wait_with_timeout(10).until(
@@ -63,12 +69,9 @@ class UpdateProfilePage(BasePage):
         return self.driver.find_element(*UpdateProfilePageLocators.GET_BIO_TEXT_INPUT).get_attribute("value")
 
     def is_profile_image_uploaded(self):
+        """True once an avatar image on the page points at a different file than before the upload."""
         try:
-            elt = self.wait.until(
-                EC.visibility_of_element_located(
-                    (By.CLASS_NAME, "FileUpload-module_Action__Hg0nE")
-                )
-            )
-            return bool(elt.text.strip())
+            self.wait.until(lambda d: self._image_srcs() != self._srcs_before)
+            return True
         except TimeoutException:
             return False
