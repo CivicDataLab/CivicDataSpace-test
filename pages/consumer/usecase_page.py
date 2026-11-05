@@ -81,14 +81,6 @@ class UseCasePage(BasePage):
         frames = self.finds(UseCaseLocators.DETAIL_DASHBOARD_IFRAME)
         return [{"title": f.get_attribute("title"), "src": f.get_attribute("src")} for f in frames]
 
-    def dashboard_open_links(self):
-        """[{href, target, rel}] for each 'Open dashboard in a new tab' link."""
-        links = self.finds(UseCaseLocators.DETAIL_DASHBOARD_OPEN_LINK)
-        return [
-            {"href": a.get_attribute("href"), "target": a.get_attribute("target"), "rel": a.get_attribute("rel")}
-            for a in links
-        ]
-
     def dashboards_render_before_datasets(self) -> bool:
         dash = self.find(UseCaseLocators.DETAIL_DASHBOARDS_HEADING)
         datasets = self.find(UseCaseLocators.DETAIL_DATASETS_HEADING)

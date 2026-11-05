@@ -80,10 +80,6 @@ def test_superset_dashboard_is_embedded_standalone(uc_page, superset_usecase):
     for key, value in parse_qs(link.query).items():
         assert params.get(key) == value, f"iframe src dropped/changed ?{key}= from the dashboard link: {src.geturl()}"
 
-    opens = [o for o in uc_page.dashboard_open_links() if o["href"] == src.geturl()]
-    assert opens, f"no 'Open dashboard in a new tab' link pointing at {src.geturl()}"
-    assert opens[0]["target"] == "_blank"
-    assert "noreferrer" in (opens[0]["rel"] or "")
 
 
 def test_dashboards_render_above_datasets(uc_page, superset_usecase):

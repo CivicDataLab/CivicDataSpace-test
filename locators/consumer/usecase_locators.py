@@ -38,7 +38,6 @@ class UseCaseLocators:
     # Either section: the redesign hides the datasets section when a use case has none.
     DETAIL_SECTION_HEADING = (By.XPATH, f"{DETAIL_DATASETS_HEADING[1]} | {DETAIL_DASHBOARDS_HEADING[1]}")
     DETAIL_DASHBOARD_IFRAME = (By.XPATH, "//main//iframe")
-    DETAIL_DASHBOARD_OPEN_LINK = (By.XPATH, "//main//a[normalize-space()='Open dashboard in a new tab']")
 
     # JusticeHub dashboard embed (DataSpaceFrontend #492): a justicehub.in dashboard
     # gets its own wrapper that preloads the public theme CSS/logo and hides the
