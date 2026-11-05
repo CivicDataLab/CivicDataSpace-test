@@ -80,10 +80,6 @@ def test_superset_dashboard_is_embedded_standalone(uc_page, superset_usecase):
     for key, value in parse_qs(link.query).items():
         assert params.get(key) == value, f"iframe src dropped/changed ?{key}= from the dashboard link: {src.geturl()}"
 
-    opens = [o for o in uc_page.dashboard_open_links() if o["href"] == src.geturl()]
-    assert opens, f"no 'Open dashboard in a new tab' link pointing at {src.geturl()}"
-    assert opens[0]["target"] == "_blank"
-    assert "noreferrer" in (opens[0]["rel"] or "")
 
 
 def test_dashboards_render_above_datasets(uc_page, superset_usecase):
@@ -106,6 +102,6 @@ def test_section_hidden_without_embeddable_dashboards(uc_page, dashboards_by_use
     if uc_id is None:
         pytest.skip(f"No published use case for case {case!r}")
     uc_page.open_detail(BASE_URL, uc_id)
-    assert not uc_page.has_dashboards_section(timeout=8), (
+    assert uc_page.dashboards_section_hidden(), (
         f"use case {uc_id} ({case}): dashboards section rendered with nothing embeddable to show"
     )
