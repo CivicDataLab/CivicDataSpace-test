@@ -33,6 +33,7 @@ def dataset_with_resources_export(anon_graphql_client, anon_api_client):
     return resp.json()
 
 
+@pytest.mark.smoke
 @pytest.mark.regression
 def test_export_download_urls_resolve_on_this_backend(dataset_with_resources_export, api_base_url):
     """Every dcat:downloadURL is on the backend under test; the first few download."""
@@ -54,6 +55,7 @@ def test_export_download_urls_resolve_on_this_backend(dataset_with_resources_exp
         assert resp.status_code == 200, f"download URL {url} returned {resp.status_code}"
 
 
+@pytest.mark.smoke
 @pytest.mark.regression
 def test_export_landing_page_is_on_this_frontend(dataset_with_resources_export, frontend_base_url_dev):
     """dcat:landingPage points at the frontend paired with this backend."""
