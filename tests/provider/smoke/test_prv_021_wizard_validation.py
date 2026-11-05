@@ -73,10 +73,10 @@ def test_prv_021_failed_continue_says_what_is_missing(kind, step, driver, open_l
 
 IN_VIEW_CASES = [
     pytest.param("dataset", "resources", id="dataset-resources"),
-    pytest.param("dataset", "metadata", id="dataset-metadata", marks=NOT_IN_VIEW),
+    pytest.param("dataset", "metadata", id="dataset-metadata"),
     pytest.param("usecase", "builder", id="usecase-builder", marks=NOT_IN_VIEW),
     pytest.param("usecase", "connect-sdg", id="usecase-connect-sdg-only", marks=NOT_IN_VIEW),
-    pytest.param("aimodel", "details", id="aimodel-details", marks=NOT_IN_VIEW),
+    pytest.param("aimodel", "details", id="aimodel-details"),
 ]
 
 
