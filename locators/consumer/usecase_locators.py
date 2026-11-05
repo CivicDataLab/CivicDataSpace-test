@@ -26,8 +26,17 @@ class UseCaseLocators:
     DOWNLOAD_LINK = (By.XPATH, "//a[contains(@href, '/download/resource/')]")
 
     # Use case detail page (/usecases/<id>): dashboards embedded as iframes (DataSpaceFrontend #476)
-    DETAIL_DATASETS_HEADING = (By.XPATH, "//main//*[normalize-space(text())='Datasets in this Use Case']")
-    DETAIL_DASHBOARDS_HEADING = (By.XPATH, "//main//*[normalize-space(text())='Dashboards Linked to this Use Case']")
+    # Old headings (prod) and the DataSpaceFrontend#512 redesign (dev) until #512 ships.
+    DETAIL_DATASETS_HEADING = (
+        By.XPATH,
+        "//main//*[normalize-space(text())='Datasets in this Use Case' or normalize-space(text())='Datasets behind this story']",
+    )
+    DETAIL_DASHBOARDS_HEADING = (
+        By.XPATH,
+        "//main//*[normalize-space(text())='Dashboards Linked to this Use Case' or normalize-space(text())='Explore the data']",
+    )
+    # Either section: the redesign hides the datasets section when a use case has none.
+    DETAIL_SECTION_HEADING = (By.XPATH, f"{DETAIL_DATASETS_HEADING[1]} | {DETAIL_DASHBOARDS_HEADING[1]}")
     DETAIL_DASHBOARD_IFRAME = (By.XPATH, "//main//iframe")
     DETAIL_DASHBOARD_OPEN_LINK = (By.XPATH, "//main//a[normalize-space()='Open dashboard in a new tab']")
 
