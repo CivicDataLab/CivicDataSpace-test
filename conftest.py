@@ -21,7 +21,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-from selenium.common.exceptions import WebDriverException
+from selenium.common.exceptions import NoSuchElementException, WebDriverException
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 # Imports to get firefox driver working
@@ -168,6 +168,19 @@ def driver(request):
     print(f"[INFO] window handle: {drv.current_window_handle}")
 
     drv.implicitly_wait(3)
+
+    # chromedriver can answer find_element with a null element mid-navigation (seen
+    # on the Keycloak redirect); expected_conditions then crash on None.is_displayed().
+    # Raising NoSuchElementException makes every WebDriverWait retry instead.
+    _find_element = drv.find_element
+
+    def _find_element_or_raise(*args, **kwargs):
+        el = _find_element(*args, **kwargs)
+        if el is None:
+            raise NoSuchElementException(f"find_element{args} returned no element")
+        return el
+
+    drv.find_element = _find_element_or_raise
     try:
         drv.execute_cdp_cmd("Network.enable", {})
     except Exception:
