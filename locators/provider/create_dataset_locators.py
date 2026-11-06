@@ -7,10 +7,10 @@ class CreateDatasetLocators:
     MODAL_CANCEL_BUTTON = "//button[normalize-space()='Cancel']"
 
     # ---- Tabs ----
-    TAB_METADATA        = "//button[normalize-space()='Metadata']"
-    TAB_DATAFILES       = "//button[normalize-space()='Data Files']"
+    TAB_METADATA        = "//ol//button[.//p[normalize-space()='Metadata']]"
+    TAB_DATAFILES       = "//ol//button[.//p[normalize-space()='Data Files']]"
     TAB_PROMPT_FILES    = "//button[normalize-space()='Prompt Files']"
-    TAB_PUBLISH         = "//button[normalize-space()='Publish']"
+    TAB_PUBLISH         = "//ol//button[.//p[normalize-space()='Review & Publish']]"
 
     # ---- Metadata fields ----
     DESCRIPTION         = "//div[contains(@class, 'ql-editor') and @contenteditable='true']"
