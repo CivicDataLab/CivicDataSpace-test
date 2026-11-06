@@ -12,6 +12,7 @@ class UpdateProfilePageLocators:
     SAVE_BUTTON = (By.XPATH, '//button[normalize-space()="Save changes"]')
     SAVED_TOAST = (By.XPATH, '//*[text()[contains(., "updated successfully")]]')
     # ProfilePictureField: a picked file previews as a blob: <img> beside the input.
+    PICTURE_SAVED = (By.XPATH, '//input[@id="profile-picture" or @id="organization-logo"]/../..//img[not(starts-with(@src, "blob:"))]')
     PICTURE_PREVIEW = (By.XPATH, '//input[@id="profile-picture" or @id="organization-logo"]/../..//img[starts-with(@src, "blob:")]')
 
     # ─── Fields Used for Value Retrieval / Assertions ──────────────────────────

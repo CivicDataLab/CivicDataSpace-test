@@ -72,3 +72,11 @@ class UpdateProfilePage(BasePage):
             return True
         except TimeoutException:
             return False
+
+    def is_profile_image_saved(self):
+        """After Save the blob: preview is swapped for the stored image URL."""
+        try:
+            self.wait.until(EC.visibility_of_element_located(UpdateProfilePageLocators.PICTURE_SAVED))
+            return True
+        except TimeoutException:
+            return False
