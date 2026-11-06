@@ -1,5 +1,9 @@
 # pages/provider/create_collaborative_page.py
 
+import sys
+
+from selenium.webdriver import Keys
+from selenium.webdriver.support import expected_conditions as EC
 from pages.provider.editor_wizard_page import EditorWizardPage
 from locators.provider.create_collaborative_locators import CreateCollaborativeLocators as L
 
@@ -40,3 +44,22 @@ class CreateCollaborativePage(EditorWizardPage):
 
     def get_platform_url_value(self) -> str:
         return self.find(L.PLATFORM_URL_INPUT).get_attribute("value")
+
+    def enter_slug(self, slug: str):
+        # The field slugifies as you type, so clear_and_type's read-back check can't apply.
+        field = self.wait.until(EC.element_to_be_clickable(L.SLUG_INPUT))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", field)
+        field.click()
+        field.send_keys(Keys.COMMAND if sys.platform == "darwin" else Keys.CONTROL, "a")
+        field.send_keys(Keys.BACKSPACE, slug, Keys.TAB)
+        self.wait_for_autosave()
+        return self
+
+    def get_slug_value(self) -> str:
+        return self.find(L.SLUG_INPUT).get_attribute("value")
+
+    def get_public_address(self) -> str:
+        return self.find(L.PUBLIC_ADDRESS).text.replace("Public address:", "").strip()
+
+    def get_platform_url_validation_message(self) -> str:
+        return self.find(L.PLATFORM_URL_INPUT).get_attribute("validationMessage")
