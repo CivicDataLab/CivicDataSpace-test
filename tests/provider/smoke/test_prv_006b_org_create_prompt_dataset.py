@@ -58,7 +58,28 @@ def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, t
         "test_prv_006b: click_add_new_prompt_dataset() did not return CreateDatasetPage"
     )
 
-    # ── Step 4: METADATA TAB ──────────────────────────────────────────────────
+    # ── Step 4: PROMPT FILES (Metadata stays locked until a prompt file is added) ──────────────────────────────────────────────
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    original_filename = os.path.basename(sample_csv_path)
+    name, ext = os.path.splitext(original_filename)
+    unique_filename = f"{name}_{timestamp}{ext}"
+    unique_path = os.path.join(os.path.dirname(sample_csv_path), unique_filename)
+    shutil.copy2(sample_csv_path, unique_path)
+
+    create_ds.upload_prompt_file(unique_path)
+
+    uploaded = create_ds.get_uploaded_resource_names()
+    assert unique_filename in uploaded, (
+        f"Step 4: '{unique_filename}' not found in uploaded files: {uploaded}"
+    )
+
+    try:
+        os.remove(unique_path)
+    except Exception:
+        pass
+
+    # ── Step 5: METADATA STEP ──────────────────────────────────────────────────
 
     create_ds.go_to_metadata_tab()
 
@@ -137,29 +158,6 @@ def test_prv_006b_org_create_prompt_dataset(driver, sample_csv_path, base_url, t
     assert any("GPT" in v for v in model_pills), (
         f"Step 5d: Target Model Type 'GPT' not found in pills: {model_pills}"
     )
-
-    # ── Step 6: PROMPT FILES TAB ──────────────────────────────────────────────
-
-    create_ds.go_to_prompt_files_tab()
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    original_filename = os.path.basename(sample_csv_path)
-    name, ext = os.path.splitext(original_filename)
-    unique_filename = f"{name}_{timestamp}{ext}"
-    unique_path = os.path.join(os.path.dirname(sample_csv_path), unique_filename)
-    shutil.copy2(sample_csv_path, unique_path)
-
-    create_ds.upload_prompt_file(unique_path)
-
-    uploaded = create_ds.get_uploaded_resource_names()
-    assert unique_filename in uploaded, (
-        f"Step 6: '{unique_filename}' not found in uploaded files: {uploaded}"
-    )
-
-    try:
-        os.remove(unique_path)
-    except Exception:
-        pass
 
     # ── Step 7: PUBLISH ───────────────────────────────────────────────────────
 
