@@ -253,6 +253,42 @@ class EditorWizardPage(BasePage):
         )
         return self
 
+    def press_continue(self):
+        """Click Continue once, for steps expected to block it."""
+        self.wait_until_saved()
+        btn = self.wait.until(EC.presence_of_element_located(W.CONTINUE_BUTTON))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", btn)
+        return self
+
+    def press_publish(self):
+        """Click Publish once, for drafts expected to be blocked."""
+        self.wait_until_saved()
+        btn = self.wait.until(EC.presence_of_element_located((By.XPATH, W.PUBLISH_BUTTON.format(entity=self.ENTITY))))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", btn)
+        return self
+
+    def open_step(self, step: str):
+        """Load the `step` URL segment of this draft directly."""
+        self.wait_until_saved()
+        url = self.driver.current_url.split("?")[0].rsplit("/", 1)[0]
+        self.driver.get(f"{url}/{step}")
+        self.wait_with_timeout(30).until(lambda d: f"/{step}" in d.current_url)
+        return self
+
+    def reload(self):
+        self.wait_until_saved()
+        self.driver.refresh()
+        return self
+
+    def is_text_shown(self, text: str, timeout: int = 10) -> bool:
+        return self.is_visible((By.XPATH, W.TEXT.format(text=text)), timeout=timeout)
+
+    def page_text(self, timeout: int = 30) -> str:
+        """The step's visible text once it has rendered past the step list."""
+        return self.wait_with_timeout(timeout).until(
+            lambda d: (t := d.find_element(*W.MAIN).text) and "Previous" in t and t
+        )
+
     def click_publish(self, name: str):
         self.wait_until_saved()
         self.click_until(
