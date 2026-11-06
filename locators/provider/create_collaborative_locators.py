@@ -114,3 +114,22 @@ class CreateCollaborativeLocators:
 
     # ─── Generic Dropdown Option Pattern ───────────────────────────────────────
     OPTION_BY_VISIBLE_TEXT = "//div[@role='option' and normalize-space(text())='{text}']"
+
+    # ─── About / People / Content / Review & Publish wizard (2026-11 redesign) ─
+    # Taxonomy fields are now labelled without the "*" and live in one Classification card.
+    TAGS_INPUT = (By.XPATH, "//label[normalize-space()='Tags']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']")
+    SECTOR_INPUT = (By.XPATH, "//label[normalize-space()='Sectors']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']")
+    GEOGRAPHY_CONTAINER = (By.XPATH, "//label[normalize-space()='Geography']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']")
+    SDG_GOALS_CONTAINER = (By.XPATH, "//label[normalize-space()='SDG Goals']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']")
+    SELECTED_TAGS = "//label[normalize-space()='Tags']/ancestor::div[.//input[@role='combobox']][1]//span[contains(@class,'Tag-module_TagText')]"
+    SELECTED_SECTORS = "//label[normalize-space()='Sectors']/ancestor::div[.//input[@role='combobox']][1]//span[contains(@class,'Tag-module_TagText')]"
+    SELECTED_GEOGRAPHY = "//label[normalize-space()='Geography']/ancestor::div[.//input[@role='combobox']][1]//span[contains(@class,'Tag-module_TagText')]"
+    SELECTED_SDG_GOALS = "//label[normalize-space()='SDG Goals']/ancestor::div[.//input[@role='combobox']][1]//span[contains(@class,'Tag-module_TagText')]"
+
+    TITLE_INPUT = (By.XPATH, "//input[@name='title']")
+    COVER_REMOVE_BUTTON = (By.XPATH, "//button[normalize-space()='Remove']")
+    CONTINUE_BUTTON = (By.XPATH, "//button[normalize-space()='Continue']")
+    DATASET_SEARCH_INPUT = (By.XPATH, "//input[starts-with(@placeholder,'Search published datasets')]")
+    USECASE_SEARCH_INPUT = (By.XPATH, "//input[starts-with(@placeholder,'Search published Use Cases')]")
+    PICKER_RESULT_BUTTON = "(//button[contains(@class,'entity-row-picker')])[1]"
+    PUBLISH_BUTTON = (By.XPATH, "//button[normalize-space()='Publish Collaborative']")
