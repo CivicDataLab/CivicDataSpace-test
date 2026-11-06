@@ -83,7 +83,34 @@ def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_cred
         "test_prv_002: expected click_add_new_dataset() to return CreateDatasetPage"
     )
 
-    # ─── Step 5: METADATA TAB ──────────────────────────────────────────────────────────────────────
+    # ─── Step 5: DATA FILES (the wizard needs a file before it opens Metadata) ──────────────────────────────────────────────────────────────────────
+    # (5a) Create a unique copy of the CSV file for this test run
+    # This is needed because the platform requires unique resource filenames
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    original_filename = os.path.basename(sample_csv_path)
+    filename_without_ext, ext = os.path.splitext(original_filename)
+    unique_filename = f"{filename_without_ext}_{timestamp}{ext}"
+
+    # Create unique file in the same directory as the original
+    unique_csv_path = os.path.join(os.path.dirname(sample_csv_path), unique_filename)
+    shutil.copy2(sample_csv_path, unique_csv_path)
+
+    # Upload the unique CSV file
+    create_ds.upload_datafile(unique_csv_path)
+
+    # (5b) Verify that our CSV appears under "Uploaded Files"
+    uploaded_list = create_ds.get_uploaded_resource_names()
+    assert unique_filename in uploaded_list, (
+        f"Step 5b failure: After uploading, expected '{unique_filename}' in {uploaded_list}."
+    )
+
+    # Clean up the temporary unique file
+    try:
+        os.remove(unique_csv_path)
+    except:
+        pass  # Ignore cleanup errors
+
+    # ─── Step 6: METADATA STEP ──────────────────────────────────────────────────────────────────────
     create_ds.go_to_metadata_tab()
 
     # (5a) Description
@@ -141,35 +168,6 @@ def test_prv_006_org_create_dataset(driver, sample_csv_path, base_url, test_cred
     assert actual_license == license_to_pick, (
         f"Step 5g failure: Expected license '{license_to_pick}', but got '{actual_license}'."
     )
-
-    # ─── Step 6: DATA FILES TAB ──────────────────────────────────────────────────────────────────────
-    create_ds.go_to_datafiles_tab()
-
-    # (6a) Create a unique copy of the CSV file for this test run
-    # This is needed because the platform requires unique resource filenames
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    original_filename = os.path.basename(sample_csv_path)
-    filename_without_ext, ext = os.path.splitext(original_filename)
-    unique_filename = f"{filename_without_ext}_{timestamp}{ext}"
-
-    # Create unique file in the same directory as the original
-    unique_csv_path = os.path.join(os.path.dirname(sample_csv_path), unique_filename)
-    shutil.copy2(sample_csv_path, unique_csv_path)
-
-    # Upload the unique CSV file
-    create_ds.upload_datafile(unique_csv_path)
-
-    # (6b) Verify that our CSV appears under "Uploaded Files"
-    uploaded_list = create_ds.get_uploaded_resource_names()
-    assert unique_filename in uploaded_list, (
-        f"Step 6b failure: After uploading, expected '{unique_filename}' in {uploaded_list}."
-    )
-
-    # Clean up the temporary unique file
-    try:
-        os.remove(unique_csv_path)
-    except:
-        pass  # Ignore cleanup errors
 
     # ─── Step 7: PUBLISH TAB ─────────────────────────────────────────────────────────────────────────
     detail_page = create_ds.go_to_publish_tab()
