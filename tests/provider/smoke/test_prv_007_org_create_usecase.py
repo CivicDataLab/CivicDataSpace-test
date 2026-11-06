@@ -83,97 +83,30 @@ def test_prv_007_org_create_usecase(driver, sample_logo_path, base_url, test_cre
     usecases_page = org_dash.click_usecases_card()
     assert usecases_page.is_loaded(), "UseCases page did not load properly"
 
-    # ─── Step 6: Click "Add New UseCase" ─────────────────────────────────────────────
     create_uc = usecases_page.click_add_new_usecase()
-    assert isinstance(create_uc, CreateUsecasePage), (
-        f"Expected CreateUsecasePage after click, got {type(create_uc)}"
-    )
+    assert isinstance(create_uc, CreateUsecasePage)
 
-    # ─── Step 7: Fill in UseCase Details ─────────────────────────────────────────────
-
-    # (7a) Summary
-    test_summary = f"Automated Org UseCase Test – {datetime.now().date()}"
-    create_uc.enter_summary(test_summary)
-    actual_summary = create_uc.get_summary_value()
-    assert actual_summary == test_summary, (
-        f"Step 7a failure: Summary mismatch. Expected: '{test_summary}', Found: '{actual_summary}'."
-    )
-
-    # (7b) Platform URL
-    create_uc.enter_platform_url("https://orgplatform.url")
-    actual_url = create_uc.get_platform_url_value()
-    assert actual_url == "https://orgplatform.url", (
-        f"Step 7b failure: Expected platform URL 'https://orgplatform.url', but found '{actual_url}'."
-    )
-
-    time.sleep(3)
-
-    # (7c) Running Status
-    create_uc.select_running_status("On Going")
-    actual_status = create_uc.get_running_status_value()
-    assert actual_status == "On Going", (
-        f"Step 7c failure: Expected status 'On Going', but found '{actual_status}'."
-    )
-
-    # (7d) Tags
-    create_uc.select_tags(["Budget"])
-    selected_tags = create_uc.get_selected_tags()
-    assert "Budget" in selected_tags, (
-        f"Step 7d failure: Tag not selected correctly. Current tags: {selected_tags}"
-    )
-
-    # (7e) Sectors
-    create_uc.select_sectors([sector_name])
-    selected_sectors = create_uc.get_selected_sectors()
-    assert sector_name in selected_sectors, (
-        f"Step 7e failure: Sector not selected correctly. Current sectors: {selected_sectors}"
-    )
-
-    # (7f) Geography
-    create_uc.select_geography("India")
-    actual_geo = create_uc.get_selected_geography()
-    assert "India" in actual_geo, (
-        f"Step 7f failure: Expected geography to contain 'India', but got '{actual_geo}'."
-    )
-
-    # (7g) SDG Goals
-    create_uc.select_sdg_goals("13")
-    selected_sdgs = create_uc.get_selected_sdg_goals()
-    assert "13" in selected_sdgs, (
-        f"Step 7g failure: SDG goal not selected correctly. Selected: {selected_sdgs}"
-    )
-
-    # (7h) Started On
-    start_date = "2023-01-01"
-    create_uc.enter_started_on(start_date)
-    actual_start = create_uc.get_started_on_value()
-    assert actual_start == "2023-01-01", (
-        f"Step 7h failure: Started On mismatch. Expected: {start_date}, Found: {actual_start}"
-    )
-
-    # Note: Skipped "Completed On" as "On Going" status doesn't require completion date
-
-    # (7i) Logo Upload
+    # Builder: thumbnail, subtitle, one text block
     create_uc.upload_logo(sample_logo_path)
-    assert create_uc.is_logo_uploaded(), "Step 7i failure: Logo upload did not succeed."
+    assert create_uc.is_logo_uploaded(), "Thumbnail upload did not succeed."
+    subtitle = f"Automated UseCase {datetime.now().strftime('%Y%m%d%H%M%S')}"
+    create_uc.enter_subtitle(subtitle)
+    assert create_uc.get_subtitle_value() == subtitle
+    create_uc.add_text_content("Automated functional test content.")
+    create_uc.click_continue()
 
-    # ─── Step 8: Datasets tab – select the first dataset, click Submit ────────────────
-    create_uc.go_to_datasets_tab() \
-        .select_first_dataset_checkbox() \
-        .click_submit_datasets()
+    # Connect: taxonomy + dataset
+    create_uc.select_tags(["Budget"])
+    assert "Budget" in create_uc.get_selected_tags()
+    create_uc.select_sectors([sector_name])
+    assert sector_name in create_uc.get_selected_sectors()
+    create_uc.select_geography("India")
+    assert "India" in create_uc.get_selected_geography()
+    create_uc.select_sdg_goals("13")
+    assert "13" in create_uc.get_selected_sdg_goals()
+    assert create_uc.select_first_dataset(), "No dataset could be linked."
+    create_uc.click_continue()
 
-    # Verify that dataset was selected and submission registered
-    selected_datasets = create_uc.get_selected_datasets()
-    assert selected_datasets, (
-        f"Step 8 failure: No dataset was selected/submitted. Got: {selected_datasets}"
-    )
-
-    # Note: Skipping contributor's section due to ongoing issues (as per test_prv_003)
-
-    # ─── Step 9: Publish tab – Publish UseCase ───────────────────────────────────────
-    create_uc.go_to_publish_tab()
-    time.sleep(5)
-    detail = create_uc.click_publish()
-    assert detail.is_published(), "Step 9 failure: UseCase was not marked as 'Published'."
-
-
+    # Review & Publish
+    create_uc.click_publish()
+    assert create_uc.is_published(), "UseCase was not published."
