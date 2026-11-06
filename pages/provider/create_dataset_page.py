@@ -58,13 +58,12 @@ class CreateDatasetPage(BasePage):
         return self
 
     def go_to_publish_tab(self):
-        self.click((By.XPATH, CreateDatasetLocators.TAB_PUBLISH))
-        self.wait.until(EC.visibility_of_element_located(
-            (By.XPATH, CreateDatasetLocators.PUBLISH_REVIEW_TEXT)
-        ))
+        step = self.wait.until(EC.presence_of_element_located((By.XPATH, CreateDatasetLocators.TAB_PUBLISH)))
+        # The stepper scrolls under the sticky header; a native click is intercepted.
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", step)
+        self.wait.until(lambda d: "/edit/" in d.current_url and "metadata" not in d.current_url and "resources" not in d.current_url)
         return self
 
-    # ---- Metadata entry ----
     def enter_description(self, text: str):
         # Same Quill editor as the usecase/collaborative/ai-model summary fields,
         # and the same failure: a plain send_keys can leave it empty, so
@@ -336,7 +335,7 @@ class CreateDatasetPage(BasePage):
         # publish/page.tsx) never contains that substring anymore. Checking
         # for the publish route disappearing is what's actually true post-#471.
         self.wait_with_timeout(10).until(
-            lambda d: "/edit/publish" not in d.current_url
+            lambda d: "/edit/" not in d.current_url
         )
 
         # Wait a moment for the UI to update after redirect
@@ -347,7 +346,7 @@ class CreateDatasetPage(BasePage):
         try:
             published_tab = self.wait_with_timeout(10).until(
                 EC.element_to_be_clickable(
-                    (By.XPATH, "//span[normalize-space()='Published']")
+                    (By.XPATH, "//button[starts-with(normalize-space(.),'Published')]")
                 )
             )
             published_tab.click()
@@ -355,10 +354,11 @@ class CreateDatasetPage(BasePage):
             # Wait for the Published tab to load
             time.sleep(2)
 
-            # Verify URL changed to published tab
-            self.wait_with_timeout(10).until(
-                lambda d: "?tab=published" in d.current_url.lower()
-            )
+            # The tab is a client-side filter now and writes nothing to the URL; the list
+            # showing a row with a "Published" status badge is the observable result.
+            self.wait_with_timeout(10).until(EC.visibility_of_element_located(
+                (By.XPATH, "//main//*[normalize-space(text())='Published' and not(self::button)]")
+            ))
 
             return True
         except TimeoutException:
