@@ -86,4 +86,4 @@ def test_prv_005_ind_edit_profile(driver, sample_profile_image_path, base_url, t
 
     # (5d) Click Save Button
     up_profile.click_save()
-    assert up_profile.is_profile_image_uploaded(), "Step 5d failure: clicking save button did not succeed."
+    assert up_profile.is_profile_image_saved(), "Step 5d failure: profile picture was not saved."
