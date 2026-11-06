@@ -15,13 +15,13 @@ class CreateDatasetLocators:
     # ---- Metadata fields ----
     DESCRIPTION         = "//div[contains(@class, 'ql-editor') and @contenteditable='true']"
 
-    SECTOR_INPUT        = "//label[normalize-space()='Sectors *']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
+    SECTOR_INPUT        = "//label[starts-with(normalize-space(),'Sector')]/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
     SECTOR_DROPDOWN_ITEM = "//div[@role='option'][normalize-space(.)='{value}']"
 
     TAGS_INPUT           = "//label[normalize-space()='Tags' or normalize-space()='Tags *']/ancestor::div[.//input[@role='combobox']][1]//input[@role='combobox']"
     TAG_DROPDOWN_ITEM    = "//div[@role='option' and normalize-space(.)='{value}']"
 
-    GEOGRAPHY_CONTAINER = "//label[normalize-space()='Geographies']/following::input[1]"
+    GEOGRAPHY_CONTAINER = "//label[normalize-space()='Geography']/following::input[1]"
     GEO_OPTION          = "//div[@role='option' and starts-with(normalize-space(.), '{value}')]"
 
     DATE_CREATED_INPUT = "//label[normalize-space(.)='Date of Creation of Dataset']"\
@@ -45,7 +45,7 @@ class CreateDatasetLocators:
     #Getter locators :
     # 5b) After selecting sectors, each chosen sector usually appears as a "pill"
     SECTOR_SELECTED_PILL = (
-        "//label[normalize-space()='Sectors' or normalize-space()='Sectors *']"
+        "//label[starts-with(normalize-space(),'Sector')]"
         "/ancestor::div[.//input[@role='combobox']][1]"
         "//span[contains(@class,'Tag-module_TagText')]"
     )
@@ -57,7 +57,7 @@ class CreateDatasetLocators:
     )
     # 5d) Selected geography appears as a single “pill” or dropdown value
     GEOGRAPHY_SELECTED_PILL = (
-        "//label[normalize-space(text())='Geographies']"
+        "//label[normalize-space(text())='Geography']"
         "/ancestor::div[.//input[@role='combobox']][1]"
         "//span[contains(@class,'Tag-module_TagText')]"
     )
