@@ -41,7 +41,7 @@ class CreateDatasetLocators:
 
     # ---- Publish tab ----
     PUBLISH_REVIEW_TEXT = "//span[normalize-space()='REVIEW DATASET DETAILS']"
-    PUBLISH_BUTTON      = "//span[@class='Button-module_removeUnderline__dq0ct'][normalize-space()='Publish']"
+    PUBLISH_BUTTON      = "//button[normalize-space()='Publish Dataset']"
 
     #Getter locators :
     # 5b) After selecting sectors, each chosen sector usually appears as a "pill"
@@ -92,7 +92,7 @@ class CreateDatasetLocators:
 
     # 7) The main Publish‐tab container (so you know the tab switched)
     # e.g. <div id="publish-tab-content" …>
-    PUBLISH_TAB_CONTAINER = "//div[@class=' w-full py-6']"
+    PUBLISH_TAB_CONTAINER = "//*[normalize-space(text())='Publishing Settings']"
 
     # 7b) Once you click “Publish,” the page shows a “Published” badge or text:
     # e.g. <span class="status-badge published">Published</span>
