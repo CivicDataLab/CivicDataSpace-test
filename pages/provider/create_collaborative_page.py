@@ -196,7 +196,15 @@ class CreateCollaborativePage(BasePage):
         (the first is the logo), so target input_index=1 — otherwise the logo input is
         re-used and the cover image never gets set.
         """
-        return self.upload_file_to_dropzone(path_to_file, input_index=1)
+        # The form re-renders the file inputs as it autosaves; re-find right before sending keys.
+        for _ in range(3):
+            try:
+                inp = self.wait.until(lambda d: d.find_elements(By.XPATH, "//input[@type='file']")[0])
+                inp.send_keys(os.path.abspath(path_to_file))
+                return self
+            except Exception:
+                time.sleep(1)
+        raise TimeoutException("Cover image input kept going stale")
 
     # Ordered wizard tab URL path segments
     _WIZARD_TABS = ['details', 'assign', 'usecases', 'contributors', 'publish']
@@ -588,3 +596,58 @@ class CreateCollaborativePage(BasePage):
             pass
         # After a successful publish the app redirects away from /publish.
         return '/publish' not in self.driver.current_url
+
+    # ─── About / Content wizard steps (2026-11 redesign) ──────────────────────
+
+    def enter_title(self, name: str):
+        fld = self.wait.until(EC.visibility_of_element_located(CreateCollaborativeLocators.TITLE_INPUT))
+        fld.click()
+        fld.send_keys(Keys.COMMAND, "a") if os.uname().sysname == "Darwin" else fld.send_keys(Keys.CONTROL, "a")
+        fld.send_keys(Keys.BACKSPACE)
+        fld.send_keys(name)
+        return self
+
+    def get_title_value(self) -> str:
+        return self.driver.find_element(*CreateCollaborativeLocators.TITLE_INPUT).get_attribute("value")
+
+    def select_sdg_goals(self, value: str):
+        self.wait_until_saved()
+        toggle = self.wait.until(EC.presence_of_element_located(CreateCollaborativeLocators.SDG_GOALS_CONTAINER))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", toggle)
+        toggle.click()
+        toggle.send_keys(value)
+        opt = self.wait_with_timeout(30).until(EC.element_to_be_clickable(
+            (By.XPATH, f"//div[@role='option' and starts-with(normalize-space(.), '{value}')]")
+        ))
+        self.driver.execute_script("arguments[0].click();", opt)
+        ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
+        return self
+
+    def is_cover_image_uploaded(self):
+        try:
+            self.wait_with_timeout(20).until(
+                EC.visibility_of_element_located(CreateCollaborativeLocators.COVER_REMOVE_BUTTON))
+            return True
+        except TimeoutException:
+            return False
+
+    def click_continue(self):
+        self.wait_for_autosave()
+        btn = self.wait.until(EC.presence_of_element_located(CreateCollaborativeLocators.CONTINUE_BUTTON))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", btn)
+        return self
+
+    def _pick_first(self, search_locator) -> str:
+        box = self.wait.until(EC.presence_of_element_located(search_locator))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", box)
+        box.click()
+        btn = self.wait.until(EC.presence_of_element_located((By.XPATH, CreateCollaborativeLocators.PICKER_RESULT_BUTTON)))
+        title = btn.text.strip().split("\n")[0]
+        self.driver.execute_script("arguments[0].click();", btn)
+        return title
+
+    def connect_first_dataset(self) -> str:
+        return self._pick_first(CreateCollaborativeLocators.DATASET_SEARCH_INPUT)
+
+    def connect_first_usecase(self) -> str:
+        return self._pick_first(CreateCollaborativeLocators.USECASE_SEARCH_INPUT)
