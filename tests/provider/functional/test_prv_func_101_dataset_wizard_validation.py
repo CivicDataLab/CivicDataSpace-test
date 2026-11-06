@@ -76,7 +76,7 @@ def test_prv_func_101_02_unsupported_file_types_not_added(driver, provider_dashb
     assert "qa_matrix.exe" not in names and "qa_matrix.png" not in names, f"Unsupported files were listed: {names}"
 
 
-@pytest.mark.xfail(strict=True, reason="Unsupported file types are dropped silently: no error tells the user why")
+@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#529: Unsupported file types are dropped silently: no error tells the user why")
 def test_prv_func_101_03_unsupported_file_type_shows_error(driver, provider_dashboard, qa_drafts, tmp_path):
     exe = tmp_path / "qa_matrix.exe"
     exe.write_bytes(b"MZ not really a program")
@@ -131,7 +131,7 @@ def test_prv_func_101_06_publish_blocked_while_metadata_incomplete(driver, provi
     assert not page.is_publish_enabled(), "Publish Dataset is enabled with no description, sector or tags"
 
 
-@pytest.mark.xfail(strict=True, reason="Dataset Review & Publish shows '—' for missing fields but no list of what to fix (the use case review has one)")
+@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#529: Dataset Review & Publish shows '—' for missing fields but no list of what to fix (the use case review has one)")
 def test_prv_func_101_07_review_lists_missing_items(driver, provider_dashboard, qa_drafts, sample_csv_path, tmp_path):
     page = _with_file(qa_drafts, "data", provider_dashboard, driver, sample_csv_path, tmp_path)
 
@@ -161,7 +161,7 @@ def test_prv_func_101_09_license_options_selectable(driver, provider_dashboard, 
         assert page.get_selected_license_text() == lic
 
 
-@pytest.mark.xfail(strict=True, reason="Choosing a License triggers no autosave; after a reload it is back to 'Select a license' (cf. DataSpaceBackend#291)")
+@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#528: Choosing a License triggers no autosave; after a reload it is back to 'Select a license' (cf. DataSpaceBackend#291)")
 def test_prv_func_101_09b_license_persists_after_reload(driver, provider_dashboard, qa_drafts, sample_csv_path, tmp_path):
     page = _with_file(qa_drafts, "data", provider_dashboard, driver, sample_csv_path, tmp_path)
     page.go_to_metadata_tab()
