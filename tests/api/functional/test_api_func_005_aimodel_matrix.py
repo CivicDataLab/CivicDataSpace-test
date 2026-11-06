@@ -134,7 +134,7 @@ def test_same_name_and_version_twice_is_refused(graphql_client):
         gql(graphql_client, "mutation($id: Int!){ deleteAiModel(modelId:$id){ success } }", {"id": int(first["data"]["id"])})
 
 
-@pytest.mark.xfail(strict=True, reason="maxTokens has no lower bound; 0 and negatives are stored")
+@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: maxTokens has no lower bound; 0 and negatives are stored")
 @pytest.mark.parametrize("value", [0, -1])
 def test_non_positive_max_tokens_is_refused(graphql_client, model, value):
     assert _failed(_update_model(graphql_client, model, maxTokens=value))
@@ -189,13 +189,13 @@ def test_only_one_provider_is_primary(graphql_client, model, version, provider):
     assert [str(p["id"]) for p in primaries] == [str(second["data"]["id"])]
 
 
-@pytest.mark.xfail(strict=True, reason="apiEndpointUrl is never validated; any string is stored")
+@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: apiEndpointUrl is never validated; any string is stored")
 @pytest.mark.parametrize("url", ["not a url", "javascript:alert(1)"])
 def test_invalid_endpoint_url_is_refused(graphql_client, provider, url):
     assert _failed(_update_provider(graphql_client, provider, apiEndpointUrl=url))
 
 
-@pytest.mark.xfail(strict=True, reason="apiTimeoutSeconds has no lower bound; 0 and negatives are stored")
+@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: apiTimeoutSeconds has no lower bound; 0 and negatives are stored")
 @pytest.mark.parametrize("value", [0, -5])
 def test_non_positive_timeout_is_refused(graphql_client, provider, value):
     assert _failed(_update_provider(graphql_client, provider, apiTimeoutSeconds=value))

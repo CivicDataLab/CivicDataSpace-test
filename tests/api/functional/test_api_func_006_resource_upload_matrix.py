@@ -87,7 +87,7 @@ def test_unsupported_or_disguised_file_is_refused(dataset, upload, filename, con
     assert any("Unsupported file format" in e["message"] for e in body.get("errors") or []), body
 
 
-@pytest.mark.xfail(strict=True, reason="createFileResources creates the Resource before validating, so a rejected file leaves an orphan")
+@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: createFileResources creates the Resource before validating, so a rejected file leaves an orphan")
 def test_refused_upload_leaves_no_resource(graphql_client, dataset, upload):
     upload(dataset, "tool.exe", EXE)
     assert gql(graphql_client, RESOURCES, {"id": dataset})["data"]["datasetResources"] == []

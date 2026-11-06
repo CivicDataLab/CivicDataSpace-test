@@ -109,7 +109,7 @@ def test_same_title_gets_its_own_slug(graphql_client, draft, second):
     assert theirs["urlSlug"] != mine["urlSlug"]
 
 
-@pytest.mark.xfail(strict=True, reason="no reserved-subdomain list; 'www'/'api'/'admin' are accepted as collaborative slugs")
+@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: no reserved-subdomain list; 'www'/'api'/'admin' are accepted as collaborative slugs")
 @pytest.mark.parametrize("slug", ["www", "api", "admin"])
 def test_reserved_subdomain_is_refused(graphql_client, second, slug):
     assert _errors(_update(graphql_client, second, slug=slug))
@@ -151,12 +151,12 @@ def test_summary_over_200000_is_refused(graphql_client, draft):
     assert "Summary cannot exceed 200000 characters." in _errors(_update(graphql_client, draft, summary="s" * 200001))
 
 
-@pytest.mark.xfail(strict=True, reason="no check that completedOn is on or after startedOn")
+@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: no check that completedOn is on or after startedOn")
 def test_completed_before_started_is_refused(graphql_client, draft):
     assert _errors(_update(graphql_client, draft, startedOn="2025-06-01", completedOn="2024-01-01"))
 
 
-@pytest.mark.xfail(strict=True, reason="publishCollaborative has no required-field check; an empty draft publishes")
+@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: publishCollaborative has no required-field check; an empty draft publishes")
 def test_empty_draft_cannot_publish(graphql_client, second):
     body = gql(graphql_client, PUBLISH, {"i": second})
     assert body["data"]["publishCollaborative"].get("status") != "PUBLISHED"
