@@ -9,7 +9,7 @@ class CreateDatasetLocators:
     # ---- Tabs ----
     TAB_METADATA        = "//ol//button[.//p[normalize-space()='Metadata']]"
     TAB_DATAFILES       = "//ol//button[.//p[normalize-space()='Data Files']]"
-    TAB_PROMPT_FILES    = "//button[normalize-space()='Prompt Files']"
+    TAB_PROMPT_FILES    = "//ol//button[.//p[normalize-space()='Prompt Files']]"
     TAB_PUBLISH         = "//ol//button[.//p[normalize-space()='Review & Publish']]"
 
     # ---- Metadata fields ----
