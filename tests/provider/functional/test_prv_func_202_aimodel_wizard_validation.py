@@ -148,7 +148,7 @@ def test_prv_func_202e_duplicate_version_name_refused(driver, base_url, test_cre
 
 @pytest.mark.functional
 @pytest.mark.timeout(420)
-@pytest.mark.xfail(strict=True, reason="Save Version with an empty Version Name saves a version (named 1.0) instead of asking for a name")
+@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#530: Save Version with an empty Version Name saves a version (named 1.0) instead of asking for a name")
 def test_prv_func_202f_version_name_required(driver, base_url, test_credentials, delete_draft_after):
     page = new_draft(driver, base_url, test_credentials, delete_draft_after)
     page.open_version_sheet().press_save_version()
@@ -203,7 +203,7 @@ def test_prv_func_202g_model_information_gates_review(driver, base_url, test_cre
 
 @pytest.mark.functional
 @pytest.mark.timeout(420)
-@pytest.mark.xfail(strict=True, reason="Model Information: a Description edited on its own is never autosaved; it is lost on reload unless another field is changed afterwards")
+@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#530: Model Information: a Description edited on its own is never autosaved; it is lost on reload unless another field is changed afterwards")
 def test_prv_func_202h_description_alone_is_autosaved(driver, base_url, test_credentials, delete_draft_after):
     page = new_draft(driver, base_url, test_credentials, delete_draft_after)
     page.go_to_details()
@@ -216,7 +216,7 @@ def test_prv_func_202h_description_alone_is_autosaved(driver, base_url, test_cre
 
 @pytest.mark.functional
 @pytest.mark.timeout(420)
-@pytest.mark.xfail(strict=True, reason="Cancel on the Add Version sheet does not discard: a half-filled access method already created 'Version 1.0'")
+@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#530: Cancel on the Add Version sheet does not discard: a half-filled access method already created 'Version 1.0'")
 def test_prv_func_202i_cancel_discards_new_version(driver, base_url, test_credentials, delete_draft_after):
     page = new_draft(driver, base_url, test_credentials, delete_draft_after)
     page.open_version_sheet()
