@@ -155,14 +155,15 @@ class BasePage:
         TimeoutException here made a missing sector ("Budgets", dropped by the
         dev refresh) read as flakiness across five tests and every rerun.
         """
-        xpath = f"//div[@role='option' and normalize-space(.)='{option_text}']"
+        # Other widgets (e.g. the Bhashini language list, another combobox's
+        # closed list) keep role=option nodes in the DOM, so look only in this
+        # input's listbox: a hidden same-named option elsewhere never clicks.
+        listbox = combo.get_attribute("aria-controls")
+        scope = f"//*[@id='{listbox}']" if listbox else ""
+        xpath = f"{scope}//div[@role='option' and normalize-space(.)='{option_text}']"
         try:
             return self.wait_with_timeout(timeout).until(EC.element_to_be_clickable((By.XPATH, xpath)))
         except TimeoutException:
-            # Other widgets (e.g. the Bhashini language list) keep role=option
-            # nodes in the DOM, so read only this input's listbox.
-            listbox = combo.get_attribute("aria-controls")
-            scope = f"//*[@id='{listbox}']" if listbox else ""
             listed = [o.get_attribute("textContent").strip()
                       for o in self.driver.find_elements(By.XPATH, f"{scope}//*[@role='option']")]
             raise TimeoutException(
@@ -344,22 +345,27 @@ class BasePage:
         """
         last = None
         for attempt in range(attempts):
-            el = self.wait.until(EC.element_to_be_clickable(locator))
-            self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
             # First attempt native, later attempts JS. A native click can be
             # swallowed by an overlay at those coordinates WITHOUT Selenium
             # raising ElementClickIntercepted -- it reports success and the
             # handler never runs (test_prv_006: three clicks, and the network
             # log shows no mutation was ever sent). A dispatched JS click goes
             # straight to the element and still bubbles to React's listener.
-            if attempt == 0:
-                try:
-                    el.click()
-                except (ElementClickInterceptedException, StaleElementReferenceException) as exc:
-                    last = exc
+            try:
+                el = self.wait.until(EC.element_to_be_clickable(locator))
+                self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+                if attempt == 0:
+                    try:
+                        el.click()
+                    except ElementClickInterceptedException as exc:
+                        last = exc
+                        self.driver.execute_script("arguments[0].click();", el)
+                else:
                     self.driver.execute_script("arguments[0].click();", el)
-            else:
-                self.driver.execute_script("arguments[0].click();", el)
+            except StaleElementReferenceException as exc:
+                # A re-render replaced the element; find it again next attempt.
+                last = exc
+                continue
             try:
                 return self.wait_with_timeout(wait_each).until(condition)
             except TimeoutException as exc:

@@ -92,6 +92,9 @@ class CreateAiModelPage(EditorWizardPage):
     def get_usage_license(self) -> str:
         return self.find(L.USAGE_LICENSE_SELECT).text.strip()
 
+    def get_intended_use_value(self) -> str:
+        return self.find(L.INTENDED_USE_INPUT).get_attribute("value")
+
     def get_model_name_value(self) -> str:
         return self.find(L.MODEL_NAME_INPUT).get_attribute("value")
 

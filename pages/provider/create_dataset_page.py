@@ -46,6 +46,11 @@ class CreateDatasetPage(EditorWizardPage):
         return self._go_to_step("Review & Publish", "publish")
 
     # ---- Metadata ----
+    def enter_title(self, title: str):
+        self.clear_and_type((By.XPATH, L.TITLE_INPUT), title)
+        self.wait_for_autosave()
+        return self
+
     def enter_description(self, text: str):
         self.type_into_rich_editor((By.XPATH, L.DESCRIPTION), text)
         return self
@@ -141,6 +146,9 @@ class CreateDatasetPage(EditorWizardPage):
         return super().click_publish(self._dataset_name)
 
     # ---- Getters ----
+    def get_title_value(self) -> str:
+        return self.find((By.XPATH, L.TITLE_INPUT)).get_attribute("value")
+
     def get_description_value(self) -> str:
         return self.wait.until(EC.visibility_of_element_located((By.XPATH, L.DESCRIPTION))).text.strip()
 
