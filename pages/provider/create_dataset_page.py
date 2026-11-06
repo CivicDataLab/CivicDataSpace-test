@@ -209,8 +209,17 @@ class CreateDatasetPage(BasePage):
         return filename
 
     def upload_prompt_file_and_open(self, path: str):
-        """Upload a prompt file and stay on its edit view (where Prompt Format lives)."""
-        self._upload(path)
+        """Upload a prompt file and open its edit view (where Prompt Format lives)."""
+        filename = self._upload(path)
+        view = self.wait.until(EC.element_to_be_clickable((
+            By.XPATH,
+            f"//article[contains(@class,'opub-FileCard')][.//*[normalize-space(text())='{filename}']]"
+            "//button[normalize-space()='View']",
+        )))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", view)
+        self.wait.until(EC.visibility_of_element_located(
+            (By.XPATH, "//label[normalize-space()='Prompt Format']")
+        ))
         return self
 
     def _upload_and_return_to_list(self, path: str, go_to_tab) -> None:
