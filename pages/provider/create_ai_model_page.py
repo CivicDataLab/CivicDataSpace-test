@@ -3,6 +3,7 @@
 import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select
 from selenium.common.exceptions import TimeoutException
@@ -389,3 +390,88 @@ class CreateAiModelPage(BasePage):
         el = self.wait_with_timeout(10).until(EC.presence_of_element_located(loc))
         self.wait_with_timeout(10).until(lambda d: len(Select(el).options) > 1)
         return [o.get_attribute("value") for o in Select(el).options if o.get_attribute("value")]
+
+    # ── Versions / Model Information / Review & Publish (2026-11 redesign) ────
+
+    def _pick_option(self, opener, value: str | None = None, escape: bool = True):
+        """Open a combobox and click an option inside ITS listbox (aria-controls), first one if no value."""
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", opener)
+        try:
+            opener.click()  # Radix selects open on pointerdown, which a JS click doesn't send
+        except Exception:
+            self.driver.execute_script("arguments[0].click();", opener)
+        lb = self.wait_with_timeout(10).until(lambda d: ([l for l in d.find_elements(By.XPATH, "//*[@role='listbox']") if l.is_displayed()] or [None])[-1])
+        if value:
+            opt = (By.XPATH, f".//*[@role='option' and starts-with(normalize-space(.), '{value}')]")
+        else:
+            opt = (By.XPATH, ".//*[@role='option']")
+        el = self.wait_with_timeout(10).until(lambda d: lb.find_element(*opt))
+        try:
+            el.click()  # Radix select items react to real pointer events
+        except Exception:
+            self.driver.execute_script("arguments[0].click();", el)
+        if escape:  # Esc would close the version dialog, so skip it there
+            ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
+        self.wait_for_autosave(trigger_blur=False)
+        time.sleep(1)
+
+    def add_version_with_access(self, version_name: str, endpoint_url: str) -> "CreateAiModelPage":
+        wait = self.wait_with_timeout
+        btn = wait(15).until(EC.presence_of_element_located((By.XPATH, AiModelsLocators.ADD_VERSION_BTN)))
+        self.driver.execute_script("arguments[0].click();", btn)
+        wait(10).until(EC.visibility_of_element_located((By.XPATH, AiModelsLocators.VERSION_NAME_NAME))).send_keys(version_name)
+        self.driver.execute_script("arguments[0].click();", wait(10).until(
+            EC.presence_of_element_located((By.XPATH, AiModelsLocators.ADD_ACCESS_METHOD_IN_DIALOG))))
+        wait(10).until(EC.visibility_of_element_located((By.XPATH, AiModelsLocators.ACCESS_NAME_INPUT))).send_keys("Automated API")
+        self._pick_option(wait(10).until(EC.presence_of_element_located((By.XPATH, AiModelsLocators.PROVIDER_COMBOBOX))), "Custom API", escape=False)
+        wait(10).until(EC.visibility_of_element_located((By.XPATH, AiModelsLocators.PROVIDER_MODEL_ID))).send_keys("automated-model")
+        wait(10).until(EC.visibility_of_element_located((By.XPATH, AiModelsLocators.API_URL_INPUT))).send_keys(endpoint_url)
+        confirm = [b for b in self.driver.find_elements(By.XPATH, AiModelsLocators.ADD_ACCESS_METHOD_IN_DIALOG)][-1]
+        self.driver.execute_script("arguments[0].click();", confirm)
+        save = wait(10).until(EC.presence_of_element_located((By.XPATH, AiModelsLocators.SAVE_VERSION_BUTTON)))
+        self.driver.execute_script("arguments[0].click();", save)
+        wait(15).until(EC.invisibility_of_element_located((By.XPATH, AiModelsLocators.SAVE_VERSION_BUTTON)))
+        return self
+
+    def click_continue(self) -> "CreateAiModelPage":
+        self.wait_for_autosave()
+        btn = self.wait_with_timeout(10).until(EC.presence_of_element_located((By.XPATH, AiModelsLocators.CONTINUE_BTN)))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", btn)
+        return self
+
+    def fill_model_information(self, description: str, sector: str) -> "CreateAiModelPage":
+        self.wait_with_timeout(15).until(
+            EC.visibility_of_element_located((By.XPATH, AiModelsLocators.INFO_DESCRIPTION)))
+        self.enter_description_new(description)
+        w = self.wait_with_timeout
+        self._pick_option(w(10).until(EC.presence_of_element_located((By.XPATH, AiModelsLocators.DOMAIN_INPUT))))
+        self._pick_option(w(10).until(EC.presence_of_element_located((By.XPATH, AiModelsLocators.INFO_SECTORS_INPUT))), sector)
+        self._pick_option(w(10).until(EC.presence_of_element_located((By.XPATH, AiModelsLocators.INFO_LANGUAGES_INPUT))), "English")
+        self._pick_option(w(10).until(EC.presence_of_element_located((By.XPATH, AiModelsLocators.LICENSE_COMBOBOX))), "MIT")
+        return self
+
+    def enter_description_new(self, text: str):
+        self.type_into_rich_editor((By.XPATH, AiModelsLocators.INFO_DESCRIPTION), text)
+        self.driver.execute_script("document.activeElement.blur();")
+        self.wait_for_autosave(trigger_blur=False)
+        time.sleep(1)
+
+    def get_domain_options(self) -> list:
+        """Option labels of the Domain combobox (read from its own listbox)."""
+        el = self.wait_with_timeout(15).until(EC.presence_of_element_located((By.XPATH, AiModelsLocators.DOMAIN_INPUT)))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", el)
+        lb = self.wait_with_timeout(10).until(lambda d: d.find_element(By.ID, el.get_attribute("aria-controls")))
+        self.wait_with_timeout(10).until(lambda d: len(lb.find_elements(By.XPATH, ".//*[@role='option']")) > 1)
+        return [o.get_attribute("textContent").strip() for o in lb.find_elements(By.XPATH, ".//*[@role='option']")]
+
+    def click_publish_model(self) -> "CreateAiModelPage":
+        btn = self.wait_with_timeout(15).until(EC.presence_of_element_located((By.XPATH, AiModelsLocators.PUBLISH_AI_MODEL_BTN)))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", btn)
+        return self
+
+    def is_model_published(self) -> bool:
+        try:
+            self.wait_with_timeout(30).until(lambda d: '/publish' not in d.current_url)
+            return True
+        except TimeoutException:
+            return False

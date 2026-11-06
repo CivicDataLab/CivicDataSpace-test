@@ -35,8 +35,8 @@ class AiModelsListPage(BasePage):
 
         # Wait for the Metadata tab to confirm the editor has loaded
         self.wait_with_timeout(15).until(
-            EC.visibility_of_element_located((By.XPATH, AiModelsLocators.TAB_METADATA)),
-            message="Timed out waiting for Metadata tab in AI model editor"
+            EC.visibility_of_element_located((By.XPATH, AiModelsLocators.ADD_VERSION_BTN)),
+            message="Timed out waiting for the Versions step of the AI model editor"
         )
 
         return CreateAiModelPage(self.driver)
