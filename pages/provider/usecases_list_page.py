@@ -37,7 +37,7 @@ class UseCasesListPage(BasePage):
 
         # Wait for the UseCase creation form
         self.wait_with_timeout(15).until(
-            EC.visibility_of_element_located(CreateUsecaseLocators.USECASE_SUMMARY_INPUT),
+            EC.visibility_of_element_located(CreateUsecaseLocators.TITLE_INPUT),
             message="Timed out waiting for UseCase creation form to load"
         )
 

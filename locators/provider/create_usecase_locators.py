@@ -77,12 +77,25 @@ class CreateUsecaseLocators:
 
     # ─── Wizard Navigation ──────────────────────────────────────────────────────
     NEXT_BUTTON = (By.XPATH, "//button[normalize-space()='Next']")
+    CONTINUE_BUTTON = (By.XPATH, "//button[normalize-space()='Continue']")
+
+    # ─── Builder step (Builder > Connect > Review & Publish wizard) ────────────
+    TITLE_INPUT = (By.XPATH, "//input[@name='useCaseTitle']")
+    SUBTITLE_INPUT = (By.XPATH, "//input[@name='useCaseSubtitle']")
+    THUMBNAIL_REMOVE_BUTTON = (By.XPATH, "//button[normalize-space()='Remove']")
+    ADD_CONTENT_BUTTON = (By.XPATH, "//button[normalize-space()='Add Content']")
+    ADD_CONTENT_TEXT_ITEM = (By.XPATH, "//*[@data-radix-popper-content-wrapper]//*[normalize-space(text())='Text']")
+
+    # ─── Connect step ──────────────────────────────────────────────────────────
+    DATASET_SEARCH_INPUT = (By.XPATH, "//input[starts-with(@placeholder,'Search published datasets')]")
+    DATASET_RESULT_BUTTON = (By.XPATH, "(//button[contains(@class,'entity-row-picker')])[1]")
+    DATASET_RESULT_TITLE = (By.XPATH, "(//button[contains(@class,'entity-row-picker')])[1]//p[1]")
 
     # ─── "Publish" Tab ─────────────────────────────────────────────────────────
     # Publish navigation TAB — must be a sibling of "Contributors" tab to avoid matching content buttons
     PUBLISH_TAB = (By.XPATH, "//button[normalize-space()='Publish' and preceding-sibling::button[normalize-space()='Contributors']]")
     # Publish action BUTTON — has Button-module class (distinct from the tab nav button)
-    PUBLISH_BUTTON = (By.XPATH, "//button[normalize-space()='Publish' and contains(@class,'Button-module_Button')]")
+    PUBLISH_BUTTON = (By.XPATH, "//button[normalize-space()='Publish Use Case']")
 
     PUBLISHED_MARKER = (By.XPATH, "//*[contains(.,'UseCase Published Successfully')]")
 

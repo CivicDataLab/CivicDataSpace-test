@@ -136,12 +136,33 @@ class CreateUsecasePage(BasePage):
         return self.enter_date(CreateUsecaseLocators.COMPLETED_ON_INPUT, iso_date)
 
     def upload_logo(self, path_to_file: str):
-        """
-        Triggers logo upload by clicking visible DropZone and sending keys to hidden input.
-        Uses BasePage utility method to eliminate code duplication.
-        """
-        self.scroll_to_element(CreateUsecaseLocators.LOGO_UPLOAD_INPUT)
+        """Upload the Builder step's thumbnail through its file input."""
         return self.upload_file_to_dropzone(path_to_file)
+
+    def enter_subtitle(self, text: str):
+        fld = self.wait.until(EC.visibility_of_element_located(CreateUsecaseLocators.SUBTITLE_INPUT))
+        fld.clear()
+        fld.send_keys(text)
+        return self
+
+    def get_subtitle_value(self) -> str:
+        return self.driver.find_element(*CreateUsecaseLocators.SUBTITLE_INPUT).get_attribute("value")
+
+    def add_text_content(self, text: str):
+        """Add a Text block under Content and type into it (the Review step needs one)."""
+        btn = self.wait.until(EC.presence_of_element_located(CreateUsecaseLocators.ADD_CONTENT_BUTTON))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", btn)
+        item = self.wait.until(EC.presence_of_element_located(CreateUsecaseLocators.ADD_CONTENT_TEXT_ITEM))
+        self.driver.execute_script("arguments[0].click();", item)
+        self.type_into_rich_editor(CreateUsecaseLocators.SUMMARY_INPUT, text)
+        return self
+
+    def click_continue(self):
+        """Move to the next wizard step once autosave has settled."""
+        self.wait_for_autosave()
+        btn = self.wait.until(EC.presence_of_element_located(CreateUsecaseLocators.CONTINUE_BUTTON))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", btn)
+        return self
 
     def get_usecase_name_value(self):
         return self.driver.find_element(*CreateUsecaseLocators.USECASE_NAME_INPUT).get_attribute("value")
@@ -201,34 +222,26 @@ class CreateUsecasePage(BasePage):
         return elt.get_attribute("value")
 
     def is_logo_uploaded(self):
-        # Wait up to 15s for the action element to show a filename.
-        # The server upload is async — React updates the action text only after
-        # the upload API call succeeds, so we must poll rather than check once.
-        import time
-
-        def _upload_confirmed(d):
-            try:
-                el = d.find_element(By.XPATH, "//div[contains(@class,'FileUpload-module_Action')]")
-                text = el.text.strip()
-                return bool(text) and text != "Name of the logo"
-            except Exception:
-                return False
-
+        """The thumbnail card offers Remove once the upload has landed."""
         try:
-            self.wait_with_timeout(15).until(_upload_confirmed)
+            self.wait_with_timeout(20).until(
+                EC.visibility_of_element_located(CreateUsecaseLocators.THUMBNAIL_REMOVE_BUTTON)
+            )
             return True
-        except Exception:
-            pass
-
-        # Fallback: check if file input still has the file set (client-side only)
-        try:
-            input_el = self.driver.find_element(By.XPATH, "//input[@type='file']")
-            files_len = self.driver.execute_script("return arguments[0].files.length", input_el)
-            return files_len > 0
-        except Exception:
+        except TimeoutException:
             return False
 
     # ─── "Datasets" Tab ─────────────────────────────────────────────────────────────────────────────────────
+
+    def select_first_dataset(self) -> str:
+        """Pick the first published dataset in the Connect step's search list; return its title."""
+        box = self.wait.until(EC.presence_of_element_located(CreateUsecaseLocators.DATASET_SEARCH_INPUT))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", box)
+        box.click()
+        title = self.wait.until(EC.presence_of_element_located(CreateUsecaseLocators.DATASET_RESULT_TITLE)).text.strip()
+        btn = self.wait.until(EC.presence_of_element_located(CreateUsecaseLocators.DATASET_RESULT_BUTTON))
+        self.driver.execute_script("arguments[0].click();", btn)
+        return title
 
     def go_to_datasets_tab(self):
         self.wait_for_autosave()
@@ -385,75 +398,14 @@ class CreateUsecasePage(BasePage):
         return self
 
     def click_publish(self):
-        import time
-
-        # The opub-ui Button uses CSS-only disabled state (no HTML disabled attr), so
-        # element_to_be_clickable always finds it. Wait for the validation error to clear
-        # (which means the React Query has loaded the correct data from the server and all
-        # required fields are present) before clicking.
-        validation_error_locator = (By.XPATH,
-            "//*[contains(text(),'is missing. Please add to continue')]")
-        try:
-            self.wait_with_timeout(20).until(
-                EC.invisibility_of_element_located(validation_error_locator)
-            )
-        except TimeoutException:
-            pass  # Proceed anyway; will fail at assertion if data still missing
-
-        # On the /publish page the action button has a Button-module class.
-        # Try most-specific locators first to avoid accidentally clicking the tab nav button.
-        btn = None
-        for locator in [
-            # Action button with Button-module class (not the tab nav button)
-            (By.XPATH, "//button[normalize-space()='Publish' and contains(@class,'Button-module_Button')]"),
-            # Fallback: last Publish button in DOM (content buttons appear after tab nav)
-            (By.XPATH, "(//button[normalize-space()='Publish'])[last()]"),
-        ]:
-            try:
-                btn = self.wait_with_timeout(5).until(EC.element_to_be_clickable(locator))
-                break
-            except TimeoutException:
-                continue
-
-        if not btn:
-            raise TimeoutException("Timed out waiting for Publish action button to become clickable")
-
-        self.driver.execute_script("arguments[0].click();", btn)
-
-        # The app shows the toast then immediately calls router.push() to /usecases.
-        # Fast-poll to catch the toast in the narrow window before navigation, then fall
-        # back to detecting the URL change (navigating away from /publish = success).
-        from selenium.webdriver.support.ui import WebDriverWait as _WDW
-        published = False
-        try:
-            _WDW(self.driver, 5, poll_frequency=0.1).until(
-                EC.presence_of_element_located(CreateUsecaseLocators.PUBLISHED_MARKER)
-            )
-            published = True
-        except TimeoutException:
-            pass
-
-        if not published:
-            try:
-                self.wait_with_timeout(20).until(
-                    lambda d: '/publish' not in d.current_url
-                )
-                published = True
-            except TimeoutException:
-                pass
-
-        if not published:
-            raise TimeoutException("Use Case did not show a 'Published' marker")
-
+        """Publish from the Review & Publish step."""
+        btn = self.wait.until(EC.presence_of_element_located(CreateUsecaseLocators.PUBLISH_BUTTON))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", btn)
         return self
 
     def is_published(self) -> bool:
         try:
-            self.wait_with_timeout(3).until(
-                EC.presence_of_element_located(CreateUsecaseLocators.PUBLISHED_MARKER)
-            )
+            self.wait_with_timeout(30).until(lambda d: '/publish' not in d.current_url)
             return True
         except TimeoutException:
-            pass
-        # After a successful publish the app redirects away from /publish
-        return '/publish' not in self.driver.current_url
+            return False
