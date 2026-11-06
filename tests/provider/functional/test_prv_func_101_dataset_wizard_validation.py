@@ -192,7 +192,7 @@ def test_prv_func_101_11_long_title_within_limit_persists(driver, provider_dashb
     assert page.get_title_value() == title
 
 
-@pytest.mark.xfail(strict=True, reason="A 400-char title shows 'All changes saved' but is silently not saved; no limit or error shown")
+@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#528: A 400-char title shows 'All changes saved' but is silently not saved; no limit or error shown")
 def test_prv_func_101_12_over_long_title_rejected_visibly(driver, provider_dashboard, qa_drafts, sample_csv_path, tmp_path):
     title = QA_TAG + " " + "L" * 400
     page = _with_file(qa_drafts, "data", provider_dashboard, driver, sample_csv_path, tmp_path)
@@ -204,7 +204,7 @@ def test_prv_func_101_12_over_long_title_rejected_visibly(driver, provider_dashb
     assert error_shown or page.get_title_value() == title, "Over-long title was dropped without any message"
 
 
-@pytest.mark.xfail(strict=True, reason="The description counter counts the editor's HTML: 1001 typed chars show as 1008/1000")
+@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#529: The description counter counts the editor's HTML: 1001 typed chars show as 1008/1000")
 def test_prv_func_101_13_description_counter_shows_over_limit(driver, provider_dashboard, qa_drafts, sample_csv_path, tmp_path):
     page = _with_file(qa_drafts, "data", provider_dashboard, driver, sample_csv_path, tmp_path)
     page.go_to_metadata_tab()
@@ -213,7 +213,7 @@ def test_prv_func_101_13_description_counter_shows_over_limit(driver, provider_d
     assert page.get_description_counter() == "Character limit: 1001/1000"
 
 
-@pytest.mark.xfail(strict=True, reason="A description over 1000 chars shows 'All changes saved' and no error, but is not saved")
+@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#528: A description over 1000 chars shows 'All changes saved' and no error, but is not saved")
 def test_prv_func_101_14_over_limit_description_rejected_visibly(driver, provider_dashboard, qa_drafts, sample_csv_path, tmp_path):
     text = "E" * 1001
     page = _with_file(qa_drafts, "data", provider_dashboard, driver, sample_csv_path, tmp_path)
