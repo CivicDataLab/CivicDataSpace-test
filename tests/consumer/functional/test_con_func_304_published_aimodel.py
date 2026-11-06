@@ -28,7 +28,7 @@ def test_detail_shows_provider_values(page, base_url, public_ai_model):
         assert value in text, f"{value!r} missing from AI model detail"
 
 
-@pytest.mark.xfail(strict=True, reason="New public AI models never reach /search on dev (same symptom as DataSpaceBackend#290)")
+@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#293: New public AI models never reach /search on dev (same symptom as DataSpaceBackend#290)")
 def test_search_finds_public_model(page, base_url, public_ai_model):
     assert page.listing_shows(base_url, "search", public_ai_model["title"], types="aimodel", query=public_ai_model["tag"])
 

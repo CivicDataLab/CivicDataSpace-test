@@ -31,7 +31,7 @@ def test_detail_shows_provider_values(page, base_url, published_usecase):
         assert value in text, f"{value!r} missing from use case detail"
 
 
-@pytest.mark.xfail(strict=True, reason="Use case detail no longer renders platform URL, running status or start date "
+@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#527: Use case detail no longer renders platform URL, running status or start date "
                                        "(Metadata panel absent after the 2026-11 redesign)")
 def test_detail_shows_platform_url_status_and_dates(page, base_url, published_usecase):
     uc = published_usecase
