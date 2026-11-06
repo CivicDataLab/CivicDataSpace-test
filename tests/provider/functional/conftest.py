@@ -37,3 +37,21 @@ def qa_drafts(request):
                 body = gql(client, DELETE[kind], {"id": m.group(1)})
                 if body.get("errors"):
                     print(f"[qa_drafts] delete {url} failed: {body['errors']}")
+
+
+DELETE_WIZ = {
+    "collaboratives": "mutation($id: String!) { deleteCollaborative(collaborativeId: $id) }",
+    "aimodels": "mutation($id: Int!) { deleteAiModel(modelId: $id) { success } }",
+}
+
+
+@pytest.fixture
+def delete_draft_after(graphql_client):  # noqa: F811
+    """Call with a wizard URL (/<kind>/edit/<id>/...); the draft is deleted at teardown."""
+    urls = []
+    yield urls.append
+    for url in urls:
+        m = re.search(r"/(collaboratives|aimodels)/edit/(\d+)", url)
+        if m:
+            kind, pk = m.groups()
+            graphql_client.query(DELETE_WIZ[kind], {"id": pk if kind == "collaboratives" else int(pk)})
