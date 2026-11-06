@@ -36,6 +36,89 @@ class CreateAiModelPage(EditorWizardPage):
         )
         return self
 
+    # ─── Version sheet, one control at a time ──────────────────────────────────
+
+    def open_version_sheet(self):
+        self.click_until(L.ADD_VERSION_BTN, EC.visibility_of_element_located(L.VERSION_SHEET),
+                         message="Add Version never opened its sheet")
+        return self
+
+    def is_version_sheet_open(self, timeout: int = 5) -> bool:
+        return self.is_visible(L.VERSION_NAME_INPUT, timeout=timeout)
+
+    def enter_version_name(self, name: str):
+        self.clear_and_type(L.VERSION_NAME_INPUT, name)
+        return self
+
+    def open_access_form(self):
+        self.click_until(L.ADD_ACCESS_METHOD_BTN, EC.visibility_of_element_located(L.ACCESS_NAME_INPUT),
+                         message="Add Access Method never showed its form")
+        return self
+
+    def _open_sheet_select(self, trigger_locator):
+        trigger = self.wait.until(EC.element_to_be_clickable(trigger_locator))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", trigger)
+        trigger.click()
+        return trigger, self.wait_with_timeout(10).until(
+            lambda d: [o for o in d.find_elements(*L.VISIBLE_OPTIONS) if o.is_displayed()] or False,
+            message="The select listed no options",
+        )
+
+    def sheet_select_options(self, trigger_locator) -> list[str]:
+        current = self.find(trigger_locator).text.strip()
+        _, options = self._open_sheet_select(trigger_locator)
+        values = [o.text.strip() for o in options]
+        # Esc would close the whole sheet, so close the list by re-picking the current value.
+        next((o for o in options if o.text.strip() == current), options[0]).click()
+        return values
+
+    def pick_sheet_option(self, trigger_locator, text: str):
+        trigger, options = self._open_sheet_select(trigger_locator)
+        next(o for o in options if o.text.strip() == text).click()
+        self.wait_with_timeout(10).until(lambda d: text in d.find_element(*trigger_locator).text,
+                                         message=f"The select never showed {text!r}")
+        return self
+
+    def get_sheet_select_value(self, trigger_locator) -> str:
+        return self.find(trigger_locator).text.strip()
+
+    def sheet_field_names(self) -> list[str]:
+        return [e.get_attribute("name") for e in self.finds(L.SHEET_FIELDS) if e.is_displayed()]
+
+    def sheet_labels(self) -> list[str]:
+        return [e.text.strip() for e in self.finds(L.SHEET_LABELS) if e.is_displayed()]
+
+    def fill_sheet_field(self, name: str, value: str):
+        self.clear_and_type((By.NAME, name), value)
+        self.find((By.NAME, name)).send_keys(Keys.TAB)
+        return self
+
+    def sheet_field_validation_message(self, name: str) -> str:
+        return self.find((By.NAME, name)).get_attribute("validationMessage")
+
+    def is_access_form_open(self, timeout: int = 3) -> bool:
+        return self.is_visible(L.ACCESS_NAME_INPUT, timeout=timeout)
+
+    def press_add_access_method(self):
+        self.driver.execute_script("arguments[0].click();", self.find(L.ADD_ACCESS_METHOD_BTN))
+        return self
+
+    def press_save_version(self):
+        self.driver.execute_script("arguments[0].click();", self.find(L.SAVE_VERSION_BTN))
+        return self
+
+    def is_version_saved(self, timeout: int = 15) -> bool:
+        """A saved version keeps the sheet open, retitled Edit Version."""
+        return self.is_visible(L.EDIT_VERSION_TITLE, timeout=timeout)
+
+    def cancel_version_sheet(self):
+        self.click_until(L.SHEET_CANCEL_BTN, EC.invisibility_of_element_located(L.VERSION_SHEET),
+                         message="Cancel never closed the version sheet")
+        return self
+
+    def listed_versions(self) -> list[str]:
+        return [e.text.strip() for e in self.driver.find_elements(*L.VERSION_ROWS) if e.is_displayed()]
+
     # ─── Model Information ──────────────────────────────────────────────────────
 
     def go_to_details(self):
