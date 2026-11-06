@@ -65,145 +65,38 @@ def test_prv_010_ind_create_collaborative(driver, sample_logo_path, sample_cover
 
     # ─── Step 5: Click "Add New Collaborative" ─────────────────────────────────────────────
     create_collab = collaboratives_page.click_add_new_collaborative()
-    assert isinstance(create_collab, CreateCollaborativePage), (
-        f"Step 5 failure: Expected CreateCollaborativePage after click, got {type(create_collab)}"
-    )
+    assert isinstance(create_collab, CreateCollaborativePage)
 
-    # ─── Step 6: Edit Collaborative Name ────────────────────────────────────────────────────
-    test_collab_name = CollaborativeTestData.get_collaborative_name("individual")
-    create_collab.edit_collaborative_name(test_collab_name)
-    time.sleep(2)
-    actual_collab_name = create_collab.get_collaborative_name_value()
-    assert test_collab_name in actual_collab_name, (
-        f"Step 6 failure: Expected collaborative name to contain '{test_collab_name}', but found '{actual_collab_name}'."
-    )
-    assert len(actual_collab_name) > 0, "Step 6 failure: Collaborative name is empty"
-
-    # ─── Step 7: Fill in Summary ─────────────────────────────────────────────────────────────
-    test_summary = CollaborativeTestData.get_summary()
-    create_collab.enter_summary(test_summary)
-    actual_summary = create_collab.get_summary_value()
-    assert actual_summary == test_summary, (
-        f"Step 7 failure: Summary mismatch. Expected: '{test_summary}', Found: '{actual_summary}'."
-    )
-    assert len(actual_summary) > 0, "Step 7 failure: Summary is empty"
-
-    # ─── Step 8: Platform URL ─────────────────────────────────────────────────────────────────
-    platform_url = CollaborativeTestData.get_platform_url("individual")
-    create_collab.enter_platform_url(platform_url)
-    actual_url = create_collab.get_platform_url_value()
-    assert actual_url == platform_url, (
-        f"Step 8 failure: Expected platform URL '{platform_url}', but found '{actual_url}'."
-    )
-    assert actual_url.startswith("https://"), "Step 8 failure: Platform URL should start with https://"
-
-    time.sleep(3)
-
-    # ─── Step 9: SDG Goals ────────────────────────────────────────────────────────────────────
-    create_collab.select_sdg_goals(CollaborativeTestData.SDG_GOALS)
-    selected_sdgs = create_collab.get_selected_sdg_goals()
-    assert CollaborativeTestData.SDG_GOALS in selected_sdgs, (
-        f"Step 9 failure: SDG goal '{CollaborativeTestData.SDG_GOALS}' not selected correctly. Selected: {selected_sdgs}"
-    )
-    assert len(selected_sdgs) > 0, "Step 9 failure: No SDG goals selected"
-
-    # ─── Step 10: Tags ────────────────────────────────────────────────────────────────────────
-    create_collab.select_tags(CollaborativeTestData.TAGS)
-    selected_tags = create_collab.get_selected_tags()
-    assert CollaborativeTestData.TAGS[0] in selected_tags, (
-        f"Step 10 failure: Tag '{CollaborativeTestData.TAGS[0]}' not selected correctly. Current tags: {selected_tags}"
-    )
-    assert len(selected_tags) > 0, "Step 10 failure: No tags selected"
-    for tag in CollaborativeTestData.TAGS:
-        assert tag in selected_tags, f"Step 10 failure: Expected tag '{tag}' not found in selected tags: {selected_tags}"
-
-    # ─── Step 11: Sectors ─────────────────────────────────────────────────────────────────────
-    create_collab.select_sectors([sector_name])
-    selected_sectors = create_collab.get_selected_sectors()
-    assert sector_name in selected_sectors, (
-        f"Step 11 failure: Sector '{sector_name}' not selected correctly. Current sectors: {selected_sectors}"
-    )
-
-    # ─── Step 12: Geography ───────────────────────────────────────────────────────────────────
-    create_collab.select_geography(CollaborativeTestData.GEOGRAPHY)
-    actual_geo = create_collab.get_selected_geography()
-    assert CollaborativeTestData.GEOGRAPHY in actual_geo, (
-        f"Step 12 failure: Expected geography to contain '{CollaborativeTestData.GEOGRAPHY}', but got '{actual_geo}'."
-    )
-    assert len(actual_geo) > 0, "Step 12 failure: Geography is empty"
-
-    # ─── Step 13: Started On ──────────────────────────────────────────────────────────────────
-    create_collab.enter_started_on(CollaborativeTestData.START_DATE_ISO)
-    actual_start = create_collab.get_started_on_value()
-    assert actual_start == CollaborativeTestData.START_DATE_ISO, (
-        f"Step 13 failure: Started On mismatch. Expected: {CollaborativeTestData.START_DATE_ISO}, Found: {actual_start}"
-    )
-    assert len(actual_start) > 0, "Step 13 failure: Started On date is empty"
-
-    # ─── Step 14: Completed On ────────────────────────────────────────────────────────────────
-    create_collab.enter_completed_on(CollaborativeTestData.COMPLETED_DATE_ISO)
-    actual_completed = create_collab.get_completed_on_value()
-    assert actual_completed == CollaborativeTestData.COMPLETED_DATE_ISO, (
-        f"Step 14 failure: Completed On mismatch. Expected: {CollaborativeTestData.COMPLETED_DATE_ISO}, Found: {actual_completed}"
-    )
-    assert len(actual_completed) > 0, "Step 14 failure: Completed On date is empty"
-    # Verify that completed date is after started date
-    assert actual_completed > actual_start, (
-        f"Step 14 failure: Completed On date ({actual_completed}) should be after Started On date ({actual_start})"
-    )
-
-    # ─── Step 15: Logo Upload ─────────────────────────────────────────────────────────────────
-    assert os.path.exists(sample_logo_path), f"Step 15 failure: Logo file does not exist at {sample_logo_path}"
-    create_collab.upload_logo(sample_logo_path)
-    time.sleep(2)  # Allow time for upload to complete
-    assert create_collab.is_logo_uploaded(), "Step 15 failure: Logo upload did not succeed."
-
-    # ─── Step 16: Cover Image Upload ──────────────────────────────────────────────────────────
-    assert os.path.exists(sample_cover_image_path), f"Step 16 failure: Cover image file does not exist at {sample_cover_image_path}"
+    # About: cover, name, description, link, classification
     create_collab.upload_cover_image(sample_cover_image_path)
-    time.sleep(2)  # Allow time for upload to complete
-    assert create_collab.is_cover_image_uploaded(), "Step 16 failure: Cover image upload did not succeed."
+    assert create_collab.is_cover_image_uploaded(), "Cover image upload did not succeed."
+    name = CollaborativeTestData.get_collaborative_name("individual")
+    create_collab.enter_title(name)
+    assert create_collab.get_title_value() == name
+    summary = CollaborativeTestData.get_summary()
+    create_collab.enter_summary(summary)
+    assert create_collab.get_summary_value() == summary
+    url = CollaborativeTestData.get_platform_url("individual")
+    create_collab.enter_platform_url(url)
+    assert create_collab.get_platform_url_value() == url
+    create_collab.select_sectors([sector_name])
+    assert sector_name in create_collab.get_selected_sectors()
+    create_collab.select_sdg_goals(CollaborativeTestData.SDG_GOALS)
+    assert CollaborativeTestData.SDG_GOALS in create_collab.get_selected_sdg_goals()
+    create_collab.select_tags(CollaborativeTestData.TAGS)
+    assert CollaborativeTestData.TAGS[0] in create_collab.get_selected_tags()
+    create_collab.select_geography(CollaborativeTestData.GEOGRAPHY)
+    assert CollaborativeTestData.GEOGRAPHY in create_collab.get_selected_geography()
+    create_collab.click_continue()
 
-    # ─── Step 17: Click Next to go to Datasets tab ──────────────────────────────────────────
-    create_collab.click_next()
+    # People is optional
+    create_collab.click_continue()
 
-    # ─── Step 18: Select first dataset and click Submit ──────────────────────────────────────
-    create_collab.select_first_dataset_checkbox()
-    create_collab.click_submit_datasets()
-    time.sleep(2)
+    # Content: connect a dataset and a use case
+    assert create_collab.connect_first_dataset(), "No dataset could be connected."
+    assert create_collab.connect_first_usecase(), "No use case could be connected."
+    create_collab.click_continue()
 
-    # Verify that dataset was selected and submission registered
-    selected_datasets = create_collab.get_selected_datasets()
-    assert selected_datasets, (
-        f"Step 18 failure: No dataset was selected/submitted. Got: {selected_datasets}"
-    )
-    assert len(selected_datasets) > 0, "Step 18 failure: Selected datasets list is empty"
-
-    # ─── Step 19: Click Next to go to Use Cases tab ──────────────────────────────────────────
-    create_collab.click_next()
-
-    # ─── Step 20: Select first use case and click Submit ─────────────────────────────────────
-    create_collab.select_first_usecase_checkbox()
-    create_collab.click_submit_usecases()
-    time.sleep(2)
-
-    # Verify that use case was selected and submission registered
-    selected_usecases = create_collab.get_selected_usecases()
-    assert selected_usecases, (
-        f"Step 20 failure: No use case was selected/submitted. Got: {selected_usecases}"
-    )
-    assert len(selected_usecases) > 0, "Step 20 failure: Selected use cases list is empty"
-
-    # Skipping contributor's section because of ongoing issues (similar to usecase tests)
-
-    # ─── Step 21: Click Next to go to Contributors tab ────────────────────────────────────────
-    create_collab.click_next()
-
-    # ─── Step 22: Click Next to go to Publish tab ─────────────────────────────────────────────
-    create_collab.click_next()
-    time.sleep(2)
-
-    # ─── Step 23: Publish Collaborative ───────────────────────────────────────────────────────
+    # Review & Publish
     detail = create_collab.click_publish()
-    assert detail.is_published(), "Step 23 failure: Collaborative was not marked as 'Published'."
-
+    assert detail.is_published(), "Collaborative was not published."
