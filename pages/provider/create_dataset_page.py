@@ -187,7 +187,9 @@ class CreateDatasetPage(BasePage):
 
     def get_prompt_field_options(self, label: str) -> list[str]:
         """Every option the prompt dropdown labelled `label` offers, e.g. 'Task Type'."""
-        loc = (By.XPATH, CreateDatasetLocators.COMBOBOX_BY_LABEL.format(label))
+        # Task Type, Domain... are input comboboxes; Prompt Format is a Select button.
+        loc = (By.XPATH, f"({CreateDatasetLocators.COMBOBOX_BY_LABEL.format(label)})"
+                         f" | //label[normalize-space()='{label}']/following::button[@role='combobox'][1]")
         self._scroll_to_locator(loc)
         return self.get_combobox_options(loc)
 
