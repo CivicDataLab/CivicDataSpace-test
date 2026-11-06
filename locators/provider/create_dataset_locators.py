@@ -3,7 +3,7 @@ class CreateDatasetLocators:
     MODAL_TITLE = "//h2[contains(., 'Create New Dataset')] | //div[contains(., 'Select the type of dataset')]"
     DATA_DATASET_CARD = "//button[.//h3[normalize-space()='Data Dataset']]"
     PROMPT_DATASET_CARD = "//button[.//h3[normalize-space()='Prompt Dataset']]"
-    CREATE_DATASET_BUTTON = "//button[normalize-space()='Create Dataset']"
+    CREATE_DATASET_BUTTON = "//*[@role='dialog']//button[normalize-space()='Create Dataset']"
     MODAL_CANCEL_BUTTON = "//button[normalize-space()='Cancel']"
 
     # ---- Tabs ----
