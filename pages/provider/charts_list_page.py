@@ -134,6 +134,21 @@ class ChartsListPage(BasePage):
         self.driver.execute_script("arguments[0].click();", btn)
         return title
 
+    def change_dataset(self) -> None:
+        btn = self.wait_with_timeout(10).until(EC.presence_of_element_located(ChartsLocators.CHANGE_DATASET_BTN))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", btn)
+        self.wait_with_timeout(10).until(EC.presence_of_element_located(ChartsLocators.DATASET_SEARCH_INPUT))
+
+    def get_resource_value(self) -> str:
+        return self.find(ChartsLocators.RESOURCE_COMBOBOX).text.strip()
+
+    def is_resource_select_shown(self, timeout: int = 3) -> bool:
+        return self.is_visible(ChartsLocators.RESOURCE_COMBOBOX, timeout=timeout)
+
+    def page_text(self) -> str:
+        time.sleep(1)  # validation text renders a tick after the click
+        return self.find(ChartsLocators.MAIN).text
+
     def pick_first_resource(self) -> None:
         combo = self.wait_with_timeout(15).until(EC.presence_of_element_located(ChartsLocators.RESOURCE_COMBOBOX))
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", combo)
