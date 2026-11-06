@@ -16,8 +16,8 @@ class ChartsListPage(BasePage):
 
     def is_loaded(self, timeout: int = 10) -> bool:
         self.wait_with_timeout(timeout).until(
-            EC.visibility_of_element_located(ChartsLocators.SHOWING_CHARTS_HEADING),
-            message="Timed out waiting for 'Showing Charts' heading"
+            EC.visibility_of_element_located(ChartsLocators.ADD_CHART_BTN),
+            message="Timed out waiting for the charts list"
         )
         return True
 
@@ -31,8 +31,8 @@ class ChartsListPage(BasePage):
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
         self.driver.execute_script("arguments[0].click();", btn)
         self.wait_with_timeout(10).until(
-            EC.visibility_of_element_located(ChartsLocators.CHARTS_EDITOR_HEADING),
-            message="Timed out waiting for Charts Editor to open"
+            EC.visibility_of_element_located(ChartsLocators.DATASET_SEARCH_INPUT),
+            message="Timed out waiting for the new chart wizard to open"
         )
         return self
 
@@ -123,3 +123,35 @@ class ChartsListPage(BasePage):
             EC.presence_of_element_located(ChartsLocators.CHART_SELECT_RESOURCE)
         )
         return Select(el).first_selected_option.text.strip()
+
+    # ── New chart wizard (Build step) ─────────────────────────────────────────────
+
+    def pick_first_dataset(self) -> str:
+        box = self.wait_with_timeout(10).until(EC.presence_of_element_located(ChartsLocators.DATASET_SEARCH_INPUT))
+        box.click()
+        btn = self.wait_with_timeout(15).until(EC.presence_of_element_located(ChartsLocators.DATASET_RESULT))
+        title = btn.text.strip().split("\n")[0]
+        self.driver.execute_script("arguments[0].click();", btn)
+        return title
+
+    def pick_first_resource(self) -> None:
+        combo = self.wait_with_timeout(15).until(EC.presence_of_element_located(ChartsLocators.RESOURCE_COMBOBOX))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", combo)
+        combo.click()
+        opt = self.wait_with_timeout(10).until(lambda d: next(
+            (o for o in d.find_elements(*ChartsLocators.RESOURCE_OPTION) if o.is_displayed()), None))
+        opt.click()
+
+    def choose_chart_type(self, name: str) -> None:
+        btn = self.wait_with_timeout(10).until(EC.presence_of_element_located(ChartsLocators.chart_type_card(name)))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", btn)
+
+    def click_continue(self) -> "ChartsListPage":
+        self.wait_for_autosave()
+        btn = self.wait_with_timeout(10).until(EC.presence_of_element_located(ChartsLocators.CONTINUE_BTN))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", btn)
+        return self
+
+    def is_chart_builder_shown(self, timeout: int = 15) -> bool:
+        """Choosing a type reveals the field mapping and Live Preview in place."""
+        return self.is_visible(ChartsLocators.LIVE_PREVIEW_HEADING, timeout=timeout)

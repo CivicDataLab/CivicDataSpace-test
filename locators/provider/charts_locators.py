@@ -25,3 +25,15 @@ class ChartsLocators:
     # Chart detail editor (opened after creating / clicking an existing chart)
     CHART_DETAIL_DATA_TAB   = (By.XPATH, "//button[normalize-space()='DATA']")
     CLOSE_CHART_EDITOR_BTN  = (By.XPATH, "(//a | //button)[contains(normalize-space(),'Close Editor')]")
+
+    # New chart wizard (Build > Review & Publish), 2026-11 redesign
+    DATASET_SEARCH_INPUT = (By.XPATH, "//input[starts-with(@placeholder,'Search datasets')]")
+    DATASET_RESULT = (By.XPATH, "(//button[contains(@class,'entity-row-picker')])[1]")
+    SELECTED_DATASET_TITLE = (By.XPATH, "//*[normalize-space()='Dataset *' or normalize-space()='Dataset']/following::p[1]")
+    RESOURCE_COMBOBOX = (By.XPATH, "//label[contains(normalize-space(),'File / Resource')]/following::button[@role='combobox'][1]")
+    RESOURCE_OPTION = (By.XPATH, "//*[@role='listbox']//*[@role='option']")
+    CONTINUE_BTN = (By.XPATH, "//button[normalize-space()='Continue']")
+    @staticmethod
+    def chart_type_card(name):
+        return (By.XPATH, f"//button[.//*[normalize-space()='{name}']]")
+    LIVE_PREVIEW_HEADING = (By.XPATH, "//*[normalize-space()='Live Preview']")
