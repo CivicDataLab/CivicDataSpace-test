@@ -176,24 +176,24 @@ def test_unknown_use_case_is_refused(graphql_client):
     assert _errors(_update(graphql_client, "999999999", title="[qa-matrix] ghost"))
 
 
-@pytest.mark.xfail(strict=True, reason="updateUseCase stores any platformUrl; URLField is never validated")
+@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: updateUseCase stores any platformUrl; URLField is never validated")
 def test_invalid_platform_url_is_refused(graphql_client, draft):
     assert _errors(_update(graphql_client, draft, platformUrl="not a url"))
 
 
-@pytest.mark.xfail(strict=True, reason="no check that completedOn is on or after startedOn")
+@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: no check that completedOn is on or after startedOn")
 def test_completed_before_started_is_refused(graphql_client, draft):
     assert _errors(_update(graphql_client, draft, startedOn="2025-06-01", completedOn="2024-01-01"))
 
 
-@pytest.mark.xfail(strict=True, reason="runningStatus defaults to INITIATED, so any update that omits it resets it")
+@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#291: runningStatus defaults to INITIATED, so any update that omits it resets it")
 def test_update_without_running_status_keeps_it(graphql_client, draft):
     _update(graphql_client, draft, runningStatus="ON_HOLD")
     _update(graphql_client, draft, summary="[qa-matrix] summary only")
     assert _read(graphql_client, draft)["runningStatus"] == "ON_HOLD"
 
 
-@pytest.mark.xfail(strict=True, reason="publishUseCase has no required-field check; an empty draft publishes")
+@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: publishUseCase has no required-field check; an empty draft publishes")
 def test_empty_draft_cannot_publish(graphql_client):
     uc_id = _new(graphql_client)
     try:

@@ -130,7 +130,7 @@ def test_tag_of_50_chars_is_accepted(graphql_client, draft):
     assert tag in [t["value"] for t in _read(graphql_client, draft)["tags"]]
 
 
-@pytest.mark.xfail(strict=True, reason="updateDataset saves title before a too-long tag fails (partial write)")
+@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#291: updateDataset saves title before a too-long tag fails (partial write)")
 def test_too_long_tag_does_not_half_save(graphql_client, draft):
     marker = f"[qa-matrix] partial {uuid.uuid4().hex[:6]}"
     body = _update(graphql_client, draft, title=marker, tags=["t" * 51], license="CC0_1_0")
@@ -140,7 +140,7 @@ def test_too_long_tag_does_not_half_save(graphql_client, draft):
 
 # ─── Defaults must not overwrite stored values ────────────────────────────────
 
-@pytest.mark.xfail(strict=True, reason="UpdateDatasetInput defaults license/accessType, so omitting them resets both")
+@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#291: UpdateDatasetInput defaults license/accessType, so omitting them resets both")
 def test_update_without_license_keeps_license(graphql_client, draft):
     _update(graphql_client, draft, license="CC0_1_0", accessType="RESTRICTED")
     _update(graphql_client, draft, description="[qa-matrix] description only")
