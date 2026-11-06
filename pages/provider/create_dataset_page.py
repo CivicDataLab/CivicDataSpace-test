@@ -63,8 +63,35 @@ class CreateDatasetPage(EditorWizardPage):
         self.wait_for_autosave()
         return self
 
+    def set_title(self, title: str):
+        self.clear_and_type((By.XPATH, L.TITLE_INPUT), title)
+        self.wait_for_autosave()
+        return self
+
+    def get_title_value(self) -> str:
+        return self.wait.until(EC.visibility_of_element_located((By.XPATH, L.TITLE_INPUT))).get_attribute("value")
+
+    def get_description_counter(self) -> str:
+        return self.find((By.XPATH, L.DESCRIPTION_COUNTER)).text.strip()
+
+    def get_access_types(self) -> dict:
+        """{value: {"checked", "disabled", "title"}} for each access type card."""
+        return {
+            r.get_attribute("value"): {
+                "checked": r.get_attribute("aria-checked") == "true",
+                "disabled": not r.is_enabled(),
+                "title": r.get_attribute("title") or "",
+            }
+            for r in self.finds((By.XPATH, L.ACCESS_TYPE_RADIOS))
+        }
+
+    def get_license_options(self) -> list[str]:
+        return self.get_select_options((By.XPATH, L.LICENSE_SELECT))
+
     def select_license(self, license_text: str):
-        return self.choose_select_option((By.XPATH, L.LICENSE_SELECT), license_text)
+        self.choose_select_option((By.XPATH, L.LICENSE_SELECT), license_text)
+        self.wait_for_autosave(trigger_blur=False)
+        return self
 
     # Prompt datasets only
     def select_task_type(self, value: str):
@@ -98,6 +125,50 @@ class CreateDatasetPage(EditorWizardPage):
         )
         self.wait_until_saved()
         return filename
+
+    def send_files(self, *paths: str):
+        """Hand files to the upload input without waiting for any card (rejected types)."""
+        self.wait.until(EC.presence_of_element_located((By.XPATH, L.DATAFILES_INPUT))).send_keys("\n".join(paths))
+        return self
+
+    def upload_datafiles(self, *paths: str):
+        """Upload several files in one pick and wait for every card."""
+        self.send_files(*paths)
+        for path in paths:
+            self.wait_with_timeout(60).until(
+                EC.presence_of_element_located((By.XPATH, L.UPLOADED_FILE_NAME.format(name=os.path.basename(path)))),
+                message=f"Timed out waiting for '{os.path.basename(path)}' to finish uploading",
+            )
+        self.wait_until_saved()
+        return self
+
+    def delete_file(self, name: str):
+        self.wait_until_saved()
+        self.click_until(
+            (By.XPATH, L.DELETE_FILE_BUTTON.format(name=name)),
+            EC.element_to_be_clickable((By.XPATH, L.CONFIRM_DELETE_FILE)),
+            message=f"Delete never asked to confirm removing '{name}'",
+        ).click()
+        self.wait_with_timeout(30).until(
+            EC.invisibility_of_element_located((By.XPATH, L.UPLOADED_FILE_NAME.format(name=name))),
+            message=f"'{name}' was still listed after deleting it",
+        )
+        self.wait_until_saved()
+        return self
+
+    def open_file_details(self, name: str):
+        self.click_until(
+            (By.XPATH, L.VIEW_FILE_BUTTON.format(name=name)),
+            EC.visibility_of_element_located((By.XPATH, L.PROMPT_FILE_SHEET)),
+            message=f"'View' never opened the details of '{name}'",
+        )
+        return self
+
+    def select_prompt_format(self, value: str):
+        return self.choose_select_option((By.XPATH, L.PROMPT_FORMAT_SELECT), value)
+
+    def get_prompt_format(self) -> str:
+        return self.find((By.XPATH, L.PROMPT_FORMAT_SELECT)).text.strip()
 
     def upload_datafile(self, path: str):
         self._upload(path)
@@ -172,4 +243,5 @@ class CreateDatasetPage(EditorWizardPage):
         return self.find((By.XPATH, L.LICENSE_SELECT)).text.strip()
 
     def get_uploaded_resource_names(self) -> list[str]:
-        return [el.text.strip() for el in self.finds((By.XPATH, L.UPLOADED_FILE_NAMES))]
+        self.wait.until(EC.presence_of_element_located((By.XPATH, L.DATAFILES_INPUT)))
+        return [el.text.strip() for el in self.driver.find_elements(By.XPATH, L.UPLOADED_FILE_NAMES)]
