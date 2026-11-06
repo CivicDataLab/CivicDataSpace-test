@@ -155,14 +155,15 @@ class BasePage:
         TimeoutException here made a missing sector ("Budgets", dropped by the
         dev refresh) read as flakiness across five tests and every rerun.
         """
-        xpath = f"//div[@role='option' and normalize-space(.)='{option_text}']"
+        # Other widgets (e.g. the Bhashini language list, another combobox's
+        # closed list) keep role=option nodes in the DOM, so look only in this
+        # input's listbox: a hidden same-named option elsewhere never clicks.
+        listbox = combo.get_attribute("aria-controls")
+        scope = f"//*[@id='{listbox}']" if listbox else ""
+        xpath = f"{scope}//div[@role='option' and normalize-space(.)='{option_text}']"
         try:
             return self.wait_with_timeout(timeout).until(EC.element_to_be_clickable((By.XPATH, xpath)))
         except TimeoutException:
-            # Other widgets (e.g. the Bhashini language list) keep role=option
-            # nodes in the DOM, so read only this input's listbox.
-            listbox = combo.get_attribute("aria-controls")
-            scope = f"//*[@id='{listbox}']" if listbox else ""
             listed = [o.get_attribute("textContent").strip()
                       for o in self.driver.find_elements(By.XPATH, f"{scope}//*[@role='option']")]
             raise TimeoutException(
