@@ -41,6 +41,8 @@ class EditorWizardLocators:
 
     PICKER_EMPTY = (By.XPATH, "//*[contains(@class,'entity-row-picker') and contains(@class,'__empty')]")
     REMOVE_CONNECTED = "//button[@aria-label='Remove {title}']"
+    TEXT = "//main//*[normalize-space()='{text}']"
+    MAIN = (By.TAG_NAME, "main")
 
     CONTINUE_BUTTON = (By.XPATH, "//button[normalize-space()='Continue']")
     PREVIOUS_BUTTON = (By.XPATH, "//button[normalize-space()='Previous']")
