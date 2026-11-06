@@ -25,6 +25,9 @@ class CreateDatasetLocators:
     DATE_CREATED_INPUT = W.FIELD_INPUT.format(label="Date of Creation of Dataset")
     SOURCE_INPUT = "//input[@id=//label[normalize-space()='Source Website']/@for]"
     LICENSE_SELECT = W.SELECT_BY_LABEL.format(label="License")
+    DESCRIPTION_COUNTER = "//main//*[starts-with(normalize-space(),'Character limit:')]"
+    # Access type cards: value PUBLIC / RESTRICTED.
+    ACCESS_TYPE_RADIOS = "//main//button[@role='radio']"
 
     # Read by tests/test_pill_locators.py to keep chip getters field-scoped.
     SECTOR_CHIPS = W.FIELD_CHIPS.format(label="Sector")
@@ -37,8 +40,11 @@ class CreateDatasetLocators:
     UPLOADED_FILE_NAMES = "//main//article//p[@id=ancestor::article[1]/@aria-labelledby]"
     UPLOADED_FILE_NAME = UPLOADED_FILE_NAMES + "[normalize-space()='{name}']"
     VIEW_FILE_BUTTON = "//main//article[.//p[normalize-space()='{name}']]//button[normalize-space()='View']"
+    DELETE_FILE_BUTTON = "//main//article[.//p[normalize-space()='{name}']]//button[normalize-space()='Delete']"
+    CONFIRM_DELETE_FILE = "//*[@role='alertdialog']//button[normalize-space()='Delete File']"
     PROMPT_FILE_SHEET = "//*[@role='dialog'][.//h2[normalize-space()='Prompt File Details']]"
     SHEET_CLOSE_BUTTON = PROMPT_FILE_SHEET + "//button[normalize-space()='Close']"
+    PROMPT_FORMAT_SELECT = PROMPT_FILE_SHEET + W.SELECT_BY_LABEL.format(label="Prompt Format")
 
     # ---- Review & Publish ----
     PUBLISH_DATASET_BUTTON = "//main//button[normalize-space()='Publish Dataset']"
