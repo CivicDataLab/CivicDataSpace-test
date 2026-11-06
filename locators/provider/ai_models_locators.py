@@ -20,6 +20,16 @@ class AiModelsLocators:
     PROVIDER_SELECT = (By.XPATH, "//*[@role='dialog']//button[@role='combobox'][normalize-space()='Select provider...']")
     PROVIDER_MODEL_ID_INPUT = (By.XPATH, "//input[@name='providerModelId']")
     API_ENDPOINT_INPUT = (By.XPATH, "//input[@name='apiEndpointUrl']")
+    VERSION_NAME_INPUT = (By.XPATH, "//input[@name='sheetVersionName']")
+    LIFECYCLE_SELECT = (By.XPATH, "//input[@name='sheetVersionName']/following::button[@role='combobox'][1]")
+    PROVIDER_TYPE_SELECT = (By.XPATH, "//input[@name='accessName']/following::button[@role='combobox'][1]")
+    AUTH_TYPE_SELECT = (By.XPATH, "//input[@name='apiEndpointUrl']/following::button[@role='combobox'][1]")
+    VISIBLE_OPTIONS = (By.XPATH, "//*[@role='listbox']//*[@role='option']")
+    SHEET_FIELDS = (By.XPATH, "//*[@role='dialog']//*[self::input or self::textarea][@name]")
+    SHEET_LABELS = (By.XPATH, "//*[@role='dialog']//label")
+    SHEET_CANCEL_BTN = (By.XPATH, "(//*[@role='dialog']//button[normalize-space()='Cancel'])[last()]")
+    VERSION_ROWS = (By.XPATH, "//main//*[starts-with(normalize-space(.),'Version ') and not(.//*[starts-with(normalize-space(.),'Version ')])]")
+    EDIT_VERSION_TITLE = (By.XPATH, "//*[@role='dialog']//h2[normalize-space()='Edit Version']")
     SAVE_VERSION_BTN = (By.XPATH, "//button[normalize-space()='Save Version']")
     SAVED_VERSION = "//main//*[normalize-space()='Version {name}']"
 
