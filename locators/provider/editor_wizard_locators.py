@@ -32,6 +32,17 @@ class EditorWizardLocators:
     PICKER_RESULT = (By.XPATH, "//button[contains(@class,'entity-row-picker') and contains(@class,'menuItem')]")
     CONNECTED_TITLE = "//section[.//h3[starts-with(normalize-space(),'{heading}')]]//*[normalize-space(text())='{title}']"
 
+    # A chip's x button, e.g. the "Finance" tag.
+    CHIP_REMOVE = FIELD_INPUT + "/preceding-sibling::span[./span[@title='{value}']]/button"
+
+    # Messages a blocked Continue/stepper click shows under each field.
+    INLINE_ERRORS = (By.XPATH, "//main//*[contains(@class,'InlineMessage-module_InlineError')]")
+    STEP = "//main//ol/li//button[starts-with(normalize-space(),'{label}')]"
+
+    PICKER_EMPTY = (By.XPATH, "//*[contains(@class,'entity-row-picker') and contains(@class,'__empty')]")
+    REMOVE_CONNECTED = "//button[@aria-label='Remove {title}']"
+
     CONTINUE_BUTTON = (By.XPATH, "//button[normalize-space()='Continue']")
+    PREVIOUS_BUTTON = (By.XPATH, "//button[normalize-space()='Previous']")
     PUBLISH_BUTTON = "//button[normalize-space()='Publish {entity}']"
     PUBLISHED_ROW = "//table//tbody/tr[.//*[contains(normalize-space(),'{name}')]]//*[normalize-space()='Published']"
