@@ -251,7 +251,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    env:
+    env: &api_env
+      MATRIX_FILES: >-
+        tests/api/functional/test_api_func_002_dataset_matrix.py
+        tests/api/functional/test_api_func_003_usecase_matrix.py
+        tests/api/functional/test_api_func_004_collaborative_matrix.py
+        tests/api/functional/test_api_func_005_aimodel_matrix.py
+        tests/api/functional/test_api_func_006_resource_upload_matrix.py
+        tests/api/functional/test_api_func_007_prompt_dataset_matrix.py
+        tests/api/functional/test_api_func_008_consumer_visibility.py
       HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
       TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
       TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
@@ -303,7 +311,8 @@ jobs:
       EXPECTED_ISSUER: ${{ vars.EXPECTED_ISSUER || 'https://auth.civicdatalab.in/realms/DataSpace' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - &api_checkout
+        uses: actions/checkout@v4
         with:
           repository: CivicDataLab/CivicDataSpace-test
           # Check out the code under test, which is not always `CI`.
@@ -333,12 +342,14 @@ jobs:
                 && (github.event.pull_request.head.sha || github.sha)
                 || 'CI' }}
 
-      - name: Set up Python
+      - &api_python
+        name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Cache pip
+      - &api_cache
+        name: Cache pip
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
@@ -346,7 +357,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Install dependencies
+      - &api_install
+        name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
@@ -355,7 +367,8 @@ jobs:
       # point of this suite is the authenticated paths; if the Keycloak config
       # is absent they skip, the summary still reads 0 failed, and nobody
       # notices. That is how a stale KEYCLOAK_URL survived the migration.
-      - name: Preflight Keycloak configuration
+      - &api_preflight
+        name: Preflight Keycloak configuration
         run: |
           echo "HOME_URL_DEV set? $([ -n "$HOME_URL_DEV" ] && echo yes || echo no)"
           echo "TEST_EMAIL_1 set? $([ -n "$TEST_EMAIL_1" ] && echo yes || echo no)"
@@ -409,7 +422,12 @@ jobs:
           # gw0/gw1/gw2 -> TEST_EMAIL_1/2/3). Don't raise this without adding a
           # 4th account first -- an extra worker with no matching credentials
           # falls back to TEST_EMAIL_1 silently, not an error.
-          pytest "${{ steps.markers.outputs.path }}" -m "${{ steps.markers.outputs.value }}" -v --json-report -n 3
+          # The field-combination files run in api-matrix instead: together they
+          # exceed dev's 1000 POST/hour per-IP limit, and each job gets its own
+          # runner IP. Word splitting on $(...) is intended.
+          # shellcheck disable=SC2046
+          pytest "${{ steps.markers.outputs.path }}" -m "${{ steps.markers.outputs.value }}" -v --json-report -n 3 \
+            $(for f in $MATRIX_FILES; do echo "--ignore=$f"; done)
 
       - name: Enforce minimum passed count
         # Now that API_BASE_URL always has a value, this runs on every event,
@@ -456,6 +474,89 @@ jobs:
         shell: bash
         run: |
           echo "### API Smoke Summary" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f report.json ]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          s = json.load(open("report.json")).get("summary", {})
+          for k in ("total", "passed", "failed", "skipped", "xfailed", "xpassed", "error"):
+              if k in s:
+                  print(f"- **{k}**: {s[k]}")
+          PY
+          else
+            echo "- report.json not found" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # Field-combination tests (tests/api/functional/*_matrix, consumer visibility).
+  # Split out of api-smoke and in two halves because every GraphQL call is a
+  # POST and dev allows 1000 POSTs/hour per client IP; one runner running all
+  # of them gets refused near the end. Each matrix leg is a separate runner,
+  # so a separate IP and a fresh allowance. Kept out of api-smoke so the
+  # required check "Full Suite (dev) / api-smoke" keeps its name.
+  api-matrix:
+    needs: wait-deploy
+    if: ${{ !cancelled() && !inputs.only_provider && inputs.suite != 'smoke' && inputs.suite != 'readonly' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        part:
+          - name: datasets-usecases-collaboratives
+            files: >-
+              tests/api/functional/test_api_func_002_dataset_matrix.py
+              tests/api/functional/test_api_func_003_usecase_matrix.py
+              tests/api/functional/test_api_func_004_collaborative_matrix.py
+          - name: aimodels-uploads-prompts-visibility
+            files: >-
+              tests/api/functional/test_api_func_005_aimodel_matrix.py
+              tests/api/functional/test_api_func_006_resource_upload_matrix.py
+              tests/api/functional/test_api_func_007_prompt_dataset_matrix.py
+              tests/api/functional/test_api_func_008_consumer_visibility.py
+    name: api-matrix (${{ matrix.part.name }})
+    env: *api_env
+
+    steps:
+      - *api_checkout
+      - *api_python
+      - *api_cache
+      - *api_install
+      - *api_preflight
+
+      - name: Decide whether to run
+        id: gate
+        # Same selection as api-smoke: only suites that include functional
+        # tests. A push/PR in this repo with no suite runs smoke only.
+        env:
+          SUITE: ${{ inputs.suite }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          run=false
+          case "$SUITE" in
+            functional|full) run=true ;;
+            "") [[ "$EVENT" == "workflow_dispatch" || "$EVENT" == "workflow_call" ]] && run=true ;;
+          esac
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
+      - name: Run field-combination tests
+        if: ${{ steps.gate.outputs.run == 'true' }}
+        run: pytest ${{ matrix.part.files }} -m functional -v --json-report -n 3
+
+      - name: Upload reports
+        if: ${{ always() && steps.gate.outputs.run == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-matrix-report-${{ matrix.part.name }}
+          path: |
+            report.json
+            TEST_REPORT.md
+            TEST_REPORT.pdf
+          if-no-files-found: ignore
+
+      - name: Summary
+        if: ${{ always() && steps.gate.outputs.run == 'true' }}
+        shell: bash
+        run: |
+          echo "### API Matrix Summary (${{ matrix.part.name }})" >> "$GITHUB_STEP_SUMMARY"
           if [ -f report.json ]; then
             python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
