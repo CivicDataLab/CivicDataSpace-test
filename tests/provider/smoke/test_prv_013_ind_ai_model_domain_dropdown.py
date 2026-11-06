@@ -66,11 +66,9 @@ def test_prv_013_ind_ai_model_domain_dropdown(driver, base_url, test_credentials
         "test_prv_013: click_add_new_ai_model() did not return CreateAiModelPage"
     )
 
-    create_page.go_to_metadata_tab()
-
-    # Step 3-4: Domain dropdown must have real PromptDomain options, not just
-    # the "Click to select from dropdown" placeholder.
-    domain_values = create_page.get_domain_option_values()
+    create_page.add_version_with_access("1.0", "https://api.example.com/v1/completions")
+    create_page.click_continue()
+    domain_values = create_page.get_domain_options()
     assert len(domain_values) >= MIN_REAL_DOMAIN_OPTIONS, (
         f"Step 3-4: Domain dropdown has only {len(domain_values)} real option(s) "
         f"(need >= {MIN_REAL_DOMAIN_OPTIONS}): {domain_values}. "
