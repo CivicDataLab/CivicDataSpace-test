@@ -52,16 +52,16 @@ def test_prv_014_prompt_dropdowns_list_every_backend_value(
     create_ds = my_dash.click_add_new_prompt_dataset()
     assert isinstance(create_ds, CreateDatasetPage), "Could not start a Prompt Dataset"
 
+    # The wizard keeps Metadata locked until a prompt file is added, so upload first.
+    create_ds.upload_prompt_file_and_open(sample_csv_path)
+    _assert_same_options(
+        "Prompt Format", "PromptFormat",
+        create_ds.get_prompt_field_options("Prompt Format"), backend_enum_labels("PromptFormat"),
+    )
+
     create_ds.go_to_metadata_tab()
     for label, enum_name in METADATA_DROPDOWNS.items():
         _assert_same_options(
             label, enum_name,
             create_ds.get_prompt_field_options(label), backend_enum_labels(enum_name),
         )
-
-    create_ds.go_to_prompt_files_tab()
-    create_ds.upload_prompt_file_and_open(sample_csv_path)
-    _assert_same_options(
-        "Prompt Format", "PromptFormat",
-        create_ds.get_prompt_field_options("Prompt Format"), backend_enum_labels("PromptFormat"),
-    )
