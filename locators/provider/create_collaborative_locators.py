@@ -11,6 +11,8 @@ class CreateCollaborativeLocators:
 
     COLLABORATIVE_NAME_INPUT = (By.XPATH, "//input[@name='title']")
     DESCRIPTION_INPUT = (By.XPATH, "//div[contains(@class, 'ql-editor') and @contenteditable='true']")
+    SLUG_INPUT = (By.XPATH, "//input[@name='slug']")
+    PUBLIC_ADDRESS = (By.XPATH, "//main//*[starts-with(normalize-space(),'Public address:')]")
     PLATFORM_URL_INPUT = (By.XPATH, "//input[@name='platformUrl']")
 
     # Read by tests/test_pill_locators.py to keep chip getters field-scoped.
