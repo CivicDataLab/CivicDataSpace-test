@@ -14,10 +14,16 @@ METADATA_DROPDOWNS = {
 }
 
 
+def _norm(label):
+    # The UI shows "Few-shot" where the backend enum name is "FEW SHOT".
+    return label.lower().replace("-", " ")
+
+
 def _assert_same_options(label, enum_name, actual, expected):
-    missing = sorted(set(expected) - set(actual))
-    extra = sorted(set(actual) - set(expected))
-    assert sorted(actual) == expected, (
+    actual_n, expected_n = sorted(map(_norm, actual)), sorted(map(_norm, expected))
+    missing = sorted(set(expected_n) - set(actual_n))
+    extra = sorted(set(actual_n) - set(expected_n))
+    assert actual_n == expected_n, (
         f"'{label}' options differ from backend enum {enum_name}: "
         f"missing {missing}, unexpected {extra}"
     )
