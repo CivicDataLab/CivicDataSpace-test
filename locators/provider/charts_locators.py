@@ -36,4 +36,6 @@ class ChartsLocators:
     @staticmethod
     def chart_type_card(name):
         return (By.XPATH, f"//button[.//*[normalize-space()='{name}']]")
+    CHANGE_DATASET_BTN = (By.XPATH, "//main//button[normalize-space()='Change']")
+    MAIN = (By.TAG_NAME, "main")
     LIVE_PREVIEW_HEADING = (By.XPATH, "//*[normalize-space()='Live Preview']")
