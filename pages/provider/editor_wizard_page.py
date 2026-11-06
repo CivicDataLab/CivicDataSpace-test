@@ -24,8 +24,9 @@ class EditorWizardPage(BasePage):
         return self
 
     def selected_chips(self, label: str) -> list[str]:
+        self.wait.until(EC.presence_of_element_located((By.XPATH, W.FIELD_INPUT.format(label=label))))
         return [el.get_attribute("title")
-                for el in self.finds((By.XPATH, W.FIELD_CHIPS.format(label=label)))]
+                for el in self.driver.find_elements(By.XPATH, W.FIELD_CHIPS.format(label=label))]
 
     def select_sectors(self, items: list[str]):
         return self.select_field_options("Sectors", items)
@@ -50,6 +51,7 @@ class EditorWizardPage(BasePage):
             EC.element_to_be_clickable(option), message=f"No geography option for {name!r}"
         ).click()
         ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()  # the combo re-renders on select
+        self.wait_for_autosave(trigger_blur=False)
         return self
 
     def get_selected_sectors(self) -> list[str]:
@@ -136,6 +138,108 @@ class EditorWizardPage(BasePage):
 
     def connect_first_dataset(self) -> str:
         return self.connect_first("Search published datasets...", "Datasets")
+
+    def remove_chip(self, label: str, value: str):
+        self.wait_until_saved()
+        btn = self.find((By.XPATH, W.CHIP_REMOVE.format(label=label, value=value)))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
+        btn.click()
+        self.wait_with_timeout(10).until(
+            lambda d: value not in self.selected_chips(label), message=f"'{value}' chip never went away"
+        )
+        self.wait_for_autosave(trigger_blur=False)
+        return self
+
+    def search_picker(self, placeholder: str, text: str):
+        search = self.wait.until(
+            EC.element_to_be_clickable((By.XPATH, W.PICKER_SEARCH.format(placeholder=placeholder)))
+        )
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", search)
+        search.click()
+        search.send_keys(text)
+        return self
+
+    def get_picker_empty_text(self) -> str:
+        return self.wait_with_timeout(30).until(
+            EC.visibility_of_element_located(W.PICKER_EMPTY), message="The picker never showed an empty state"
+        ).text.strip()
+
+    def remove_connected(self, title: str):
+        self.wait_until_saved()
+        btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, W.REMOVE_CONNECTED.format(title=title))))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
+        btn.click()
+        self.wait_with_timeout(20).until(
+            EC.invisibility_of_element_located((By.XPATH, W.REMOVE_CONNECTED.format(title=title))),
+            message=f"'{title}' stayed connected",
+        )
+        self.wait_until_saved()
+        return self
+
+    def is_connected(self, heading: str, title: str, timeout: int = 10) -> bool:
+        """Whether `title` shows under `heading`; connected cards load after the form."""
+        try:
+            self.wait_with_timeout(timeout).until(EC.presence_of_element_located(
+                (By.XPATH, W.CONNECTED_TITLE.format(heading=heading, title=title))))
+            return True
+        except TimeoutException:
+            return False
+
+    # ─── Validation state ───────────────────────────────────────────────────────
+
+    def get_inline_errors(self) -> list[str]:
+        return list(dict.fromkeys(e.text.strip() for e in self.finds(W.INLINE_ERRORS) if e.text.strip()))
+
+    def get_step_text(self, label: str) -> str:
+        """The stepper button's text, e.g. 'Metadata Name, ... Incomplete'."""
+        return " ".join(self.find((By.XPATH, W.STEP.format(label=label))).text.split())
+
+    def get_page_text(self) -> str:
+        return self.find((By.TAG_NAME, "main")).text
+
+    def press_continue(self):
+        """Click Continue without expecting it to move on; returns once the click settled."""
+        self.wait_until_saved()
+        btn = self.wait.until(EC.element_to_be_clickable(W.CONTINUE_BUTTON))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
+        before = self.driver.current_url
+        btn.click()
+        self.wait_with_timeout(10).until(
+            lambda d: self.get_inline_errors() or d.current_url != before,
+            message="Continue neither moved on nor showed a message",
+        )
+        return self
+
+    def press_step(self, label: str):
+        """Click a stepper button without expecting it to open."""
+        self.wait_until_saved()
+        btn = self.wait.until(EC.element_to_be_clickable((By.XPATH, W.STEP.format(label=label))))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
+        btn.click()
+        return self
+
+    def click_previous(self, to_step: str):
+        self.wait_until_saved()
+        self.click_until(
+            W.PREVIOUS_BUTTON,
+            lambda d: f"/{to_step}" in d.current_url,
+            message=f"Previous never reached the '{to_step}' step",
+        )
+        return self
+
+    def open_step_url(self, segment: str):
+        """Open this record's `segment` step by URL (reload)."""
+        base = self.driver.current_url.rsplit("/", 1)[0]
+        self.driver.get(f"{base}/{segment}")
+        self.wait.until(EC.presence_of_element_located((By.XPATH, W.STEP.format(label=""))))
+        self.wait_until_saved()
+        return self
+
+    def is_publish_enabled(self) -> bool:
+        btn = self.wait.until(
+            EC.presence_of_element_located((By.XPATH, W.PUBLISH_BUTTON.format(entity=self.ENTITY)))
+        )
+        return btn.get_attribute("aria-disabled") != "true" and btn.is_enabled()
 
     # ─── Navigation and publishing ──────────────────────────────────────────────
 
