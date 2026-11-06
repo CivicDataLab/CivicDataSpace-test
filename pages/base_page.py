@@ -407,7 +407,7 @@ class BasePage:
                 "var a=document.activeElement;"
                 "return a ? a.tagName+'.'+(a.className||'') : 'none';"
             )
-            fld.send_keys(Keys.CONTROL + "a")
+            fld.send_keys((Keys.COMMAND if platform.system() == "Darwin" else Keys.CONTROL) + "a")
             fld.send_keys(Keys.DELETE)
             fld.send_keys(text)
             trace.append(
