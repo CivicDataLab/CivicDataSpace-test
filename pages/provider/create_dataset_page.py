@@ -128,18 +128,14 @@ class CreateDatasetPage(BasePage):
         return self
 
     def select_license(self, license_text: str):
-        """
-        Picks the desired license from the native <select>.
-        """
-        # 1) wait for the <select> to be present
-        sel_elem = self.wait.until(EC.presence_of_element_located(
-            (By.XPATH, CreateDatasetLocators.LICENSE_SELECT)
+        """Open the License combobox and pick the option that starts with license_text."""
+        box = self.wait.until(EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.LICENSE_COMBOBOX)))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", box)
+        box.click()
+        opt = self.wait.until(EC.element_to_be_clickable(
+            (By.XPATH, CreateDatasetLocators.LICENSE_OPTION.format(value=license_text))
         ))
-
-        # 2) wrap it in the Select helper and choose by visible text
-        sel = Select(sel_elem)
-        sel.select_by_visible_text(license_text)
-
+        opt.click()
         return self
 
     # ---- Prompt Dataset Metadata fields ----
@@ -219,19 +215,8 @@ class CreateDatasetPage(BasePage):
         return self
 
     def _upload_and_return_to_list(self, path: str, go_to_tab) -> None:
-        """Upload a file, wait until it has really landed, then return to the file list.
-
-        When an upload finishes the app opens that file's edit view. Clicking back
-        as soon as the back arrow appears could land mid-upload; the completed
-        upload then reopened the edit view, and the resource-name getter fell back
-        to its schema table and returned column names (test_prv_002b).
-        """
+        """Upload a file and wait until its card is in the uploaded-files list."""
         filename = self._upload(path)
-        self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable((By.XPATH, CreateDatasetLocators.BACK_BUTTON))
-        ).click()
-
-        go_to_tab()
         self.wait_with_timeout(30).until(
             lambda d: any(
                 el.text.strip() == filename
@@ -297,11 +282,10 @@ class CreateDatasetPage(BasePage):
         return inp.get_attribute("value").strip()
 
     def get_selected_license_text(self) -> str:
-        # If LICENSE_CONTAINER is the dropdown, maybe the current selection is inside a <span> there.
-        elt = self.wait.until(
-            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.LICENSE_SELECTED_TEXT))
+        box = self.wait.until(
+            EC.visibility_of_element_located((By.XPATH, CreateDatasetLocators.LICENSE_COMBOBOX))
         )
-        return elt.text.strip()
+        return box.text.strip()
 
     def get_uploaded_resource_names(self) -> list[str]:
         """

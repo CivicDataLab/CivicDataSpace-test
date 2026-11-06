@@ -30,7 +30,8 @@ class CreateDatasetLocators:
     SOURCE_INPUT        = "//label[normalize-space()='Source Website']/following::input[1]"
     
     # the <select> for license
-    LICENSE_SELECT = "//select[@name='license']"
+    LICENSE_COMBOBOX = "//label[normalize-space()='License']/following::button[@role='combobox'][1]"
+    LICENSE_OPTION = "//*[@role='option' and starts-with(normalize-space(.), '{value}')]"
 
     # ---- Data Files tab ----
     # grab the file‐picker input anywhere
@@ -85,7 +86,7 @@ class CreateDatasetLocators:
     DATAFILES_TABLE = "//div[contains(@class,'opub-DataTable')]//table"
 
     # all of the “Name of Resource” cells in its first column
-    RESOURCE_NAME_CELLS = DATAFILES_TABLE + "/tbody/tr/td[1]//div"
+    RESOURCE_NAME_CELLS = "//article[contains(@class,'opub-FileCard')]//div[contains(@class,'FileCard-module_NameWrap')]"
 
     # ─── Publish Tab ───────────────────────────────────────────────────────────
 
