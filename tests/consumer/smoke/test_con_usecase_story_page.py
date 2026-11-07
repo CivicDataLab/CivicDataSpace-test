@@ -31,7 +31,7 @@ USECASES_QUERY = """
 { useCases(pagination: {limit: 500}) {
     id title status summary isIndividualUsecase
     tags { value } sdgs { code name } sectors { name } geographies { name }
-    datasets { id title }
+    datasets { id urlSlug title }
     contributors { id fullName }
     supportingOrganizations { id slug name }
     partnerOrganizations { id slug name }
@@ -121,7 +121,7 @@ def test_contributors_list_matches_the_use_case(uc_page, published):
 def test_dataset_cards_match_the_use_cases_datasets(uc_page, published):
     uc = _pick(published, "datasets", lambda u: any(d["title"].strip() for d in u["datasets"]))
     uc_page.open_detail(BASE_URL, uc["id"])
-    expected = {f"/datasets/{d['id']}": d["title"].strip() for d in uc["datasets"] if d["title"].strip()}
+    expected = {f"/datasets/{d['urlSlug'] or d['id']}": d["title"].strip() for d in uc["datasets"] if d["title"].strip()}
     cards = uc_page.dataset_cards()
     # One card per dataset; the API does not promise an order, so match by link.
     assert sorted(urlsplit(href).path for href, _ in cards) == sorted(expected), f"use case {uc['id']}: card links {cards}"
@@ -132,7 +132,7 @@ def test_dataset_cards_match_the_use_cases_datasets(uc_page, published):
 
 def test_dataset_card_opens_that_dataset(driver, uc_page, published):
     uc = _pick(published, "datasets", lambda u: any(d["title"].strip() for d in u["datasets"]))
-    titles = {f"/datasets/{d['id']}": d["title"].strip() for d in uc["datasets"] if d["title"].strip()}
+    titles = {f"/datasets/{d['urlSlug'] or d['id']}": d["title"].strip() for d in uc["datasets"] if d["title"].strip()}
     uc_page.open_detail(BASE_URL, uc["id"])
     opened = uc_page.open_dataset_card(0)
     path = urlsplit(opened).path
