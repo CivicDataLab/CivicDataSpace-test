@@ -243,19 +243,32 @@ ROW_BY_TABLE = {
 
 
 def _rows(client, table, org=None, include_public=False, ids=None):
-    """One page of `table` as `client` sees it; `ids` narrows to those rows."""
-    args = "limit: 100"
-    if include_public:
-        args += ", includePublic: true"
-    if ids is not None:
-        args += ', filters: [{field: "id", condition: "in", value: "%s"}]' % ",".join(map(str, ids))
-    body = pub.gql(
-        client, "{ %s(%s) { totalItemsCount data { %s } } }" % (table, args, ROW_BY_TABLE[table]), org=org,
-    )
-    assert "errors" not in body, f"{table}: {body['errors']}"
-    data = body["data"][table]
-    assert data["totalItemsCount"] <= 100, f"{table}: more than one page ({data['totalItemsCount']}), narrow the query"
-    return data["data"]
+    """Every row of `table` as `client` sees it; `ids` narrows to those rows.
+
+    Paginates with `limit`/`offset` (same args `datasetsTable` uses) instead
+    of asserting everything fits in one page -- dev's row counts are live
+    data this suite doesn't own, and account 2's aiModelsTable count grew
+    past a single 100-row page between runs (138 on 2026-11-07), which used
+    to fail this helper outright rather than just reading another page.
+    """
+    page_size = 100
+    rows = []
+    offset = 0
+    while True:
+        args = f"limit: {page_size}, offset: {offset}"
+        if include_public:
+            args += ", includePublic: true"
+        if ids is not None:
+            args += ', filters: [{field: "id", condition: "in", value: "%s"}]' % ",".join(map(str, ids))
+        body = pub.gql(
+            client, "{ %s(%s) { totalItemsCount data { %s } } }" % (table, args, ROW_BY_TABLE[table]), org=org,
+        )
+        assert "errors" not in body, f"{table}: {body['errors']}"
+        data = body["data"][table]
+        rows.extend(data["data"])
+        if not data["data"] or len(rows) >= data["totalItemsCount"]:
+            return rows
+        offset += page_size
 
 
 def _is_public(table, row):
