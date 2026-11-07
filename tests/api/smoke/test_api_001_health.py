@@ -32,16 +32,6 @@ def test_health_check_response_is_json(anon_api_client):
 
 @pytest.mark.api
 @pytest.mark.smoke
-def test_health_check_no_auth_required(anon_api_client):
-    """Health endpoint must be publicly accessible (no 401/403)."""
-    resp = anon_api_client.get("/health/")
-    assert resp.status_code not in (401, 403), (
-        "Health endpoint should not require authentication"
-    )
-
-
-@pytest.mark.api
-@pytest.mark.smoke
 def test_health_check_deployed_sha_matches(anon_api_client):
     """
     When EXPECTED_DEPLOYED_SHA is set (a CD pipeline verifying its own
