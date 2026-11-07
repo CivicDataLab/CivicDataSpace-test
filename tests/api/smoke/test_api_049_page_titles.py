@@ -4,9 +4,9 @@
 # name the record they show, so two records of one kind have different titles.
 # The titles are server-rendered, so plain HTTP is enough - no browser.
 #
-# Dataset and use case detail pages already do this. Collaborative and AI model
+# Dataset, use case and AI model detail pages already do this. Collaborative
 # detail pages use one generic title for every record (consumer issue C-016):
-# those two cases assert the correct behaviour and are strict xfail, so CI stays
+# that case asserts the correct behaviour and is strict xfail, so CI stays
 # green while the bug exists and goes red (XPASS) once it is fixed, at which
 # point the marker has to come off.
 #
@@ -68,7 +68,7 @@ def _generic(issue):
         "dataset",
         "usecase",
         pytest.param("collaborative", marks=_generic("C-016")),
-        pytest.param("aimodel", marks=_generic("C-016")),
+        "aimodel",
     ],
 )
 def test_detail_titles_differ_between_records(dev_frontend_client, detail_paths, entity):
