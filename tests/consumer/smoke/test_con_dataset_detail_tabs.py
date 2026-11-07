@@ -222,7 +222,7 @@ def test_connected_tab_lists_what_uses_the_dataset(page, catalogue, case):
     assert page.connected_group_titles() == expected_groups, f"dataset {ds['id']}: connected groups differ from the API's links"
     hrefs = page.wait_for_connected_cards(len(use_cases) + len(collaboratives))
     for uc in use_cases:
-        assert any(h.endswith(f"/usecases/{uc['id']}") for h in hrefs), f"no card links to use case {uc['id']} ({uc['title']!r}): {hrefs}"
+        assert any(h.endswith(f"/usecases/{uc['urlSlug'] or uc['id']}") for h in hrefs), f"no card links to use case {uc['id']} ({uc['title']!r}): {hrefs}"
 
     page.click_filter("Use cases")
     assert page.hash() == "#dataset-connected-usecases", f"filter hash: {page.hash()!r}"

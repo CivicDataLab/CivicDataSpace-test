@@ -16,8 +16,8 @@ CATALOGUE_QUERY = """
     geographies { name }
     resources { id name type url noOfEntries fileDetails { file { name } } }
   }
-  publishedUseCases { id title datasets { id } }
-  publishedCollaboratives { id title datasets { id } }
+  publishedUseCases { id urlSlug title datasets { id } }
+  publishedCollaboratives { id urlSlug title datasets { id } }
 }
 """
 
@@ -41,5 +41,5 @@ def load_catalogue(api):
     for kind, rows in (("usecases", data["publishedUseCases"]), ("collaboratives", data["publishedCollaboratives"])):
         for row in rows:
             for d in row["datasets"]:
-                links[kind].setdefault(d["id"], []).append({"id": row["id"], "title": row["title"]})
+                links[kind].setdefault(d["id"], []).append({"id": row["id"], "urlSlug": row["urlSlug"], "title": row["title"]})
     return data["datasets"], links
