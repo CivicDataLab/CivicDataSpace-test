@@ -33,7 +33,7 @@ def pages_under_test():
     api = os.getenv("API_BASE_URL")
     if not api:
         pytest.skip("API_BASE_URL not set: cannot pick a dataset and a use case")
-    data = gql(api, "{ datasets(includePublic: true, pagination: {limit: 1}) { id title } useCases(pagination: {limit: 500}) { id title status } }")
+    data = gql(api, "{ datasets(includePublic: true, pagination: {limit: 1}) { id urlSlug title } useCases(pagination: {limit: 500}) { id urlSlug title status } }")
     if not data["datasets"]:
         pytest.skip("no published dataset")
     use_case = next((u for u in data["useCases"] if u["status"] == "PUBLISHED" and u["title"].strip()), None)
@@ -41,8 +41,8 @@ def pages_under_test():
         pytest.skip("no published use case")
     ds = data["datasets"][0]
     return {
-        "dataset": (f"/datasets/{ds['id']}", ds["title"].strip()),
-        "usecase": (f"/usecases/{use_case['id']}", use_case["title"].strip()),
+        "dataset": (f"/datasets/{ds['urlSlug'] or ds['id']}", ds["title"].strip()),
+        "usecase": (f"/usecases/{use_case['urlSlug'] or use_case['id']}", use_case["title"].strip()),
     }
 
 
