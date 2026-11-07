@@ -134,6 +134,7 @@ class EditorWizardPage(BasePage):
             ),
             message=f"'{title}' never showed as connected under {heading}",
         )
+        self.wait_until_saved()  # the card shows before the autosave lands; a reload now would lose it
         return title
 
     def connect_first_dataset(self) -> str:
