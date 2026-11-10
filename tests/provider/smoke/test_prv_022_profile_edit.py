@@ -82,7 +82,7 @@ def test_prv_022_profile_edit_persists(scope, open_profile, provider_api, cleanu
 @pytest.mark.functional
 @pytest.mark.xfail(
     strict=True,
-    reason="Exploration issue I-3: the Change password button is hard-coded disabled, so it never leads to Keycloak",
+    reason="DataSpaceFrontend#531: the Change password button is hard-coded disabled, so it never leads to Keycloak",
 )
 def test_prv_023_change_password_opens_keycloak_account(open_profile, driver):
     """
