@@ -33,11 +33,11 @@ MESSAGES = {
 
 NOT_IN_VIEW = pytest.mark.xfail(
     strict=True,
-    reason="Exploration issue I-25: after a failed Continue the error stays outside the viewport, with no scroll or focus move",
+    reason="DataSpaceFrontend#533: after a failed Continue the error stays outside the viewport, with no scroll or focus move",
 )
 NOT_ASSOCIATED = pytest.mark.xfail(
     strict=True,
-    reason="Exploration issue I-8: field errors are not linked to their controls (aria-invalid / aria-describedby)",
+    reason="DataSpaceFrontend#532: field errors are not linked to their controls (aria-invalid / aria-describedby)",
 )
 
 
