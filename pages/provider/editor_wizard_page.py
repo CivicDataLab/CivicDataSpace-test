@@ -7,7 +7,7 @@ from selenium.webdriver import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from pages.base_page import BasePage
 from locators.provider.editor_wizard_locators import EditorWizardLocators as W
@@ -20,9 +20,42 @@ class EditorWizardPage(BasePage):
 
     # ─── Classification fields ──────────────────────────────────────────────────
 
-    def select_field_options(self, label: str, values: list[str]):
+    def select_field_options(self, label: str, values: list[str], chips: bool = True):
+        """Pick each value; with `chips`, confirm it shows as a chip (single-selects show none)."""
+        field = (By.XPATH, W.FIELD_INPUT.format(label=label))
+        chip_locator = (By.XPATH, W.FIELD_CHIPS.format(label=label))
+
+        def titles():
+            return [el.get_attribute("title") for el in self.driver.find_elements(*chip_locator)]
+
         for val in values:
-            self.select_combobox_option((By.XPATH, W.FIELD_INPUT.format(label=label)), val)
+            if not chips:
+                self.select_combobox_option(field, val)
+                continue
+            before = titles()
+            if val in before:
+                continue
+
+            def picked(d):
+                now = titles()
+                return val in now or len(now) > len(before)
+
+            # The editor re-renders a field when the previous field's save
+            # refetches: the option click is swallowed or the input goes stale
+            # mid-pick. That used to surface later as a blank timeout on the chips.
+            last = None
+            for _ in range(3):
+                try:
+                    if not picked(None):  # a slow chip from the last attempt: do not toggle it off
+                        self.select_combobox_option(field, val)
+                    self.wait_with_timeout(5).until(picked)
+                    break
+                except (TimeoutException, StaleElementReferenceException) as exc:
+                    last = exc
+            else:
+                raise TimeoutException(
+                    f"{label!r}: picking {val!r} never registered. Selected: {titles()}. Last error: {last}"
+                )
         return self
 
     def selected_chips(self, label: str) -> list[str]:
