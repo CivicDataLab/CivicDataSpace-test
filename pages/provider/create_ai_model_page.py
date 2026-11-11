@@ -153,7 +153,7 @@ class CreateAiModelPage(EditorWizardPage):
         return self.select_field_options("Language Support", items)
 
     def select_domain(self, text: str):
-        return self.select_field_options("Domain", [text])
+        return self.select_field_options("Domain", [text], chips=False)
 
     def get_domain_option_values(self) -> list[str]:
         """Options the Domain combobox lists while empty (the #463 regression left it bare)."""
