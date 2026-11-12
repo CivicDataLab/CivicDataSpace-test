@@ -267,7 +267,7 @@ class EditorWizardPage(BasePage):
 
     def open_step_url(self, segment: str):
         """Open this record's `segment` step by URL (reload), once the last edit has saved."""
-        self.wait_until_synced()  # navigating mid-save drops the edit
+        self.wait_until_synced(confirm=False)  # navigating mid-save drops the edit
         base = self.driver.current_url.rsplit("/", 1)[0]
         self.driver.get(f"{base}/{segment}")
         self.wait.until(EC.presence_of_element_located((By.XPATH, W.STEP.format(label=""))))
@@ -328,13 +328,15 @@ class EditorWizardPage(BasePage):
         )
         return self
 
-    def wait_until_synced(self, timeout: int = 30):
+    def wait_until_synced(self, timeout: int = 30, confirm: bool = True):
         """Wait for a started autosave to finish and the header to read 'All changes saved'.
 
         The header says 'Saving…' with a single ellipsis character, which the
         three-dot text `wait_until_saved` looks for never matches, so that helper
         returns at once. A save begins as soon as a field changes, so the
         indicator gets a short window to appear before waiting for it to clear.
+        With `confirm=False` it stops there: some views (a file's details panel)
+        never show 'All changes saved'.
         """
         saving = (By.XPATH, "//*[normalize-space(text())='Saving…']")
         try:
@@ -344,10 +346,11 @@ class EditorWizardPage(BasePage):
         self.wait_with_timeout(timeout).until(
             EC.invisibility_of_element_located(saving), message="The editor is still saving"
         )
-        self.wait_with_timeout(timeout).until(
-            EC.visibility_of_element_located((By.XPATH, "//*[normalize-space(text())='All changes saved']")),
-            message="The editor never reported 'All changes saved'",
-        )
+        if confirm:
+            self.wait_with_timeout(timeout).until(
+                EC.visibility_of_element_located((By.XPATH, "//*[normalize-space(text())='All changes saved']")),
+                message="The editor never reported 'All changes saved'",
+            )
         return self
 
     def open_step(self, segment: str):
