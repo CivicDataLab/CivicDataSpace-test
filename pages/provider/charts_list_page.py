@@ -129,7 +129,10 @@ class ChartsListPage(BasePage):
     def pick_first_dataset(self) -> str:
         box = self.wait_with_timeout(10).until(EC.presence_of_element_located(ChartsLocators.DATASET_SEARCH_INPUT))
         box.click()
-        btn = self.wait_with_timeout(15).until(EC.presence_of_element_located(ChartsLocators.DATASET_RESULT))
+        btn = self.wait_with_timeout(15).until(
+            EC.presence_of_element_located(ChartsLocators.DATASET_RESULT),
+            message="The chart dataset picker listed no datasets: this account has none published to chart",
+        )
         title = btn.text.strip().split("\n")[0]
         self.driver.execute_script("arguments[0].click();", btn)
         return title
