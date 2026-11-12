@@ -35,6 +35,11 @@ def _unique_copy(src, tmp_path, stem):
 def _open(drafts, key, my_dash, driver) -> CreateDatasetPage:
     """Open the shared `key` draft ('data' or 'prompt'), creating it on first use."""
     if key not in drafts:
+        url = drafts.create(key, driver)
+        if url:
+            drafts[key] = url
+            driver.get(url)
+            return CreateDatasetPage(driver).open_step_url("metadata")
         page = my_dash.click_add_new_prompt_dataset() if key == "prompt" else my_dash.click_add_new_dataset()
         drafts[key] = driver.current_url
         return page
