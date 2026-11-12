@@ -5,6 +5,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.spread  # independent tests: may run on any worker
+
 from pages.home_page import HomePage
 from tests.data.test_data import CollaborativeTestData
 
