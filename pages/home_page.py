@@ -274,7 +274,11 @@ class HomePage(BasePage):
             except TimeoutException:
                 if attempt:
                     raise AssertionError("Tapped LOGIN / SIGN UP twice, but the login form never appeared.")
-                self.driver.execute_script("arguments[0].click();", login_btn)
+                try:
+                    btn = self.wait_with_timeout(10).until(EC.element_to_be_clickable(LoginLocators.LOGIN_BUTTON))
+                    self.driver.execute_script("arguments[0].click();", btn)
+                except TimeoutException:
+                    pass  # the button is gone: the form may still be on its way
 
         login_page = LoginPage(self.driver)
 
