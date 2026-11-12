@@ -235,19 +235,6 @@ class EditorWizardPage(BasePage):
     def get_page_text(self) -> str:
         return self.find((By.TAG_NAME, "main")).text
 
-    def press_continue(self):
-        """Click Continue without expecting it to move on; returns once the click settled."""
-        self.wait_until_saved()
-        btn = self.wait.until(EC.element_to_be_clickable(W.CONTINUE_BUTTON))
-        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
-        before = self.driver.current_url
-        btn.click()
-        self.wait_with_timeout(10).until(
-            lambda d: self.get_inline_errors() or d.current_url != before,
-            message="Continue neither moved on nor showed a message",
-        )
-        return self
-
     def press_step(self, label: str):
         """Click a stepper button without expecting it to open."""
         self.wait_until_saved()
