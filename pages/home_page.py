@@ -63,12 +63,10 @@ class HomePage(BasePage):
     def load(self) -> None:
         """Navigate to the site root once."""
         self.driver.get(os.getenv("HOME_URL_DEV"))
-        # Wait for page to start loading and initial content to appear
-        time.sleep(2)
-        # Aggressively dismiss tour popup
+        self.wait_with_timeout(10).until(lambda d: d.execute_script("return document.readyState") == "complete")
         self.dismiss_tour_popup()
         # Double-check and dismiss again if it reappeared
-        self.dismiss_tour_popup()
+        self.dismiss_tour_popup(timeout=1)
 
     def dismiss_tour_popup(self, timeout: int = 3) -> None:
         """
