@@ -45,7 +45,7 @@ def _new_values(scope, tag):
 
 @pytest.mark.functional
 @scopes
-def test_prv_022_profile_edit_persists(scope, open_profile, provider_api, cleanup, request):
+def test_prv_022_profile_edit_persists(scope, open_profile, provider_api, cleanup, request, account_lock):
     """
     Test Case ID: test_prv_022_profile_edit_persists
     Every editable profile field keeps its new value after Save and a reload.
