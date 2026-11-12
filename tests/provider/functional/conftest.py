@@ -7,8 +7,6 @@ import re
 
 import pytest
 
-from tests.api.conftest import api_base_url, keycloak_config, auth_token, graphql_client  # noqa: F401
-from tests.api.publications import gql
 
 DELETE = {
     "dataset": "mutation($id: UUID!) { deleteDataset(datasetId: $id) }",
@@ -38,7 +36,7 @@ class Drafts(dict):
         if self.client is None:
             return None
         query, field, path = CREATE[kind]
-        body = gql(self.client, query)
+        body = self.client.gql(query)
         created = (body.get("data") or {}).get(field) or {}
         draft_id = (created.get("data") or created).get("id")
         assert draft_id, f"API could not create a {kind} draft: {body}"
@@ -51,12 +49,12 @@ def qa_drafts(request):
     """{name: edit URL} shared by a module's tests; every draft is deleted at the end."""
     drafts = Drafts()
     try:
-        drafts.client = request.getfixturevalue("graphql_client")
+        drafts.client = request.getfixturevalue("provider_api")
     except BaseException:  # no API credentials: fall back to creating drafts in the UI
         pass
     yield drafts
     try:
-        client = request.getfixturevalue("graphql_client")
+        client = request.getfixturevalue("provider_api")
     except BaseException:  # no API credentials: leave the drafts for manual cleanup
         print(f"[qa_drafts] could not delete {list(drafts.values())}")
         return
@@ -64,7 +62,7 @@ def qa_drafts(request):
         for kind, pattern in ID_IN_URL.items():
             m = pattern.search(url)
             if m:
-                body = gql(client, DELETE[kind], {"id": m.group(1)})
+                body = client.gql(DELETE[kind], {"id": m.group(1)})
                 if body.get("errors"):
                     print(f"[qa_drafts] delete {url} failed: {body['errors']}")
 
@@ -76,7 +74,7 @@ DELETE_WIZ = {
 
 
 @pytest.fixture
-def delete_draft_after(graphql_client):  # noqa: F811
+def delete_draft_after(provider_api):
     """Call with a wizard URL (/<kind>/edit/<id>/...); the draft is deleted at teardown."""
     urls = []
     yield urls.append
@@ -84,4 +82,4 @@ def delete_draft_after(graphql_client):  # noqa: F811
         m = re.search(r"/(collaboratives|aimodels)/edit/(\d+)", url)
         if m:
             kind, pk = m.groups()
-            graphql_client.query(DELETE_WIZ[kind], {"id": pk if kind == "collaboratives" else int(pk)})
+            provider_api.gql(DELETE_WIZ[kind], {"id": pk if kind == "collaboratives" else int(pk)})
