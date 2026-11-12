@@ -64,6 +64,15 @@ def pytest_addoption(parser):
     )
 
 # ─── SELENIUM DRIVER FIXTURE ────────────────────────────────────────────────────
+# Requests provider tests never assert on; they only slow page loads. Consumer
+# analytics/SEO and a11y tests (Bhashini widget) keep them: blocked for tests/provider only.
+_PROVIDER_BLOCKED_URLS = [
+    "*googletagmanager.com*", "*google-analytics.com*", "*analytics.google.com*",
+    "*.sentry.io/*", "*translation-plugin.bhashini.co.in*",
+    "*fonts.googleapis.com*", "*fonts.gstatic.com*",
+]
+
+
 @pytest.fixture
 def driver(request):
     browser = request.config.getoption("--browser", default="chrome").lower()
@@ -183,6 +192,8 @@ def driver(request):
     drv.find_element = _find_element_or_raise
     try:
         drv.execute_cdp_cmd("Network.enable", {})
+        if "tests/provider/" in request.node.nodeid and os.getenv("BLOCK_THIRD_PARTY", "1") != "0":
+            drv.execute_cdp_cmd("Network.setBlockedURLs", {"urls": _PROVIDER_BLOCKED_URLS})
     except Exception:
         pass
 
