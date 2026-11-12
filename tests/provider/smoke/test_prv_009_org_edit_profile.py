@@ -10,7 +10,7 @@ from pages.provider.organizations_page import OrganizationsPage
 
 @pytest.mark.functional
 @pytest.mark.smoke
-def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, test_credentials, writable_org, cleanup):
+def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, test_credentials, writable_org, cleanup, account_lock):
     """
     Test Case ID: test_prv_009_org_edit_profile
     Verify User is able to edit organization profile details.

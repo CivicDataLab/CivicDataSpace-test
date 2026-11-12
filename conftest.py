@@ -270,6 +270,16 @@ def _account_index() -> int:
     return int(os.getenv("TEST_USER_INDEX", slots[0] if slots else "1"))
 
 
+@pytest.fixture
+def account_lock():
+    """Hold this account's lock for the test: for state one account has only one
+    of (its profile, its org's profile), when workers share the account."""
+    import fcntl, tempfile
+    with open(Path(tempfile.gettempdir()) / f"cds-account-{_account_index()}.lock", "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        yield
+
+
 @pytest.fixture(scope="session")
 def test_credentials():
     """
