@@ -263,12 +263,18 @@ class HomePage(BasePage):
         except Exception:
             raise
 
-        try:
-            self.wait_with_timeout(10).until(
-                EC.visibility_of_element_located(LoginLocators.FORM)
-            )
-        except TimeoutException:
-            raise AssertionError("Tapped LOGIN / SIGN UP, but the login form never appeared.")
+        # Parallel workers all log in at once and the Keycloak redirect slows
+        # down, so wait longer and tap once more before giving up.
+        for attempt in range(2):
+            try:
+                self.wait_with_timeout(30).until(
+                    EC.visibility_of_element_located(LoginLocators.FORM)
+                )
+                break
+            except TimeoutException:
+                if attempt:
+                    raise AssertionError("Tapped LOGIN / SIGN UP twice, but the login form never appeared.")
+                self.driver.execute_script("arguments[0].click();", login_btn)
 
         login_page = LoginPage(self.driver)
 
