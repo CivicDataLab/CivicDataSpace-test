@@ -247,16 +247,27 @@ def sample_cover_image_path():
         raise FileNotFoundError(f"Expected sample_profile_image.png at {cover_image_path}")
     return cover_image_path
 
+def _account_slots() -> list[int]:
+    """Slots from TEST_ACCOUNT_SLOTS (e.g. "2,3,4,5"), or [] when unset."""
+    return [int(s) for s in os.getenv("TEST_ACCOUNT_SLOTS", "").split(",") if s.strip()]
+
+
 def _account_index() -> int:
     """Which TEST_EMAIL_<n> slot this worker uses. gw0→1, gw1→2, gw2→3 …
+
+    With TEST_ACCOUNT_SLOTS set, workers cycle through those slots instead
+    (gw0→first, gw1→second, …, wrapping), so a run can leave a slot out and
+    put more than one worker on an account.
 
     A plain helper, not a fixture -- `writable_org` and `test_credentials` both
     need it, and session-scoped fixtures cannot be called directly.
     """
     worker = os.getenv("PYTEST_XDIST_WORKER", "")
+    slots = _account_slots()
     if worker.startswith("gw"):
-        return int(worker[2:]) + 1
-    return int(os.getenv("TEST_USER_INDEX", "1"))
+        n = int(worker[2:])
+        return slots[n % len(slots)] if slots else n + 1
+    return int(os.getenv("TEST_USER_INDEX", slots[0] if slots else "1"))
 
 
 @pytest.fixture(scope="session")
@@ -273,6 +284,11 @@ def test_credentials():
 
     email = os.getenv(f"TEST_EMAIL_{idx}")
     password = os.getenv(f"TEST_PASSWORD_{idx}")
+
+    # With TEST_ACCOUNT_SLOTS the slots are chosen on purpose: a missing one is
+    # a config error, not a reason to quietly share slot 1 with another worker.
+    if not (email and password) and _account_slots():
+        pytest.exit(f"TEST_ACCOUNT_SLOTS names slot {idx}, but TEST_EMAIL_{idx}/TEST_PASSWORD_{idx} are not set", returncode=3)
 
     # fall back to user 1 if the derived slot has no credentials configured
     if not (email and password):
