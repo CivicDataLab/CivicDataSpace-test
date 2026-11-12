@@ -641,11 +641,11 @@ class BasePage:
             except Exception:
                 pass
 
-        saving_locator = (By.XPATH, "//*[normalize-space(text())='Saving...']")
+        saving_locator = (By.XPATH, "//*[normalize-space(text())='Saving…' or normalize-space(text())='Saving...']")
 
         try:
             # Poll at 100ms to catch brief Saving... indicator (default is 500ms)
-            WebDriverWait(self.driver, 5, poll_frequency=0.1).until(
+            WebDriverWait(self.driver, 2, poll_frequency=0.1).until(
                 EC.presence_of_element_located(saving_locator)
             )
             # Save in progress — wait until it finishes
@@ -657,6 +657,6 @@ class BasePage:
             # Saving... didn't appear — either already saved or save was too fast
             # to catch. Add a generous margin to ensure the network round-trip
             # completes before navigating away.
-            _time.sleep(4)
+            _time.sleep(1.5)
 
         return self
