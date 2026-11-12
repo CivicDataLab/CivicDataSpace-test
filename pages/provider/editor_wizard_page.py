@@ -44,8 +44,10 @@ class EditorWizardPage(BasePage):
             # refetches: the option click is swallowed or the input goes stale
             # mid-pick. That used to surface later as a blank timeout on the chips.
             last = None
-            for _ in range(3):
+            for attempt in range(3):
                 try:
+                    if attempt:  # let the last pick's save land, or a re-pick saves stale form state
+                        self.wait_until_synced()
                     if not picked(None):  # a slow chip from the last attempt: do not toggle it off
                         self.select_combobox_option(field, val)
                     self.wait_with_timeout(5).until(picked)
