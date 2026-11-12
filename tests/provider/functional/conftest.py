@@ -20,10 +20,40 @@ ID_IN_URL = {
 }
 
 
+CREATE = {
+    "data": ("mutation{ addDataset(createInput: {datasetType: DATA}){ success data { id } } }", "addDataset", "dataset/{id}/edit/metadata"),
+    "prompt": ("mutation{ addDataset(createInput: {datasetType: PROMPT}){ success data { id } } }", "addDataset", "dataset/{id}/edit/metadata"),
+    "uc": ("mutation{ addUseCase { ... on TypeUseCase { id } } }", "addUseCase", "usecases/edit/{id}/details"),
+}
+DASHBOARD_BASE = re.compile(r"(https?://[^/]+(?:/[a-z]{2})?/dashboard/[^/]+/[^/]+)")
+
+
+class Drafts(dict):
+    """{name: edit URL}. `create` makes a draft through the API (the same mutation the
+    UI button sends) and returns its edit URL, or None when there are no API credentials."""
+
+    client = None
+
+    def create(self, kind, driver):
+        if self.client is None:
+            return None
+        query, field, path = CREATE[kind]
+        body = gql(self.client, query)
+        created = (body.get("data") or {}).get(field) or {}
+        draft_id = (created.get("data") or created).get("id")
+        assert draft_id, f"API could not create a {kind} draft: {body}"
+        base = DASHBOARD_BASE.search(driver.current_url).group(1)
+        return f"{base}/{path.format(id=draft_id)}"
+
+
 @pytest.fixture(scope="module")
 def qa_drafts(request):
     """{name: edit URL} shared by a module's tests; every draft is deleted at the end."""
-    drafts = {}
+    drafts = Drafts()
+    try:
+        drafts.client = request.getfixturevalue("graphql_client")
+    except BaseException:  # no API credentials: fall back to creating drafts in the UI
+        pass
     yield drafts
     try:
         client = request.getfixturevalue("graphql_client")
