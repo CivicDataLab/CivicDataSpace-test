@@ -402,11 +402,14 @@ def org_add_permission(test_credentials):
 # One org per account, so two concurrent workers never write the same org row.
 # Verified live 2026-09-24: account 1 has canAdd on all three; account 2 on
 # "my test agency" + "test org 2"; account 3 on "test org name" only.
+# Accounts 4 and 5 added 2026-11-12: canAdd on "test_org_4" / "test_org_5" only.
 # Override per slot with TEST_ORG_1 / TEST_ORG_2 / TEST_ORG_3.
 DEDICATED_ORG_BY_ACCOUNT = {
     1: "my test agency",
     2: "test org 2",
     3: "test org name",
+    4: "test_org_4",
+    5: "test_org_5",
 }
 
 
