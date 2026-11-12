@@ -17,6 +17,9 @@ from selenium.common.exceptions import (
 from selenium.webdriver import ActionChains
 from pages.base_page import BasePage
 
+# email -> cookies of the last real login in this process (one per xdist worker, memory only, never written to disk)
+_SESSIONS: dict[str, list[dict]] = {}
+
 # ─── Consumer‐flow imports (PLACE YOUR ORIGINAL IMPORTS HERE) ─────────────────────
 #
 from locators.homepage_locators import HomepageLocators
@@ -240,7 +243,41 @@ class HomePage(BasePage):
 
     # ─── Provider‐flow login method ──────────────────────────────────────────────────
 
-    def go_to_login(self, flow: str = "consumer", email: str|None = None, password: str|None = None):
+    def _login_from_cached_session(self, email: str) -> bool:
+        """Load this worker's saved cookies for `email` instead of a Keycloak login.
+
+        Only returns True once the provider header is visible, i.e. the session
+        was accepted; a rejected or expired cookie drops the cache entry and
+        returns False so the caller logs in for real and refreshes it.
+        """
+        cookies = _SESSIONS.get(email)
+        if not cookies:
+            return False
+        url = self.driver.current_url
+        self.driver.delete_all_cookies()
+        for c in cookies:
+            try:
+                self.driver.add_cookie(c)
+            except WebDriverException:
+                pass
+        self.driver.get(url)
+        try:
+            self.wait_with_timeout(10).until(
+                EC.visibility_of_element_located(ProviderHomepageLocators.HEADER)
+            )
+            return True
+        except TimeoutException:
+            _SESSIONS.pop(email, None)
+            self.driver.delete_all_cookies()
+            self.driver.get(url)
+            return False
+
+    def go_to_login(self, flow: str = "consumer", email: str|None = None, password: str|None = None, reuse_session: bool = True):
+        provider = flow.lower() == "provider"
+        email = (email or os.getenv("TEST_EMAIL")) if provider else email
+        if provider and reuse_session and os.getenv("REUSE_LOGIN", "1") != "0" and email \
+                and self._login_from_cached_session(email):
+            return ProviderHomePage(self.driver)
         self.logout()
 
         # Dismiss tour popup if it's blocking the login button
@@ -286,12 +323,11 @@ class HomePage(BasePage):
             email = email or os.getenv("TEST_EMAIL")
             password = password or os.getenv("TEST_PASSWORD")
             login_page.login(email, password)
-            try:
-                self.wait_with_timeout(10).until(
-                    EC.visibility_of_element_located(ProviderHomepageLocators.HEADER)
-                )
-            except TimeoutException:
-                raise
+            self.wait_with_timeout(10).until(
+                EC.visibility_of_element_located(ProviderHomepageLocators.HEADER)
+            )
+            if email:
+                _SESSIONS[email] = self.driver.get_cookies()
 
             return ProviderHomePage(self.driver)
 
