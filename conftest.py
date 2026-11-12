@@ -715,6 +715,11 @@ def _deployed_pr_state(ref, api_base_url, site=None):
 
 def pytest_collection_modifyitems(config, items):
     for item in items:
+        # --dist loadgroup: every file stays on one worker (the numbered flows share
+        # state), except the wizard validation tests, which build their own drafts
+        # and spread over all workers.
+        if "tests/provider/functional/" not in item.nodeid:
+            item.add_marker(pytest.mark.xdist_group(item.nodeid.split("::")[0]))
         marker = item.get_closest_marker("pending_pr")
         if marker:
             reason = _pending_pr_state(marker.args[0])

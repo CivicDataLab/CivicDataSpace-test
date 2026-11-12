@@ -17,8 +17,14 @@ DATASET_SEARCH = "Search published datasets..."
 def _open(drafts, my_dash, driver, step=None) -> CreateUsecasePage:
     """Open the shared draft (at `step`), creating it on first use."""
     if "uc" not in drafts:
-        page = my_dash.click_usecases_card().click_add_new_usecase()
-        drafts["uc"] = driver.current_url
+        url = drafts.create("uc", driver)
+        if url:
+            drafts["uc"] = url
+            driver.get(url)
+            page = CreateUsecasePage(driver)
+        else:
+            page = my_dash.click_usecases_card().click_add_new_usecase()
+            drafts["uc"] = driver.current_url
     else:
         driver.get(drafts["uc"])
         page = CreateUsecasePage(driver)
