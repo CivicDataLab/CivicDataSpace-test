@@ -266,7 +266,8 @@ class EditorWizardPage(BasePage):
         return self
 
     def open_step_url(self, segment: str):
-        """Open this record's `segment` step by URL (reload)."""
+        """Open this record's `segment` step by URL (reload), once the last edit has saved."""
+        self.wait_until_synced()  # navigating mid-save drops the edit
         base = self.driver.current_url.rsplit("/", 1)[0]
         self.driver.get(f"{base}/{segment}")
         self.wait.until(EC.presence_of_element_located((By.XPATH, W.STEP.format(label=""))))
