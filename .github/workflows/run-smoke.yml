@@ -84,6 +84,14 @@ env:
   # pending_pr marker (conftest.py) reads PR merge state from the GitHub API
   GH_PR_TOKEN: ${{ github.token }}
 
+# One full run against an environment at a time: two overlapping runs pushed
+# dev's API into 503s (2026-11-13). Queued, never cancelled mid-run. Groups are
+# per repository, so this queues this repo's own runs; callers in other repos
+# queue among themselves. Readonly runs target prod and get their own group.
+concurrency:
+  group: smoke-${{ inputs.suite == 'readonly' && 'prod' || 'dev' }}
+  cancel-in-progress: false
+
 jobs:
   # A caller that passes deployed_sha may start this at the same moment its
   # deploy starts (PR Gate does, on a merge into dev). Hold the suites until the
