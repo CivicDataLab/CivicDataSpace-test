@@ -142,7 +142,12 @@ def errors_of(payload):
 
 
 def org_slug(client, name):
-    orgs = gql(client, "{ organizations { name slug } }")["data"]["organizations"]
+    for _ in range(3):  # under parallel load this query sometimes comes back as an error
+        body = gql(client, "{ organizations { name slug } }")
+        if body.get("data"):
+            break
+    assert body.get("data"), f"organizations query failed: {body.get('errors')}"
+    orgs = body["data"]["organizations"]
     slug = next((o["slug"] for o in orgs if o["name"] == name), None)
     assert slug, f"organization {name!r} not found"
     return slug
