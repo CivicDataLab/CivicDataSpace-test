@@ -65,6 +65,14 @@ on:
         required: false
       TEST_PASSWORD_3:
         required: false
+      TEST_EMAIL_4:
+        required: false
+      TEST_PASSWORD_4:
+        required: false
+      TEST_EMAIL_5:
+        required: false
+      TEST_PASSWORD_5:
+        required: false
       # Required in practice by api-smoke, declared optional so the existing
       # callers (DataSpaceBackend, DataSpaceFrontend) keep parsing until they
       # pass it. api-smoke preflights it and fails with a readable message
@@ -272,6 +280,10 @@ jobs:
       TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
       TEST_EMAIL_3: ${{ secrets.TEST_EMAIL_3 }}
       TEST_PASSWORD_3: ${{ secrets.TEST_PASSWORD_3 }}
+      TEST_EMAIL_4: ${{ secrets.TEST_EMAIL_4 }}
+      TEST_PASSWORD_4: ${{ secrets.TEST_PASSWORD_4 }}
+      TEST_EMAIL_5: ${{ secrets.TEST_EMAIL_5 }}
+      TEST_PASSWORD_5: ${{ secrets.TEST_PASSWORD_5 }}
       # Falls back to the dev backend so push/PR runs actually exercise the
       # API tests. Without a default, `inputs` is empty on a push event, every
       # api-smoke test skipped, and the job reported success having asserted
@@ -585,6 +597,10 @@ jobs:
       TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
       TEST_EMAIL_3:    ${{ secrets.TEST_EMAIL_3 }}
       TEST_PASSWORD_3: ${{ secrets.TEST_PASSWORD_3 }}
+      TEST_EMAIL_4:    ${{ secrets.TEST_EMAIL_4 }}
+      TEST_PASSWORD_4: ${{ secrets.TEST_PASSWORD_4 }}
+      TEST_EMAIL_5:    ${{ secrets.TEST_EMAIL_5 }}
+      TEST_PASSWORD_5: ${{ secrets.TEST_PASSWORD_5 }}
       # org_add_permission (conftest) resolves which orgs this worker's account
       # can create content in. Without these it skips every org-create test on
       # any of the three workers -- including accounts that have canAdd.
