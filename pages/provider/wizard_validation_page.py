@@ -63,6 +63,20 @@ class WizardValidationPage(EditorWizardPage):
     def has_message(self, text: str) -> bool:
         return self.message_box(text) is not None
 
+    def missing_messages(self, texts, timeout: int = 5) -> list[str]:
+        """Which of `texts` are still not shown after `timeout`s (field errors can render one after another)."""
+        missing = list(texts)
+
+        def all_shown(d):
+            missing[:] = [t for t in texts if not self.has_message(t)]
+            return not missing
+
+        try:
+            self.wait_with_timeout(timeout).until(all_shown)
+        except TimeoutException:
+            pass
+        return missing
+
     def is_in_view(self, text: str) -> bool:
         """Is the message `text` fully inside the visible part of the window?"""
         box = self.message_box(text)

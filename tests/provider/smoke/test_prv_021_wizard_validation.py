@@ -67,7 +67,7 @@ def test_prv_021_failed_continue_says_what_is_missing(kind, step, driver, open_l
     page = _open_step(kind, step, driver, open_listing, provider_api, cleanup)
     messages = MESSAGES[(kind, step)]
     page.press_continue(messages[0])
-    missing = [m for m in messages if not page.has_message(m)]
+    missing = page.missing_messages(messages)
     assert not missing, f"{kind}/{step}: no message for {missing}"
 
 
