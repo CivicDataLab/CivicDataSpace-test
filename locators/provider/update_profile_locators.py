@@ -27,3 +27,5 @@ class UpdateProfilePageLocators:
     # The organization type is a button-style select, labelled "Organization Type".
     ORG_TYPE_SELECT = (By.XPATH, W.SELECT_BY_LABEL.format(label="Organization Type"))
     CHANGE_PASSWORD_BUTTON = (By.XPATH, '//main//button[normalize-space()="Change password"]')
+    # Keycloak's update-password form (kc_action=UPDATE_PASSWORD, DataSpaceFrontend#534).
+    KC_NEW_PASSWORD_INPUT = (By.XPATH, '//input[@name="password-new"]')

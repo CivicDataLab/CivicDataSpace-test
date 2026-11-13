@@ -108,3 +108,13 @@ class UpdateProfilePage(EditorWizardPage):
     def click_change_password(self):
         self.find(UpdateProfilePageLocators.CHANGE_PASSWORD_BUTTON).click()
         return self
+
+    def wait_for_keycloak_update_password(self, keycloak_host: str):
+        """Wait until the browser shows Keycloak's update-password form on `keycloak_host`."""
+        from urllib.parse import urlparse
+        self.wait_with_timeout(30).until(
+            lambda d: urlparse(d.current_url).netloc == keycloak_host
+            and d.find_elements(*UpdateProfilePageLocators.KC_NEW_PASSWORD_INPUT),
+            message="Change password did not open Keycloak's update-password form",
+        )
+        return self
