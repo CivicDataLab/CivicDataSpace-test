@@ -31,10 +31,6 @@ MESSAGES = {
     ("aimodel", "details"): ["Add a description of the model.", "Select at least one sector."],
 }
 
-NOT_IN_VIEW = pytest.mark.xfail(
-    strict=True,
-    reason="DataSpaceFrontend#533: after a failed Continue the error stays outside the viewport, with no scroll or focus move",
-)
 NOT_ASSOCIATED = pytest.mark.xfail(
     strict=True,
     reason="DataSpaceFrontend#532: field errors are not linked to their controls (aria-invalid / aria-describedby)",
@@ -78,8 +74,8 @@ def test_prv_021_failed_continue_says_what_is_missing(kind, step, driver, open_l
 IN_VIEW_CASES = [
     pytest.param("dataset", "resources", id="dataset-resources"),
     pytest.param("dataset", "metadata", id="dataset-metadata"),
-    pytest.param("usecase", "builder", id="usecase-builder", marks=NOT_IN_VIEW),
-    pytest.param("usecase", "connect-sdg", id="usecase-connect-sdg-only", marks=NOT_IN_VIEW),
+    pytest.param("usecase", "builder", id="usecase-builder"),
+    pytest.param("usecase", "connect-sdg", id="usecase-connect-sdg-only"),
     pytest.param("aimodel", "details", id="aimodel-details"),
 ]
 
