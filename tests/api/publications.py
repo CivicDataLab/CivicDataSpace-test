@@ -30,10 +30,12 @@ def gql(client, query, variables=None, org=None):
     try:
         resp = post()
     except requests.ConnectionError:
-        # uvicorn closes idle keep-alive connections; a pooled one can be dead on
-        # reuse. Retry reads once; never mutations, which might have applied.
+        # dev's nginx closes connections idle for 65s, so after a long browser step
+        # every pooled connection can be dead. Drop the whole pool, then retry
+        # reads once on a fresh connection; never mutations, which might have applied.
         if query.lstrip().startswith("mutation"):
             raise
+        client.session.close()
         resp = post()
     resp.raise_for_status()
     return resp.json()
