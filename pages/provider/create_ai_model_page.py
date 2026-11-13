@@ -136,6 +136,18 @@ class CreateAiModelPage(EditorWizardPage):
         self.type_into_rich_editor(L.DESCRIPTION_EDITOR, text)
         return self
 
+    def rename_then_type_intended_use(self, name: str, text: str):
+        """Change the name, then type into Intended Use without leaving it.
+
+        Leaving the name field saves it, and the save refetches the model while
+        Intended Use still holds text that has not been saved yet.
+        """
+        self.clear_and_type(L.MODEL_NAME_INPUT, name)
+        field = self.wait.until(EC.element_to_be_clickable(L.INTENDED_USE_INPUT))
+        field.click()
+        field.send_keys(text)
+        return self
+
     def enter_intended_use(self, text: str):
         self.clear_and_type(L.INTENDED_USE_INPUT, text)
         self.wait_for_autosave()
