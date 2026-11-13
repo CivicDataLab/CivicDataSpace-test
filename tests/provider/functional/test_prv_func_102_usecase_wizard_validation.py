@@ -59,6 +59,8 @@ def test_prv_func_102_03_unicode_title_previous_continue_and_reload_keep_values(
     subtitle = "Subtitle — ñ, ü, 😀"
     page = _open(qa_drafts, provider_dashboard, driver)
     page.enter_title(title).enter_subtitle(subtitle)
+    # Builder needs a content block to continue since DataSpaceFrontend#534.
+    page.add_text_block(f"Content {QA_TAG}").done_editing().wait_until_synced()
 
     page.click_continue("connect")
     page.click_previous("builder")
@@ -135,5 +137,5 @@ def test_prv_func_102_09_review_updates_as_items_are_fixed(driver, provider_dash
     page.open_step_url("publish")
     text = page.get_page_text()
     assert "Select at least one sector." not in text and "Select at least one SDG goal." not in text
-    assert "Connect at least one dataset." in text and "Add at least one content block." in text
+    assert "Connect at least one dataset." in text  # the content block was added in 102_03
     assert not page.is_publish_enabled()
