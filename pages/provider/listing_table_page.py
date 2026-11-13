@@ -46,23 +46,25 @@ class ListingTablePage(BasePage):
 
         return self.wait_with_timeout(30).until(read, message="The status tabs never showed their counts")
 
-    def wait_for_counts(self, expected: dict[str, int]) -> dict[str, int]:
+    def wait_for_counts(self, expected) -> dict[str, int]:
         """Wait for the tabs to show `expected`; fail with what they did show.
 
         The tabs read 0 / 0 / 0 until the first query settles, so a count can only
-        be judged against a value known in advance.
+        be judged against a value known in advance. `expected` may be a callable
+        that re-reads the backend, for accounts other workers write to meanwhile.
         """
-        last = {}
+        last, want = {}, {}
 
         def matches(d):
-            nonlocal last
+            nonlocal last, want
+            want = expected() if callable(expected) else expected
             last = self.status_counts()
-            return last == expected
+            return last if last == want else False
 
         try:
             return self.wait_with_timeout(30).until(matches)
         except TimeoutException:
-            raise AssertionError(f"The tabs show {last}, the backend says {expected}") from None
+            raise AssertionError(f"The tabs show {last}, the backend says {want}") from None
 
     def select_tab(self, label: str) -> "ListingTablePage":
         tab = (By.XPATH, L.TAB.format(label=label))

@@ -69,13 +69,16 @@ def test_prv_018_listing_tabs_search_sort_and_delete(
     first, second = f"{stem}-a", f"{stem}-b"
     for title in (first, second):
         cleanup.track(kind, provider_api.create_draft(kind, title, org), org)
-    backend = _status_counts(provider_api.listing(kind, org))
-    draft_total = backend.get(spec["draft"], 0)
-    published_total = backend.get(spec["published"], 0)
+
+    def backend_tabs():  # re-read on every poll: other workers share this account
+        backend = _status_counts(provider_api.listing(kind, org))
+        draft, published = backend.get(spec["draft"], 0), backend.get(spec["published"], 0)
+        return {"All": draft + published, "Draft": draft, "Published": published}
 
     # 2. Tab counts.
     table = open_listing(scope, spec["section"])
-    table.wait_for_counts({"All": draft_total + published_total, "Draft": draft_total, "Published": published_total})
+    tabs = table.wait_for_counts(backend_tabs)
+    draft_total, published_total = tabs["Draft"], tabs["Published"]
 
     # 3. Tabs filter by status.
     table.select_tab("Draft")
