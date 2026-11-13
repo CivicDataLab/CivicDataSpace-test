@@ -81,14 +81,18 @@ class ProviderAPI:
         payload = token.split(".")[1]
         self._expires = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))["exp"]
 
-    def gql(self, query, variables=None, org=None):
-        """Run a query and return the whole body. `org` is an organization slug."""
+    def _renew(self):
         if time.time() > self._expires - self.RENEW_BEFORE_EXPIRY:
             self._login()
+
+    def gql(self, query, variables=None, org=None):
+        """Run a query and return the whole body. `org` is an organization slug."""
+        self._renew()
         return publications.gql(self.client, query, variables, org)
 
     def org_slug(self, org_name: str) -> str:
         if org_name not in self._slugs:
+            self._renew()
             self._slugs[org_name] = publications.org_slug(self.client, org_name)
         return self._slugs[org_name]
 
