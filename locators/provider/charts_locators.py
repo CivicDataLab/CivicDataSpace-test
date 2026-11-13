@@ -29,6 +29,7 @@ class ChartsLocators:
     # New chart wizard (Build > Review & Publish), 2026-11 redesign
     DATASET_SEARCH_INPUT = (By.XPATH, "//input[starts-with(@placeholder,'Search datasets')]")
     DATASET_RESULT = (By.XPATH, "(//button[contains(@class,'entity-row-picker')])[1]")
+    NO_FILES_TEXT = (By.XPATH, "//*[normalize-space(text())='No files are available in this dataset.']")
     SELECTED_DATASET_TITLE = (By.XPATH, "//*[normalize-space()='Dataset *' or normalize-space()='Dataset']/following::p[1]")
     RESOURCE_COMBOBOX = (By.XPATH, "//label[contains(normalize-space(),'File / Resource')]/following::button[@role='combobox'][1]")
     RESOURCE_OPTION = (By.XPATH, "//*[@role='listbox']//*[@role='option']")

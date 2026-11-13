@@ -3,6 +3,7 @@ import time
 
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select
+from selenium.common.exceptions import TimeoutException
 
 from pages.base_page import BasePage
 from locators.provider.charts_locators import ChartsLocators
@@ -153,7 +154,14 @@ class ChartsListPage(BasePage):
         return self.find(ChartsLocators.MAIN).text
 
     def pick_first_resource(self) -> None:
-        combo = self.wait_with_timeout(15).until(EC.presence_of_element_located(ChartsLocators.RESOURCE_COMBOBOX))
+        found = self.wait_with_timeout(15).until(
+            EC.any_of(EC.presence_of_element_located(ChartsLocators.RESOURCE_COMBOBOX),
+                      EC.presence_of_element_located(ChartsLocators.NO_FILES_TEXT)),
+            message="The chart builder showed neither a File / Resource select nor a 'no files' note",
+        )
+        if self.driver.find_elements(*ChartsLocators.NO_FILES_TEXT):
+            raise TimeoutException("The chosen chart dataset has no files: 'No files are available in this dataset.'")
+        combo = found
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", combo)
         combo.click()
         opt = self.wait_with_timeout(10).until(lambda d: next(
