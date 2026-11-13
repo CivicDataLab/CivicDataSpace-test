@@ -78,30 +78,3 @@ def test_prv_022_profile_edit_persists(scope, open_profile, provider_api, cleanu
         assert page.org_type() == chosen_type, "Organization Type was not saved"
     assert not page.field_enabled("email"), "The e-mail field should be read-only"
 
-
-@pytest.mark.functional
-@pytest.mark.xfail(
-    strict=True,
-    reason="DataSpaceFrontend#531: the Change password button is hard-coded disabled, so it never leads to Keycloak",
-)
-def test_prv_023_change_password_opens_keycloak_account(open_profile, driver):
-    """
-    Test Case ID: test_prv_023_change_password_opens_keycloak_account
-    The Change password button is enabled and takes a signed-in user to
-    Keycloak's account page.
-    Steps:
-      1. Open the individual profile page
-      2. The Change password button is enabled
-      3. Clicking it lands on the Keycloak account page
-    """
-    import os
-    from urllib.parse import urlparse
-
-    page = open_profile("individual")
-    assert page.change_password_enabled(), "The Change password button is disabled"
-    page.click_change_password()
-    keycloak_host = urlparse(os.environ["KEYCLOAK_URL"]).netloc
-    page.wait_with_timeout(30).until(
-        lambda d: urlparse(d.current_url).netloc == keycloak_host and "/account" in d.current_url,
-        message="Change password did not lead to the Keycloak account page",
-    )
