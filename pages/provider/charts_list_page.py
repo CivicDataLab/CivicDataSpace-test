@@ -128,6 +128,24 @@ class ChartsListPage(BasePage):
     # ── New chart wizard (Build step) ─────────────────────────────────────────────
 
     def pick_first_dataset(self) -> str:
+        """Pick the first listed dataset that has files; returns its title.
+
+        A dataset another test just made may list first with no files, so skip it
+        (the picker hides the current dataset, so the next pick is a different one).
+        """
+        for _ in range(3):
+            title = self._pick_top_dataset()
+            self.wait_with_timeout(15).until(
+                EC.any_of(EC.presence_of_element_located(ChartsLocators.RESOURCE_COMBOBOX),
+                          EC.presence_of_element_located(ChartsLocators.NO_FILES_TEXT)),
+                message="The chart builder showed neither a File / Resource select nor a 'no files' note",
+            )
+            if not self.driver.find_elements(*ChartsLocators.NO_FILES_TEXT):
+                return title
+            self.change_dataset()
+        raise TimeoutException("No chart dataset with files: each one picked said 'No files are available in this dataset.'")
+
+    def _pick_top_dataset(self) -> str:
         box = self.wait_with_timeout(10).until(EC.presence_of_element_located(ChartsLocators.DATASET_SEARCH_INPUT))
         box.click()
         btn = self.wait_with_timeout(15).until(
@@ -154,14 +172,7 @@ class ChartsListPage(BasePage):
         return self.find(ChartsLocators.MAIN).text
 
     def pick_first_resource(self) -> None:
-        found = self.wait_with_timeout(15).until(
-            EC.any_of(EC.presence_of_element_located(ChartsLocators.RESOURCE_COMBOBOX),
-                      EC.presence_of_element_located(ChartsLocators.NO_FILES_TEXT)),
-            message="The chart builder showed neither a File / Resource select nor a 'no files' note",
-        )
-        if self.driver.find_elements(*ChartsLocators.NO_FILES_TEXT):
-            raise TimeoutException("The chosen chart dataset has no files: 'No files are available in this dataset.'")
-        combo = found
+        combo = self.wait_with_timeout(15).until(EC.presence_of_element_located(ChartsLocators.RESOURCE_COMBOBOX))
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", combo)
         combo.click()
         opt = self.wait_with_timeout(10).until(lambda d: next(
