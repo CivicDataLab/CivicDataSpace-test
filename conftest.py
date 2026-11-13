@@ -724,6 +724,7 @@ def _deployed_pr_state(ref, api_base_url, site=None):
     return f"deployed_pr {ref}: {where} runs {deployed[:8]}, which doesn't include {merge_sha[:8]} yet"
 
 
+@pytest.hookimpl(tryfirst=True)  # before xdist reads xdist_group
 def pytest_collection_modifyitems(config, items):
     for item in items:
         # --dist loadgroup: every file stays on one worker (the numbered flows share
