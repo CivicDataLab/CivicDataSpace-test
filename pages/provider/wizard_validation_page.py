@@ -1,6 +1,8 @@
 # pages/provider/wizard_validation_page.py
 
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
 
 from locators.provider.editor_wizard_locators import EditorWizardLocators as W
 from pages.provider.editor_wizard_page import EditorWizardPage
@@ -58,6 +60,13 @@ class WizardValidationPage(EditorWizardPage):
             moved = " (the editor moved on)" if self.driver.current_url != before else ""
             raise AssertionError(f"{exc.msg}{moved}") from None
         assert self.driver.current_url == before, "Continue moved on although required fields are missing"
+        return self
+
+    def wait_for_field(self, label: str, timeout: int = 30) -> "WizardValidationPage":
+        """Wait until the field labelled `label` has rendered (the step's form replaced its loading skeleton)."""
+        loc = (By.XPATH, f"//label[contains(normalize-space(),'{label}')]/following::*[@role='combobox'][1]")
+        self.wait_with_timeout(timeout).until(
+            EC.visibility_of_element_located(loc), message=f"The {label!r} field never rendered")
         return self
 
     def has_message(self, text: str) -> bool:

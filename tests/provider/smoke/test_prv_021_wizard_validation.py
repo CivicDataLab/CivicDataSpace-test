@@ -65,6 +65,10 @@ def test_prv_021_failed_continue_says_what_is_missing(kind, step, driver, open_l
       3. The editor stays on the step and shows each required-field message
     """
     page = _open_step(kind, step, driver, open_listing, provider_api, cleanup)
+    if (kind, step) == ("dataset", "metadata"):
+        # Continue pressed while the step still loads loses the Sector/Tags errors when the
+        # form mounts (EditMetadata resets them); wait for the form, like a user would see it.
+        page.wait_for_field("Sector")
     messages = MESSAGES[(kind, step)]
     page.press_continue(messages[0])
     missing = page.missing_messages(messages)
