@@ -79,7 +79,7 @@ def test_prv_func_203c_changing_dataset_resets_resource(driver, base_url, test_c
     charts.pick_first_resource()
     assert not charts.get_resource_value().startswith("Select a file")
     charts.change_dataset()
-    charts.pick_first_dataset()
+    charts.pick_first_dataset()  # the picker hides the current dataset, so this is another one
     assert charts.get_resource_value().startswith("Select a file"), (
         f"Resource kept {charts.get_resource_value()!r} after the dataset was changed"
     )
