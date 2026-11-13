@@ -8,6 +8,7 @@ import json
 import uuid
 
 import pytest
+import requests
 
 RESULT = "success errors { fieldErrors { field messages } nonFieldErrors }"
 PDF_BYTES = (
@@ -23,9 +24,17 @@ def gql(client, query, variables=None, org=None):
     session client is left untouched.
     """
     headers = {"organization": org} if org else {}
-    resp = client.session.post(
+    post = lambda: client.session.post(
         client.endpoint, json={"query": query, "variables": variables or {}}, headers=headers, timeout=60,
     )
+    try:
+        resp = post()
+    except requests.ConnectionError:
+        # uvicorn closes idle keep-alive connections; a pooled one can be dead on
+        # reuse. Retry reads once; never mutations, which might have applied.
+        if query.lstrip().startswith("mutation"):
+            raise
+        resp = post()
     resp.raise_for_status()
     return resp.json()
 
