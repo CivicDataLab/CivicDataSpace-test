@@ -8,8 +8,8 @@
 import requests
 
 
-def gql(api, query):
-    r = requests.post(f"{api.rstrip('/')}/api/graphql", json={"query": query}, timeout=30)
+def gql(api, query, timeout=30):
+    r = requests.post(f"{api.rstrip('/')}/api/graphql", json={"query": query}, timeout=timeout)
     r.raise_for_status()
     body = r.json()
     assert not body.get("errors"), body["errors"]
