@@ -5,6 +5,10 @@
 
 from utils.usecase_api import gql
 
+# The whole catalogue takes 7-9s on a warm dev; right after a deploy, with several
+# workers asking at once, it went past 30s (deploy run 43580283334).
+HEAVY_TIMEOUT = 90
+
 CATALOGUE_QUERY = """
 {
   datasets(includePublic: true, pagination: {limit: 500}) {
@@ -30,13 +34,13 @@ def chart_names(api, dataset_ids):
         f'c{i}: getChartData(datasetId: "{d}") {{ ... on TypeResourceChart {{ name }} ... on TypeResourceChartImage {{ name }} }}'
         for i, d in enumerate(dataset_ids)
     )
-    data = gql(api, "{ " + fields + " }")
+    data = gql(api, "{ " + fields + " }", timeout=HEAVY_TIMEOUT)
     return {d: [c["name"] for c in data[f"c{i}"]] for i, d in enumerate(dataset_ids)}
 
 
 def load_catalogue(api):
     """Published datasets plus which use cases / collaboratives contain each one."""
-    data = gql(api, CATALOGUE_QUERY)
+    data = gql(api, CATALOGUE_QUERY, timeout=HEAVY_TIMEOUT)
     links = {"usecases": {}, "collaboratives": {}}
     for kind, rows in (("usecases", data["publishedUseCases"]), ("collaboratives", data["publishedCollaboratives"])):
         for row in rows:
