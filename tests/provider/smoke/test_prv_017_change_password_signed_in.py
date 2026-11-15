@@ -10,7 +10,11 @@ from urllib.parse import urlparse
 
 import pytest
 
-pytestmark = [pytest.mark.smoke, pytest.mark.deployed_pr("DataSpaceFrontend#534", site="HOME_URL_DEV")]
+pytestmark = [
+    pytest.mark.smoke,
+    pytest.mark.deployed_pr("DataSpaceFrontend#534", site="HOME_URL_DEV"),
+    pytest.mark.real_login,  # Change password hands over to Keycloak, which must know the session
+]
 
 
 def test_prv_017_change_password_opens_keycloak_form(open_profile):
