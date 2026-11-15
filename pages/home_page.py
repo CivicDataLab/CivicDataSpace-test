@@ -265,7 +265,11 @@ class HomePage(BasePage):
         self.driver.delete_all_cookies()
         for c in cookies:
             try:
-                self.driver.add_cookie(c)
+                # Without `domain` the cookie is host-only, as the site sets it.
+                # With it Chrome keeps a second, domain-wide copy; once the
+                # site refreshes the session both are sent and the server
+                # answers 431 (request headers too large).
+                self.driver.add_cookie({k: v for k, v in c.items() if k != "domain"})
             except WebDriverException:
                 pass
         # A real login lands on /dashboard, the only page that shows the header.
