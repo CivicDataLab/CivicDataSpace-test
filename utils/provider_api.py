@@ -67,6 +67,10 @@ class ProviderAPI:
         self._slugs: dict[str, str] = {}
         self._expires = 0.0
         self.client = GraphQLClient(self._base)
+        # A fresh connection per call. Calls here are minutes apart (browser steps in
+        # between), and a mutation sent on a kept-alive connection that dev's nginx
+        # had already closed fails with RemoteDisconnected and cannot be retried safely.
+        self.client.session.headers["Connection"] = "close"
         self._login()
 
     def _login(self):
