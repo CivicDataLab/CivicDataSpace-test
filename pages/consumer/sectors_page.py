@@ -3,6 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import requests
+from tests.api.client import _request_with_retries
 from pages.base_page import BasePage
 from locators.consumer.sectors_locators import SectorsLocators
 
@@ -49,7 +50,7 @@ class SectorsPage(BasePage):
         assert href, "Download link has no href attribute"
 
         # 5) HEAD the URL
-        status = requests.head(href, allow_redirects=True, timeout=10).status_code
+        status = _request_with_retries(requests.head, href, allow_redirects=True, timeout=10).status_code
 
         # 6) assert we got 2xx back
         assert 200 <= status < 300, f"Download HEAD returned HTTP {status}"
