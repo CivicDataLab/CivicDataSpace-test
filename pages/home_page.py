@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from urllib.parse import urljoin
 import time
 from dotenv import load_dotenv
 from typing import Union
@@ -258,7 +259,8 @@ class HomePage(BasePage):
                 self.driver.add_cookie(c)
             except WebDriverException:
                 pass
-        self.driver.get(url)
+        # A real login lands on /dashboard, the only page that shows the header.
+        self.driver.get(urljoin(url, "/dashboard"))
         try:
             self.wait_with_timeout(10).until(
                 EC.visibility_of_element_located(ProviderHomepageLocators.HEADER)
