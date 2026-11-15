@@ -130,11 +130,14 @@ class ChartsListPage(BasePage):
     def pick_first_dataset(self) -> str:
         """Pick the first listed dataset that has files; returns its title.
 
-        A dataset another test just made may list first with no files, so skip it
-        (the picker hides the current dataset, so the next pick is a different one).
+        Datasets other tests just made list first with no files. The picker hides
+        only the current dataset, so picking the top one again would alternate
+        between the same two: skip every title already tried instead.
         """
-        for _ in range(3):
-            title = self._pick_top_dataset()
+        tried = set()
+        for _ in range(8):
+            title = self._pick_top_dataset(tried)
+            tried.add(title)
             self.wait_with_timeout(15).until(
                 EC.any_of(EC.presence_of_element_located(ChartsLocators.RESOURCE_COMBOBOX),
                           EC.presence_of_element_located(ChartsLocators.NO_FILES_TEXT)),
@@ -145,14 +148,19 @@ class ChartsListPage(BasePage):
             self.change_dataset()
         raise TimeoutException("No chart dataset with files: each one picked said 'No files are available in this dataset.'")
 
-    def _pick_top_dataset(self) -> str:
+    def _pick_top_dataset(self, skip=()) -> str:
         box = self.wait_with_timeout(10).until(EC.presence_of_element_located(ChartsLocators.DATASET_SEARCH_INPUT))
         box.click()
         btn = self.wait_with_timeout(15).until(
             EC.presence_of_element_located(ChartsLocators.DATASET_RESULT),
             message="The chart dataset picker listed no datasets: this account has none published to chart",
         )
-        title = btn.text.strip().split("\n")[0]
+        title_of = lambda b: b.text.strip().split("\n")[0]
+        rows = self.driver.find_elements(*ChartsLocators.DATASET_RESULTS)
+        btn = next((b for b in rows if title_of(b) not in skip), None)
+        if btn is None:
+            raise TimeoutException(f"No chart dataset with files: all {len(rows)} listed said 'No files are available in this dataset.'")
+        title = title_of(btn)
         self.driver.execute_script("arguments[0].click();", btn)
         return title
 
