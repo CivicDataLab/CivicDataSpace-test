@@ -66,14 +66,23 @@ class HomePage(BasePage):
         self.driver.get(os.getenv("HOME_URL_DEV"))
         self.wait_with_timeout(10).until(lambda d: d.execute_script("return document.readyState") == "complete")
         self.dismiss_tour_popup()
-        # Double-check and dismiss again if it reappeared
-        self.dismiss_tour_popup(timeout=1)
 
     def dismiss_tour_popup(self, timeout: int = 3) -> None:
         """
         Dismiss the tour popup using multiple strategies.
         Safe to call even if popup doesn't exist.
         """
+        # The tour is not mounted on dev or prod (TourGuide is commented out in
+        # the frontend), so look once without waiting: a wait here costs every
+        # page load the driver's implicit wait on top of `timeout`.
+        implicit = self.driver.timeouts.implicit_wait
+        self.driver.implicitly_wait(0)
+        try:
+            present = self.driver.find_elements(*HomepageLocators.SKIP_TOUR_BUTTON)
+        finally:
+            self.driver.implicitly_wait(implicit)
+        if not present:
+            return
         try:
             skip_btn = self.wait_with_timeout(timeout).until(
                 EC.presence_of_element_located(HomepageLocators.SKIP_TOUR_BUTTON)
