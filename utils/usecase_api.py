@@ -7,9 +7,12 @@
 
 import requests
 
+from tests.api.client import _request_with_retries
+
 
 def gql(api, query, timeout=30):
-    r = requests.post(f"{api.rstrip('/')}/api/graphql", json={"query": query}, timeout=timeout)
+    # Read-only queries, so a 502/503/504 from an overloaded dev is safe to retry.
+    r = _request_with_retries(requests.post, f"{api.rstrip('/')}/api/graphql", json={"query": query}, timeout=timeout)
     r.raise_for_status()
     body = r.json()
     assert not body.get("errors"), body["errors"]

@@ -5,10 +5,13 @@
 # helpers return the mutation payload and leave the asserting to the tests.
 
 import json
+import time
 import uuid
 
 import pytest
 import requests
+
+from tests.api.client import GATEWAY_STATUSES
 
 RESULT = "success errors { fieldErrors { field messages } nonFieldErrors }"
 PDF_BYTES = (
@@ -27,15 +30,22 @@ def gql(client, query, variables=None, org=None):
     post = lambda: client.session.post(
         client.endpoint, json={"query": query, "variables": variables or {}}, headers=headers, timeout=60,
     )
+    is_mutation = query.lstrip().startswith("mutation")
     try:
         resp = post()
     except requests.ConnectionError:
         # dev's nginx closes connections idle for 65s, so after a long browser step
         # every pooled connection can be dead. Drop the whole pool, then retry
         # reads once on a fresh connection; never mutations, which might have applied.
-        if query.lstrip().startswith("mutation"):
+        if is_mutation:
             raise
         client.session.close()
+        resp = post()
+    # An overloaded dev answers 502/503/504. Reads are safe to send again.
+    for _ in range(2):
+        if is_mutation or resp.status_code not in GATEWAY_STATUSES:
+            break
+        time.sleep(3)
         resp = post()
     resp.raise_for_status()
     return resp.json()
