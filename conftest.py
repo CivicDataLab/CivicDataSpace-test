@@ -512,7 +512,7 @@ def sector_name():
 #  ─────────────────────── Login Fixtures (Phase 12) ─────────────────────────────
 
 @pytest.fixture
-def logged_in_provider(driver, base_url, test_credentials):
+def logged_in_provider(driver, base_url, test_credentials, request):
     """
     Auto-login as provider and return ProviderHomePage.
     Eliminates duplicated login setup across tests.
@@ -530,7 +530,10 @@ def logged_in_provider(driver, base_url, test_credentials):
     home.load()
     assert home.is_loaded(), "Homepage did not load successfully"
 
-    prov_home = home.go_to_login(flow="provider", email=email, password=password)
+    # Saved cookies give an app session but no Keycloak one; `real_login`
+    # marks the tests that go back to Keycloak and need both.
+    real = request.node.get_closest_marker("real_login") is not None
+    prov_home = home.go_to_login(flow="provider", email=email, password=password, reuse_session=not real)
     return prov_home
 
 @pytest.fixture
