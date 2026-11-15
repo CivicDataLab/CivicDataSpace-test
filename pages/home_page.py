@@ -350,6 +350,17 @@ class HomePage(BasePage):
     #     home.go_to_login(flow="provider", email=email, password=password)
 
     def logout(self):
+        # Nothing to click when this browser holds no session (a new browser,
+        # or cookies just cleared): the avatar never appears, only the wait.
+        if any("session-token" in c["name"] for c in self.driver.get_cookies()):
+            self._click_logout()
+
+        # 4. Always clear cookies/storage for total isolation
+        self.driver.delete_all_cookies()
+        self.driver.execute_script("window.localStorage.clear(); window.sessionStorage.clear();")
+        self.driver.refresh()
+
+    def _click_logout(self):
         try:
             # 1. Click the avatar/profile button
             avatar_btn = self.wait.until(
@@ -369,9 +380,3 @@ class HomePage(BasePage):
             )
         except Exception:
             pass
-
-        # 4. Always clear cookies/storage for total isolation
-        self.driver.delete_all_cookies()
-        self.driver.execute_script("window.localStorage.clear(); window.sessionStorage.clear();")
-        self.driver.refresh()
-
