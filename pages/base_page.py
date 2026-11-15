@@ -43,11 +43,12 @@ class BasePage:
 
             # 1) Triple-click + Ctrl/Cmd+A + Delete + native clear
             ActionChains(self.driver).double_click(el).perform()
-            for mod in (Keys.CONTROL, Keys.COMMAND):
-                try:
-                    el.send_keys(mod, "a")
-                except Exception:
-                    pass
+            # Only this platform's select-all: the other modifier types a literal "a"
+            # (Command+a on Linux), which the editors autosave over the real value.
+            try:
+                el.send_keys(Keys.COMMAND if platform.system() == "Darwin" else Keys.CONTROL, "a")
+            except Exception:
+                pass
             el.send_keys(Keys.DELETE)
             try:
                 el.clear()
