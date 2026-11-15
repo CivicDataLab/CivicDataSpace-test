@@ -4,6 +4,7 @@ import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 import requests
+from tests.api.client import _request_with_retries
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from pages.base_page import BasePage
@@ -46,7 +47,7 @@ class UseCasePage(BasePage):
             EC.element_to_be_clickable(UseCaseLocators.DOWNLOAD_LINK)
         )
         href = download_link.get_attribute("href")
-        status = requests.head(href, allow_redirects=True, timeout=10).status_code
+        status = _request_with_retries(requests.head, href, allow_redirects=True, timeout=10).status_code
         return (href, status)
 
     # ── Use case detail page ─────────────────────────────────────────────────

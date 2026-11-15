@@ -1,5 +1,6 @@
 # pages/consumer/dataset_page.py
 import requests
+from tests.api.client import _request_with_retries
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -39,5 +40,5 @@ class DatasetPage(BasePage):
             raise AssertionError("Download link has no href")
 
         # verify URL
-        status = requests.head(href, allow_redirects=True, timeout=10).status_code
+        status = _request_with_retries(requests.head, href, allow_redirects=True, timeout=10).status_code
         return href, status
