@@ -522,17 +522,17 @@ def logged_in_provider(driver, base_url, test_credentials, request):
             prov_home = logged_in_provider
             # ... continue test from logged-in state
     """
-    from pages.home_page import HomePage
+    from pages.home_page import HomePage, has_saved_session
 
     driver.delete_all_cookies()
     email, password = test_credentials
     home = HomePage(driver, base_url)
-    home.load()
-    assert home.is_loaded(), "Homepage did not load successfully"
-
     # Saved cookies give an app session but no Keycloak one; `real_login`
     # marks the tests that go back to Keycloak and need both.
     real = request.node.get_closest_marker("real_login") is not None
+    if real or not has_saved_session(email):
+        home.load()
+        assert home.is_loaded(), "Homepage did not load successfully"
     prov_home = home.go_to_login(flow="provider", email=email, password=password, reuse_session=not real)
     return prov_home
 
