@@ -21,6 +21,10 @@ from pages.base_page import BasePage
 # email -> cookies of the last real login in this process (one per xdist worker, memory only, never written to disk)
 _SESSIONS: dict[str, list[dict]] = {}
 
+
+def has_saved_session(email: str) -> bool:
+    return os.getenv("REUSE_LOGIN", "1") != "0" and email in _SESSIONS
+
 # ─── Consumer‐flow imports (PLACE YOUR ORIGINAL IMPORTS HERE) ─────────────────────
 #
 from locators.homepage_locators import HomepageLocators
@@ -254,7 +258,11 @@ class HomePage(BasePage):
         cookies = _SESSIONS.get(email)
         if not cookies:
             return False
-        url = self.driver.current_url
+        url = self.url
+        if not self.driver.current_url.startswith(url):
+            # Cookies can only be set on the site's own origin; a tiny file gets
+            # the browser there without paying for the homepage.
+            self.driver.get(urljoin(url, "/robots.txt"))
         self.driver.delete_all_cookies()
         for c in cookies:
             try:
