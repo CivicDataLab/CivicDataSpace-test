@@ -161,7 +161,7 @@ def test_prv_func_101_09_license_options_selectable(driver, provider_dashboard, 
         assert page.get_selected_license_text() == lic
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#528: Choosing a License triggers no autosave; after a reload it is back to 'Select a license' (cf. DataSpaceBackend#291)")
+@pytest.mark.xfail(strict=False, reason="DataSpaceFrontend#528 (fix waiting to land on dev): Choosing a License triggers no autosave; after a reload it is back to 'Select a license' (cf. DataSpaceBackend#291)")
 def test_prv_func_101_09b_license_persists_after_reload(driver, provider_dashboard, qa_drafts, sample_csv_path, tmp_path):
     page = _with_file(qa_drafts, "data", provider_dashboard, driver, sample_csv_path, tmp_path)
     page.go_to_metadata_tab()
@@ -192,7 +192,7 @@ def test_prv_func_101_11_long_title_within_limit_persists(driver, provider_dashb
     assert page.get_title_value() == title
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#528: A 400-char title shows 'All changes saved' but is silently not saved; no limit or error shown")
+@pytest.mark.xfail(strict=False, reason="DataSpaceFrontend#528 (fix waiting to land on dev): A 400-char title shows 'All changes saved' but is silently not saved; no limit or error shown")
 def test_prv_func_101_12_over_long_title_rejected_visibly(driver, provider_dashboard, qa_drafts, sample_csv_path, tmp_path):
     title = QA_TAG + " " + "L" * 400
     page = _with_file(qa_drafts, "data", provider_dashboard, driver, sample_csv_path, tmp_path)
@@ -213,7 +213,7 @@ def test_prv_func_101_13_description_counter_shows_over_limit(driver, provider_d
     assert page.get_description_counter() == "Character limit: 1001/1000"
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#528: A description over 1000 chars shows 'All changes saved' and no error, but is not saved")
+@pytest.mark.xfail(strict=False, reason="DataSpaceFrontend#528 (fix waiting to land on dev): A description over 1000 chars shows 'All changes saved' and no error, but is not saved")
 def test_prv_func_101_14_over_limit_description_rejected_visibly(driver, provider_dashboard, qa_drafts, sample_csv_path, tmp_path):
     text = "E" * 1001
     page = _with_file(qa_drafts, "data", provider_dashboard, driver, sample_csv_path, tmp_path)

@@ -32,7 +32,7 @@ MESSAGES = {
 }
 
 NOT_ASSOCIATED = pytest.mark.xfail(
-    strict=True,
+    strict=False,  # fixed in the frontend deploy that is waiting to land; drop once dev serves it
     reason="DataSpaceFrontend#532: field errors are not linked to their controls (aria-invalid / aria-describedby)",
 )
 
