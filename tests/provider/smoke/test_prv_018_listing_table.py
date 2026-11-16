@@ -166,8 +166,16 @@ def test_prv_019_listing_pagination(scope, kind, open_listing, provider_api, req
     assert table.page_button_enabled("Next Page") and table.page_button_enabled("Last Page")
 
     table.go_to_page("Last Page")
-    last_size = total - PAGE_SIZE * (pages - 1)
-    table.wait_for_rows(lambda r: len(r) == last_size, f"The last page should list {last_size} rows")
+
+    # Another worker on the same account can add or delete a record of this
+    # kind meanwhile, so the remainder is taken from a count read now.
+    def is_remainder(rows):
+        nonlocal total, pages
+        total = provider_api.listing(kind, org)["totalItemsCount"]
+        pages = math.ceil(total / PAGE_SIZE)
+        return len(rows) == total - PAGE_SIZE * (pages - 1)
+
+    table.wait_for_rows(is_remainder, "The last page does not list the remainder of the records")
     assert table.page() == (pages, pages)
     assert not table.page_button_enabled("Next Page") and not table.page_button_enabled("Last Page")
     assert table.page_button_enabled("Previous Page") and table.page_button_enabled("First Page")
