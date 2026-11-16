@@ -13,6 +13,26 @@ from selenium.common.exceptions import (
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 
+# Counts GraphQL mutations still in flight, so a save wait can see the request
+# itself instead of trusting the 'Saving…' header. Injected into every page.
+SAVE_TRACKER_JS = """
+(() => {
+  if (window.__saves) return;
+  const s = window.__saves = {inflight: 0};
+  const orig = window.fetch;
+  window.fetch = function (input, init) {
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    const body = init && init.body;
+    if (!/graphql/i.test(url) || (typeof body === 'string' && !/"query"\\s*:\\s*"\\s*mutation/.test(body)))
+      return orig.apply(this, arguments);
+    s.inflight++;
+    const done = () => { s.inflight--; };
+    return orig.apply(this, arguments).then(r => { done(); return r; }, e => { done(); throw e; });
+  };
+})();
+"""
+
+
 class BasePage:
     def __init__(self, driver, timeout=15):
         self.driver = driver
@@ -250,6 +270,10 @@ class BasePage:
             return self.driver.find_elements(*locator)
         finally:
             self.driver.implicitly_wait(implicit)
+
+    def saves_settled(self, _driver=None) -> bool:
+        """No save request is in flight (always true where the tracker is absent)."""
+        return self.driver.execute_script("return !window.__saves || window.__saves.inflight === 0")
 
     def gone(self, locator):
         """`EC.invisibility_of_element_located` that answers at once when the element is absent."""
@@ -723,6 +747,7 @@ class BasePage:
             )
             # Save in progress — wait until it finishes
             WebDriverWait(self.driver, timeout).until(self.gone(saving_locator))
+            WebDriverWait(self.driver, timeout).until(self.saves_settled, message="A save request is still in flight")
             _time.sleep(0.3)
         except TimeoutException:
             # Saving... didn't appear — either already saved or save was too fast

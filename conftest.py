@@ -162,6 +162,8 @@ def driver(request):
         print(f"[INFO] Using chromedriver at: {driver_path}")
         service = ChromeService(driver_path)
         drv = webdriver.Chrome(service=service, options=opts)
+        from pages.base_page import SAVE_TRACKER_JS
+        drv.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": SAVE_TRACKER_JS})
 
     elif browser == "firefox":
         gd = GeckoDriverManager().install()
