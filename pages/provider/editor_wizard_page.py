@@ -358,6 +358,11 @@ class EditorWizardPage(BasePage):
         self.driver.refresh()
         return self.wait_until_synced()
 
+    def review_reports_no_file(self) -> bool:
+        """The review step says no file was added (its summary of the draft came back empty)."""
+        self.wait_until_saved()
+        return bool(self.present_now((By.XPATH, W.REVIEW_NO_FILE)))
+
     def click_publish(self, name: str):
         self.wait_until_saved()
         self.click_until(

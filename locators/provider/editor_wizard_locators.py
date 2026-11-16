@@ -47,4 +47,5 @@ class EditorWizardLocators:
     CONTINUE_BUTTON = (By.XPATH, "//button[normalize-space()='Continue']")
     PREVIOUS_BUTTON = (By.XPATH, "//button[normalize-space()='Previous']")
     PUBLISH_BUTTON = "//button[normalize-space()='Publish {entity}']"
+    REVIEW_NO_FILE = "//*[contains(normalize-space(text()), 'Add at least one dataset file to continue')]"
     PUBLISHED_ROW = "//table//tbody/tr[.//*[contains(normalize-space(),'{name}')]]//*[normalize-space()='Published']"
