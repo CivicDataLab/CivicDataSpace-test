@@ -4,7 +4,7 @@
 # A client that sends page=0, page=-1, page=9999 or size=abc should get a 4xx,
 # or a 200 with the value clamped - never a 5xx. Today the dataset, usecase,
 # collaborative and aimodel search endpoints answer 500 for all four, and the
-# list pages then render blank (consumer issue C-001). publisher search already
+# list pages then render blank (DataSpaceBackend#303). publisher search already
 # copes, so it is not listed.
 #
 # The bad-input test asserts the correct behaviour and is strict xfail: it keeps
@@ -33,7 +33,7 @@ def test_search_valid_page_is_ok(anon_api_client, entity):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="consumer issue C-001: search API answers 500 for invalid page/size",
+    reason="DataSpaceBackend#303: search API answers 500 for invalid page/size",
 )
 @pytest.mark.parametrize("params", BAD_PARAMS)
 @pytest.mark.parametrize("entity", ENTITIES)
