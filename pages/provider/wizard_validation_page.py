@@ -91,6 +91,20 @@ class WizardValidationPage(EditorWizardPage):
         box = self.message_box(text)
         return bool(box) and box["top"] >= 0 and box["bottom"] <= box["viewport"]
 
-    def unassociated_errors(self) -> list[str]:
-        """Visible field errors that no invalid control is linked to."""
-        return self.driver.execute_script(_UNASSOCIATED_JS)
+    def unassociated_errors(self, timeout: int = 10) -> list[str]:
+        """Visible field errors that no invalid control is linked to after `timeout`s.
+
+        Under load the rich-text editor is marked invalid a moment after its
+        error shows; an error that is really unlinked stays unlinked.
+        """
+        orphans = []
+
+        def all_linked(d):
+            orphans[:] = d.execute_script(_UNASSOCIATED_JS)
+            return not orphans
+
+        try:
+            self.wait_with_timeout(timeout).until(all_linked)
+        except TimeoutException:
+            pass
+        return orphans
