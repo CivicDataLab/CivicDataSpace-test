@@ -331,7 +331,7 @@ class EditorWizardPage(BasePage):
         except TimeoutException:
             pass  # already finished, or nothing changed
         self.wait_with_timeout(timeout).until(
-            EC.invisibility_of_element_located(saving), message="The editor is still saving"
+            self.gone(saving), message="The editor is still saving"
         )
         if confirm:
             self.wait_with_timeout(timeout).until(

@@ -238,6 +238,28 @@ class BasePage:
 
     # ── Wait Utilities ─────────────────────────────────────────────────────────
 
+    def present_now(self, locator) -> list:
+        """Elements matching `locator` right now, without the driver's implicit wait.
+
+        The implicit wait makes a find with no match take 3s. That is the price
+        of every check for something that is usually not there.
+        """
+        implicit = self.driver.timeouts.implicit_wait
+        self.driver.implicitly_wait(0)
+        try:
+            return self.driver.find_elements(*locator)
+        finally:
+            self.driver.implicitly_wait(implicit)
+
+    def gone(self, locator):
+        """`EC.invisibility_of_element_located` that answers at once when the element is absent."""
+        def check(_driver):
+            try:
+                return not any(e.is_displayed() for e in self.present_now(locator))
+            except StaleElementReferenceException:
+                return True
+        return check
+
     def wait_for_invisibility(self, locator, timeout=None):
         """Wait for element to become invisible"""
         wait = WebDriverWait(self.driver, timeout) if timeout else self.wait
@@ -700,9 +722,7 @@ class BasePage:
                 EC.presence_of_element_located(saving_locator)
             )
             # Save in progress — wait until it finishes
-            WebDriverWait(self.driver, timeout).until(
-                EC.invisibility_of_element_located(saving_locator)
-            )
+            WebDriverWait(self.driver, timeout).until(self.gone(saving_locator))
             _time.sleep(0.3)
         except TimeoutException:
             # Saving... didn't appear — either already saved or save was too fast
