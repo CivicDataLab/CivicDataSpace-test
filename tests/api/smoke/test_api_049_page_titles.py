@@ -5,7 +5,7 @@
 # The titles are server-rendered, so plain HTTP is enough - no browser.
 #
 # Dataset, use case and AI model detail pages already do this. Collaborative
-# detail pages use one generic title for every record (consumer issue C-016):
+# detail pages use one generic title for every record (DataSpaceFrontend#541):
 # that case asserts the correct behaviour and is strict xfail, so CI stays
 # green while the bug exists and goes red (XPASS) once it is fixed, at which
 # point the marker has to come off.
@@ -58,7 +58,7 @@ def test_page_title_is_not_empty(dev_frontend_client, detail_paths, entity):
 
 def _generic(issue):
     return pytest.mark.xfail(
-        strict=True, reason=f"consumer issue {issue}: every record shares one generic <title>"
+        strict=True, reason=f"{issue}: every record shares one generic <title>"
     )
 
 
@@ -67,7 +67,7 @@ def _generic(issue):
     [
         "dataset",
         "usecase",
-        pytest.param("collaborative", marks=_generic("C-016")),
+        pytest.param("collaborative", marks=_generic("DataSpaceFrontend#541")),
         "aimodel",
     ],
 )
