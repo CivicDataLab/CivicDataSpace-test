@@ -333,6 +333,7 @@ class EditorWizardPage(BasePage):
         self.wait_with_timeout(timeout).until(
             self.gone(saving), message="The editor is still saving"
         )
+        self.wait_with_timeout(timeout).until(self.saves_settled, message="A save request is still in flight")
         if confirm:
             self.wait_with_timeout(timeout).until(
                 EC.visibility_of_element_located((By.XPATH, "//*[normalize-space(text())='All changes saved']")),
