@@ -66,6 +66,34 @@ def published():
     return [u for u in gql(api, USECASES_QUERY)["useCases"] if u["status"] == "PUBLISHED" and u["title"].strip()]
 
 
+@pytest.fixture(scope="module")
+def test_account_ids():
+    """Backend user ids of the TEST_EMAIL_<n> accounts. Other tests edit their
+    names, and the cached public page lags behind (see DataSpaceBackend#304)."""
+    import requests
+
+    api, kc, realm = os.getenv("API_BASE_URL"), os.getenv("KEYCLOAK_URL"), os.getenv("KEYCLOAK_REALM")
+    ids = set()
+    if not (api and kc and realm):
+        return ids
+    for n in range(1, 10):
+        email, password = os.getenv(f"TEST_EMAIL_{n}"), os.getenv(f"TEST_PASSWORD_{n}")
+        if not (email and password):
+            continue
+        data = {"grant_type": "password", "client_id": os.getenv("KEYCLOAK_CLIENT_ID"), "username": email, "password": password}
+        if os.getenv("KEYCLOAK_CLIENT_SECRET"):
+            data["client_secret"] = os.getenv("KEYCLOAK_CLIENT_SECRET")
+        try:
+            tok = requests.post(f"{kc.rstrip('/')}/realms/{realm}/protocol/openid-connect/token", data=data, timeout=30)
+            tok.raise_for_status()
+            me = requests.post(f"{api.rstrip('/')}/api/graphql", json={"query": "{ me { id } }"},
+                               headers={"Authorization": f"Bearer {tok.json()['access_token']}"}, timeout=30)
+            ids.add(str(me.json()["data"]["me"]["id"]))
+        except Exception:
+            pass
+    return ids
+
+
 def _pick(published, what, predicate):
     uc = next((u for u in published if predicate(u)), None)
     if uc is None:
@@ -79,7 +107,7 @@ def uc_page(driver):
 
 
 @pytest.mark.parametrize("individual", [False, True], ids=["organisation", "individual"])
-def test_cover_shows_title_publisher_and_place(uc_page, published, individual):
+def test_cover_shows_title_publisher_and_place(uc_page, published, individual, test_account_ids):
     uc = _pick(published, f"a geography and {'an individual' if individual else 'an organisation'} as publisher",
                lambda u: u["geographies"] and bool(u["isIndividualUsecase"]) == individual and (u["user"] if individual else u["organization"]))
     title = uc_page.open_detail(BASE_URL, uc["id"])
