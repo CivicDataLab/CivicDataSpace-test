@@ -73,15 +73,8 @@ class HomePage(BasePage):
         Safe to call even if popup doesn't exist.
         """
         # The tour is not mounted on dev or prod (TourGuide is commented out in
-        # the frontend), so look once without waiting: a wait here costs every
-        # page load the driver's implicit wait on top of `timeout`.
-        implicit = self.driver.timeouts.implicit_wait
-        self.driver.implicitly_wait(0)
-        try:
-            present = self.driver.find_elements(*HomepageLocators.SKIP_TOUR_BUTTON)
-        finally:
-            self.driver.implicitly_wait(implicit)
-        if not present:
+        # the frontend), so look once without waiting.
+        if not self.present_now(HomepageLocators.SKIP_TOUR_BUTTON):
             return
         try:
             skip_btn = self.wait_with_timeout(timeout).until(
