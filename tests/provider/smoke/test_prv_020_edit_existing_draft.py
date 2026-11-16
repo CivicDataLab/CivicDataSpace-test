@@ -43,7 +43,7 @@ def _edit_dataset(driver, sector, stem):
         source = reloaded.get_source_website_value()
         if source == "":
             # Same race as the collaborative Platform URL, under parallel load.
-            pytest.xfail("DataSpaceFrontend#522: Source Website is sometimes saved empty")
+            pytest.xfail("DataSpaceFrontend#542: Source Website is sometimes saved empty")
         assert source == "https://example.com/edited"
 
     return check
