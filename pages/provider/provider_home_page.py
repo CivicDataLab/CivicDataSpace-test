@@ -26,22 +26,19 @@ class ProviderHomePage(BasePage):
         from selenium.common.exceptions import TimeoutException, NoSuchElementException
         import time
 
-        # Try to dismiss Joyride tour overlay if present
+        # Dismiss the Joyride tour if it is showing (it is switched off in the frontend).
         try:
-            # Look for Joyride skip/close button
-            skip_button = self.wait_with_timeout(2).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[contains(@aria-label, 'Skip') or contains(text(), 'Skip') or @data-action='skip']"))
-            )
-            skip_button.click()
-            time.sleep(0.5)
-        except (TimeoutException, NoSuchElementException):
-            # No Joyride tour present, or couldn't find skip button - continue anyway
+            for skip_button in self.present_now((By.XPATH, "//button[contains(@aria-label, 'Skip') or contains(text(), 'Skip') or @data-action='skip']")):
+                skip_button.click()
+                time.sleep(0.5)
+                break
+        except Exception:
             pass
 
         # Wait for the loading spinner to clear before looking for the card
         try:
             self.wait_with_timeout(30).until(
-                EC.invisibility_of_element_located((By.XPATH, "//*[normalize-space(text())='Loading']"))
+                self.gone((By.XPATH, "//*[normalize-space(text())='Loading']"))
             )
         except TimeoutException:
             pass
@@ -59,7 +56,7 @@ class ProviderHomePage(BasePage):
         # Wait for the loading spinner to clear before looking for the card
         try:
             self.wait_with_timeout(30).until(
-                EC.invisibility_of_element_located((By.XPATH, "//*[normalize-space(text())='Loading']"))
+                self.gone((By.XPATH, "//*[normalize-space(text())='Loading']"))
             )
         except TimeoutException:
             pass
