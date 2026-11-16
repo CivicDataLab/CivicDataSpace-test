@@ -148,7 +148,7 @@ def test_data_tab_every_file_has_its_own_download(page, api, files_dataset):
 # ── visualisations tab ───────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("case", ["with_charts", "no_charts"])
-def test_visualisations_tab_lists_the_datasets_charts(page, charts, case):
+def test_visualisations_tab_lists_the_datasets_charts(page, api, charts, case):
     if case == "with_charts":
         # Few charts keeps the page light; any dataset with charts proves the list.
         pick = min(((d, charts[d]) for d, names in charts.items() if names), key=lambda x: len(x[1]), default=None)
@@ -158,10 +158,20 @@ def test_visualisations_tab_lists_the_datasets_charts(page, charts, case):
         pytest.skip(f"No published dataset for case {case!r}")
     dataset_id, names = pick
 
+    # `charts` was read when the module started. Provider tests running at the
+    # same time add, rename and delete charts, so read this dataset's again on
+    # either side of the page load and accept the page matching one of them.
+    before = chart_names(api, [dataset_id])[dataset_id]
+    if case == "with_charts" and not before:
+        pytest.skip(f"dataset {dataset_id} lost its charts {names} since the module started (a provider test's chart)")
     page.open(BASE_URL, dataset_id)
     page.open_tab("visualisations")
     if case == "with_charts":
-        assert sorted(page.chart_names()) == sorted(names), f"dataset {dataset_id}: chart cards do not match its charts {names}"
+        shown = sorted(page.chart_names())
+        after = chart_names(api, [dataset_id])[dataset_id]
+        assert shown in (sorted(before), sorted(after)), (
+            f"dataset {dataset_id}: chart cards {shown} match its charts neither before ({before}) nor after ({after}) the page load"
+        )
     else:
         assert page.has_no_charts_notice(), f"dataset {dataset_id} has no charts but the empty state is missing"
 
