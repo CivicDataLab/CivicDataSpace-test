@@ -336,6 +336,14 @@ class EditorWizardPage(BasePage):
         With `confirm=False` it stops there: some views (a file's details panel)
         never show 'All changes saved'.
         """
+        # Since DataSpaceFrontend#544 a field saves when it loses focus, and the header
+        # reads 'Unsaved changes' until then. Leave the field, as a user moving on would.
+        unsaved = self.driver.execute_script(
+            "return [...document.querySelectorAll('body *')].find(e => !e.children.length"
+            " && e.textContent.trim() === 'Unsaved changes') || null;"
+        )
+        if unsaved:
+            ActionChains(self.driver).move_to_element(unsaved).click().perform()
         saving = (By.XPATH, "//*[normalize-space(text())='Saving…']")
         try:
             WebDriverWait(self.driver, 3, poll_frequency=0.05).until(EC.presence_of_element_located(saving))
