@@ -29,7 +29,18 @@ class PublishedItemPage(BasePage):
             return False
 
     def page_value(self, name):
-        """A global the page's own scripts may have set, or None."""
+        """A global the page's own scripts may have set, or None.
+
+        Waits for every image to finish loading or failing first, so an
+        `onerror` handler has had its chance to run.
+        """
+        try:
+            WebDriverWait(self.driver, 10).until(
+                lambda d: d.execute_script("return [...document.images].every(i => i.complete);")
+            )
+        except TimeoutException:
+            pass
+        time.sleep(0.5)  # the error event is queued just after `complete` flips
         return self.driver.execute_script("return window[arguments[0]] ?? null;", name)
 
     def open_detail(self, base_url, kind, key, expect_text, timeout=30):
