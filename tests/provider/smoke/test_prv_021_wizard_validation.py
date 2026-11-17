@@ -99,8 +99,9 @@ def test_prv_021_failed_continue_shows_an_error_in_view(kind, step, driver, open
         page = _open_step(kind, step, driver, open_listing, provider_api, cleanup)
         messages = MESSAGES[(kind, step)]
     page.press_continue(messages[0])
-    assert any(page.is_in_view(m) for m in messages), (
-        f"{kind}/{step}: none of {messages} is inside the visible window after Continue"
+    assert page.any_in_view(messages), (
+        f"{kind}/{step}: none of {messages} is inside the visible window after Continue; "
+        f"boxes {[page.message_box(m) for m in messages]}"
     )
 
 
