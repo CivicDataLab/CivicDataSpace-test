@@ -172,7 +172,6 @@ class TestForgotPasswordPage:
         reset_page.request_reset("")
         assert "Email is required." in reset_page.field_errors()
 
-    @design_gap(33, "reset request returns to Sign In with a banner instead of 'Check your email'")
     def test_request_shows_check_your_email(self, reset_page):
         reset_page.request_reset(no_account_email())
         assert reset_page.heading() == "Check your email"
