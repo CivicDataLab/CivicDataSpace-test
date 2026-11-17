@@ -3,6 +3,7 @@
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 from locators.provider.editor_wizard_locators import EditorWizardLocators as W
 from pages.provider.editor_wizard_page import EditorWizardPage
@@ -90,6 +91,14 @@ class WizardValidationPage(EditorWizardPage):
         """Is the message `text` fully inside the visible part of the window?"""
         box = self.message_box(text)
         return bool(box) and box["top"] >= 0 and box["bottom"] <= box["viewport"]
+
+    def any_in_view(self, texts, timeout: int = 5) -> bool:
+        """Does one of `texts` come to rest inside the window? The page smooth-scrolls to the first error."""
+        try:
+            WebDriverWait(self.driver, timeout, poll_frequency=0.2).until(lambda d: any(self.is_in_view(t) for t in texts))
+            return True
+        except TimeoutException:
+            return False
 
     def unassociated_errors(self, timeout: int = 10) -> list[str]:
         """Visible field errors that no invalid control is linked to after `timeout`s.
