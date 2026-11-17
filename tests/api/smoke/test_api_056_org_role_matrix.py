@@ -1,6 +1,6 @@
 # tests/api/smoke/test_api_056_org_role_matrix.py
 #
-# Organisation roles, enforced by the API. Accounts on dev (set up 2026-11-17,
+# Organisation roles, enforced by the API, for every kind of draft. Accounts on dev (set up 2026-11-17,
 # re-check with userPermissions before trusting):
 #   account 4 - admin of test_org_4, editor of test_org_5
 #   account 5 - admin of test_org_5, viewer of test_org_4
@@ -36,10 +36,19 @@ UPDATE = {
                 lambda rid, title: {"i": {"dataset": rid, "title": title}}),
     "usecase": ("mutation($i: UseCaseInputPartial!){ updateUseCase(data:$i){ id } }",
                 lambda rid, title: {"i": {"id": rid, "title": title}}),
+    "collaborative": ("mutation($i: CollaborativeInputPartial!){ updateCollaborative(data:$i){ id } }",
+                      lambda rid, title: {"i": {"id": rid, "title": title}}),
+    "aimodel": ("mutation($i: UpdateAIModelInput!){ updateAiModel(input:$i){ success } }",
+                lambda rid, title: {"i": {"id": int(rid), "displayName": title}}),
+    "publication": ("mutation($i: UpdatePublicationInput!){ updatePublication(input:$i){ success } }",
+                    lambda rid, title: {"i": {"id": rid, "title": title}}),
 }
-# Use cases enforce no role today; tracked privately by the backend team.
-BROKEN = {("usecase", "viewer", a) for a in ("create", "update", "delete")} | {
-    ("usecase", "outsider", a) for a in ("create", "update", "delete", "list")} | {("usecase", "editor", "delete")}
+# Known product defects, tracked privately by the backend team.
+BROKEN = {(k, "viewer", a) for k in ("usecase", "collaborative") for a in ("create", "update", "delete")} | {
+    (k, "outsider", a) for k in ("usecase", "collaborative") for a in ("create", "update", "delete", "list")} | {
+    (k, "editor", "delete") for k in ("usecase", "collaborative")} | {
+    ("aimodel", "viewer", "create"), ("aimodel", "outsider", "create"), ("aimodel", "outsider", "list"),
+    ("publication", "outsider", "list")}
 
 
 def _cases():
@@ -95,7 +104,7 @@ def test_api_056_org_role_matrix(accounts, kind, role, action):
             query, variables = UPDATE[kind]
             caller.gql(query, variables(made[0], renamed), caller._owner(org))
             rows = admin.listing(kind, org)["data"]
-            allowed = any(str(r["id"]) == made[0] and (r.get("title") or r.get("name")) == renamed for r in rows)
+            allowed = any(str(r["id"]) == made[0] and (r.get("title") or r.get("displayName")) == renamed for r in rows)
         elif action == "delete":
             allowed = caller.delete(kind, made[0], org) is None
         else:

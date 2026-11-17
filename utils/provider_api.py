@@ -173,6 +173,9 @@ class ProviderAPI:
                 {"i": {"name": title.lower().replace(" ", "-"), "displayName": title,
                        "modelType": "TEXT_GENERATION", "provider": "CUSTOM"}})
             record_id = made["createAiModel"]["data"]["id"]
+        elif kind == "publication":
+            self._renew()
+            record_id = publications.create(self.client, org=org, title=title)["id"]
         else:
             raise ValueError(f"cannot create a {kind} draft through the API")
         return str(record_id)
