@@ -234,12 +234,10 @@ class TestRegistrationPage:
 
 
 class TestErrorPage:
-    @design_gap(32, "every error page is titled 'Google sign-in failed'")
     def test_bad_redirect_uri_is_not_blamed_on_google(self, driver):
         page = KeycloakErrorPage(driver).load_with_redirect(BASE_URL, "https://example.invalid/cb")
         assert page.heading() != "Google sign-in failed"
 
-    @design_gap(32, "every error page is titled 'Google sign-in failed'")
     def test_unknown_client_is_not_blamed_on_google(self, driver):
         page = KeycloakErrorPage(driver).load_with_client(BASE_URL, "qa-no-such-client")
         assert page.heading() != "Google sign-in failed"
