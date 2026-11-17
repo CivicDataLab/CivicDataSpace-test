@@ -274,7 +274,7 @@ def test_prv_func_101_18_prompt_format_persists(driver, provider_dashboard, qa_d
 
     for fmt in ("Few-shot", "Chain of thought"):
         page.open_file_details(name).select_prompt_format(fmt)
-        page.wait_until_saved()
+        page.wait_until_synced(confirm=False)
         page.open_step_url("resources").open_file_details(name)
         assert page.get_prompt_format() == fmt, f"{fmt!r} did not survive a reload"
         page.close_file_details()
