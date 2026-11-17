@@ -12,11 +12,8 @@
 # so this is gated the same way #215/#223/#245 were -- safe to merge into CI
 # now, skips on prod until the release, turns on by itself after.
 #
-# Not covered here: publicationsTable. dev has zero published Publications
-# right now ({ publications { id } } -> []), so there is nothing to assert a
-# visibility or filtering invariant against -- see the skipped placeholder
-# test at the bottom, which documents the gap instead of asserting on an
-# empty, uninformative response.
+# publicationsTable joins the use case/collaborative checks now that dev has
+# published Publications; its title filter picks a live title at runtime.
 #
 # The second commit in #254 also refactors datasetsTable's status-counts
 # logic into a shared `status_counts()` helper (api/utils/qs_utils.py) used by
@@ -43,7 +40,7 @@ pytestmark = [pytest.mark.api, pytest.mark.readonly, pytest.mark.deployed_pr("Da
 # invariant does not hold for AI models and isn't asserted below.)
 
 @pytest.mark.smoke
-@pytest.mark.parametrize("query_name", ["useCasesTable", "collaborativesTable"])
+@pytest.mark.parametrize("query_name", ["useCasesTable", "collaborativesTable", "publicationsTable"])
 def test_anon_include_public_sees_only_published_status(anon_graphql_client, query_name):
     data = anon_graphql_client.query(
         f"{{ {query_name}(includePublic: true, limit: 5) {{"
@@ -59,7 +56,7 @@ def test_anon_include_public_sees_only_published_status(anon_graphql_client, que
 
 
 @pytest.mark.smoke
-@pytest.mark.parametrize("query_name", ["useCasesTable", "collaborativesTable"])
+@pytest.mark.parametrize("query_name", ["useCasesTable", "collaborativesTable", "publicationsTable"])
 def test_anon_without_include_public_still_sees_published_rows(anon_graphql_client, query_name):
     """Unlike datasetsTable, `includePublic` is a no-op for an anonymous
     caller here: `_visible_use_cases`/`_visible_collaboratives` already fall
@@ -183,7 +180,7 @@ def test_ai_models_table_filters_on_the_snake_case_field_name(anon_graphql_clien
 # ─── statusCounts ignores the status filter itself (not vacuous) ──────────
 
 @pytest.mark.regression
-@pytest.mark.parametrize("query_name", ["useCasesTable", "collaborativesTable"])
+@pytest.mark.parametrize("query_name", ["useCasesTable", "collaborativesTable", "publicationsTable"])
 def test_status_counts_ignore_the_status_filter_itself(anon_graphql_client, query_name):
     """Same shape as datasetsTable's equivalent test: filters on DRAFT, not
     PUBLISHED, because PUBLISHED is a no-op for an anon caller and could not
@@ -205,27 +202,35 @@ def test_status_counts_ignore_the_status_filter_itself(anon_graphql_client, quer
     )
 
 
-# ─── Gap: publicationsTable ────────────────────────────────────────────────
+# ─── publicationsTable: title filter ───────────────────────────────────────
 
-@pytest.mark.smoke
-def test_publications_table_gap_no_published_rows_on_dev(anon_graphql_client):
-    """Documents a real gap rather than asserting on an empty response.
-
-    dev has zero published Publications right now, so there is no live data
-    to check a visibility or filtering invariant against. This only checks
-    the query itself doesn't error and shapes its (empty) response the same
-    way as the others -- it is not a meaningful regression test for
-    publicationsTable's actual filtering/visibility logic. Once a Publication
-    is published on dev, extend this file with the same pattern used above
-    for use cases/collaboratives.
-    """
-    data = anon_graphql_client.query(
-        "{ publicationsTable(includePublic: true, limit: 5) {"
-        " totalItemsCount statusCounts { status count } data { id } } }"
+@pytest.mark.functional
+def test_publications_table_title_filter_narrows_results(anon_graphql_client):
+    page = anon_graphql_client.query(
+        "{ publicationsTable(includePublic: true, limit: 50) { totalItemsCount data { id title } } }"
     )["publicationsTable"]
-    if data["totalItemsCount"] > 0:
-        pytest.skip("a Publication is now published on dev -- replace this with real coverage")
-    assert data["data"] == [] and data["statusCounts"] == [], data
+    if page["totalItemsCount"] < 2:
+        pytest.skip("fewer than two published Publications on this environment: a filter cannot narrow")
+    target = page["data"][0]
+    filtered = anon_graphql_client.query(
+        """
+        query($word: String!) {
+          publicationsTable(
+            includePublic: true
+            filters: [{field: "title", condition: "icontains", value: $word}]
+            limit: 50
+          ) { totalItemsCount data { id title } }
+        }
+        """,
+        {"word": target["title"]},
+    )["publicationsTable"]
+    assert 0 < filtered["totalItemsCount"] < page["totalItemsCount"], (
+        f"filtering publications on {target['title']!r} should narrow {page['totalItemsCount']} rows, "
+        f"got {filtered['totalItemsCount']}"
+    )
+    assert target["id"] in {r["id"] for r in filtered["data"]}, f"{target} missing from its own title filter"
+    for row in filtered["data"]:
+        assert target["title"].lower() in row["title"].lower(), f"row doesn't match the icontains filter: {row}"
 
 
 # ─── Authenticated visibility ──────────────────────────────────────────────
