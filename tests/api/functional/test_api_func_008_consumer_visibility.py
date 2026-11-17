@@ -56,13 +56,12 @@ def test_dataset_draft_hidden_published_visible_unpublished_hidden(graphql_clien
     assert _errors(gql(anon_graphql_client, read, {"id": dataset_id})), "unpublished dataset still readable anonymously"
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#290: published datasets never reach the search index on dev")
 def test_published_dataset_is_searchable_and_drops_out_when_unpublished(graphql_client, anon_api_client, dataset):
     dataset_id, title = dataset
     gql(graphql_client, "mutation($id: UUID!){ publishDataset(datasetId:$id){ ... on TypeDataset { status } } }", {"id": dataset_id})
 
     def found():
-        resp = anon_api_client.get("/api/search/dataset/", params={"q": title})
+        resp = anon_api_client.get("/api/search/dataset/", params={"query": title})
         return dataset_id in resp.text
 
     assert _wait(found), f"published dataset {title!r} not in search after 60s"
