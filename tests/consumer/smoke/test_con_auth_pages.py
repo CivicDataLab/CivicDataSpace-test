@@ -141,7 +141,6 @@ class TestSignInPage:
         login_page.toggle_password()
         assert login_page.password_state() == ("password", "Show password")
 
-    @design_gap(39, "empty sign-in goes to the server instead of inline required-field errors")
     def test_empty_sign_in_is_validated_inline(self, login_page):
         login_page.submit()
         assert not login_page.document_was_replaced(), (
@@ -150,7 +149,6 @@ class TestSignInPage:
         errors = login_page.field_errors()
         assert "Email is required." in errors and "Password is required." in errors, errors
 
-    @design_gap(39, "credential error reads 'Invalid username or password.' under Email")
     def test_wrong_credentials_message_matches_design(self, login_page):
         login_page.sign_in(no_account_email(), "NotARealPassword1")
         assert login_page.field_errors() == ["Email or password is incorrect."]
