@@ -536,6 +536,9 @@ class BasePage:
                     break
                 time.sleep(0.5)
             else:
+                # The editor saves only when it loses focus; until then the
+                # header honestly reads 'Unsaved changes'.
+                self.driver.execute_script("document.activeElement.blur();")
                 return
         self.save_failure_artifacts("rich_editor")
         raise AssertionError(
