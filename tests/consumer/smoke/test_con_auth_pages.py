@@ -254,7 +254,6 @@ class TestLegalLinks:
         assert not login_page.has_horizontal_scroll()
 
     @pytest.mark.mobile
-    @design_gap(43, "no legal links at all on mobile")
     def test_mobile_shows_legal_links(self, login_page):
         login_page.use_mobile_viewport()
         assert login_page.visible_legal_link_texts(), "No Privacy/Terms/Legal link visible at 390px"
