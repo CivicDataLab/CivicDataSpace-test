@@ -28,6 +28,10 @@ class PublishedItemPage(BasePage):
         except TimeoutException:
             return False
 
+    def page_value(self, name):
+        """A global the page's own scripts may have set, or None."""
+        return self.driver.execute_script("return window[arguments[0]] ?? null;", name)
+
     def open_detail(self, base_url, kind, key, expect_text, timeout=30):
         """Open /<kind>/<id-or-slug>; wait until `expect_text` or a not-found message shows."""
         self.visit(f"{base_url.rstrip('/')}/{DETAIL_PATHS[kind]}/{key}")
