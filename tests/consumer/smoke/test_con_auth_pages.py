@@ -163,13 +163,11 @@ class TestForgotPasswordPage:
         assert reset_page.submit_label() == "Send Reset Link"
         assert reset_page.back_to_sign_in_text() == "Back to Sign In"
 
-    @design_gap(40, "email typed on Sign In is not carried to the reset form")
     def test_email_carries_over_from_sign_in(self, login_page):
         email = no_account_email()
         reset_page = login_page.type_email(email).go_to_forgot_password()
         assert reset_page.email_value() == email
 
-    @design_gap(40, "empty reset request reads 'Please specify username.'")
     def test_empty_request_message_matches_design(self, reset_page):
         reset_page.request_reset("")
         assert "Email is required." in reset_page.field_errors()
