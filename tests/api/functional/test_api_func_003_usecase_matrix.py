@@ -186,7 +186,6 @@ def test_completed_before_started_is_refused(graphql_client, draft):
     assert _errors(_update(graphql_client, draft, startedOn="2025-06-01", completedOn="2024-01-01"))
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#291: runningStatus defaults to INITIATED, so any update that omits it resets it")
 def test_update_without_running_status_keeps_it(graphql_client, draft):
     _update(graphql_client, draft, runningStatus="ON_HOLD")
     _update(graphql_client, draft, summary="[qa-matrix] summary only")
