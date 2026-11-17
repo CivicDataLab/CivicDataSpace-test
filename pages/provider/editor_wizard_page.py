@@ -232,6 +232,17 @@ class EditorWizardPage(BasePage):
         """The stepper button's text, e.g. 'Metadata Name, ... Incomplete'."""
         return " ".join(self.find((By.XPATH, W.STEP.format(label=label))).text.split())
 
+    def wait_for_step_text(self, label: str, text: str, timeout: int = 15) -> str:
+        """The stepper button's text once it contains `text`, or as it stands after `timeout`s.
+
+        The review page renders every step as 'Completed' until the draft has loaded.
+        """
+        try:
+            self.wait_with_timeout(timeout).until(lambda d: text in self.get_step_text(label))
+        except TimeoutException:
+            pass
+        return self.get_step_text(label)
+
     def get_page_text(self) -> str:
         return self.find((By.TAG_NAME, "main")).text
 

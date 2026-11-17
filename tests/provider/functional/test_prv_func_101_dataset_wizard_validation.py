@@ -127,7 +127,7 @@ def test_prv_func_101_06_publish_blocked_while_metadata_incomplete(driver, provi
     page = _with_file(qa_drafts, "data", provider_dashboard, driver, sample_csv_path, tmp_path)
 
     page.open_step_url("publish")  # by URL: the stepper itself refuses to go here
-    assert "Incomplete" in page.get_step_text("Metadata")
+    assert "Incomplete" in page.wait_for_step_text("Metadata", "Incomplete")
     assert not page.is_publish_enabled(), "Publish Dataset is enabled with no description, sector or tags"
 
 
