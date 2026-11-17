@@ -345,10 +345,14 @@ class EditorWizardPage(BasePage):
         if unsaved:
             ActionChains(self.driver).move_to_element(unsaved).click().perform()
         saving = (By.XPATH, "//*[normalize-space(text())='Saving…']")
-        try:
-            WebDriverWait(self.driver, 3, poll_frequency=0.05).until(EC.presence_of_element_located(saving))
-        except TimeoutException:
-            pass  # already finished, or nothing changed
+        saved = (By.XPATH, "//*[normalize-space(text())='All changes saved']")
+        # The header flips to 'Unsaved changes' on any edit, so 'All changes saved'
+        # with nothing left to blur means there is no save to wait for.
+        if unsaved or not self.present_now(saved):
+            try:
+                WebDriverWait(self.driver, 3, poll_frequency=0.05).until(EC.presence_of_element_located(saving))
+            except TimeoutException:
+                pass  # already finished, or nothing changed
         self.wait_with_timeout(timeout).until(
             self.gone(saving), message="The editor is still saving"
         )
