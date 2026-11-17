@@ -44,4 +44,4 @@ def public_model():
 def test_description_html_is_not_run_on_the_public_page(driver, base_url, public_model):
     page = PublishedItemPage(driver).open_detail(base_url, "aimodel", public_model["id"], public_model["title"])
     assert public_model["title"] in page.text(), "the public AI model page did not show the model"
-    assert page.page_value(MARKER) is None, "the description's onerror handler ran on the public AI model page"
+    assert page.page_value(MARKER, timeout=10) is None, "the description's onerror handler ran on the public AI model page"
