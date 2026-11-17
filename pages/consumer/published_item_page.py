@@ -28,9 +28,17 @@ class PublishedItemPage(BasePage):
         except TimeoutException:
             return False
 
-    def page_value(self, name):
-        """A global the page's own scripts may have set, or None."""
-        return self.driver.execute_script("return window[arguments[0]] ?? null;", name)
+    def page_value(self, name, timeout=0):
+        """A global the page's own scripts may have set, or None.
+
+        With `timeout`, keep looking that long: handlers such as an image's
+        onerror run a moment after the page shows its text.
+        """
+        read = lambda d: d.execute_script("return window[arguments[0]] ?? null;", name)
+        try:
+            return WebDriverWait(self.driver, timeout, poll_frequency=0.25).until(read) if timeout else read(self.driver)
+        except TimeoutException:
+            return None
 
     def open_detail(self, base_url, kind, key, expect_text, timeout=30):
         """Open /<kind>/<id-or-slug>; wait until `expect_text` or a not-found message shows."""
