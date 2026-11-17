@@ -44,11 +44,8 @@ UPDATE = {
                     lambda rid, title: {"i": {"id": rid, "title": title}}),
 }
 # Known product defects, tracked privately by the backend team.
-BROKEN = {(k, "viewer", a) for k in ("usecase", "collaborative") for a in ("create", "update", "delete")} | {
-    (k, "outsider", a) for k in ("usecase", "collaborative") for a in ("create", "update", "delete", "list")} | {
-    (k, "editor", "delete") for k in ("usecase", "collaborative")} | {
-    ("aimodel", "viewer", "create"), ("aimodel", "outsider", "create"), ("aimodel", "outsider", "list"),
-    ("publication", "outsider", "list")}
+BROKEN = {(k, role, a) for k in ("usecase", "collaborative") for role in ("viewer", "outsider")
+          for a in ("update", "delete")} | {(k, "editor", "delete") for k in ("usecase", "collaborative")}
 
 
 def _cases():
