@@ -15,6 +15,8 @@ from datetime import datetime
 
 import pytest
 
+from tests.api.publish_ready import make_dataset_publishable
+
 
 # ─── Mutations ───────────────────────────────────────────────────────────────────
 
@@ -217,7 +219,8 @@ def test_dataset_full_lifecycle(graphql_client):
             f"Newly created dataset {dataset_id} not found in datasets list"
         )
 
-        # 4. Publish
+        # 4. Publish (DataSpaceBackend#310 requires a resource, sector and license first)
+        make_dataset_publishable(graphql_client, dataset_id, tags=["automated-test"])
         publish_data = graphql_client.query(PUBLISH_DATASET_MUTATION, {"datasetId": dataset_id})
         published = publish_data.get("publishDataset", {})
         assert published.get("status") == "PUBLISHED", (
@@ -307,6 +310,7 @@ def _create_titled_dataset(graphql_client, title: str) -> str:
         "tags": ["automated-test"],
         "accessType": "PUBLIC",
     })
+    make_dataset_publishable(graphql_client, dataset_id, tags=["automated-test"])  # both callers publish it
     return dataset_id
 
 
