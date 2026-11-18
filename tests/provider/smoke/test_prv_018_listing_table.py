@@ -149,9 +149,6 @@ def test_prv_019_listing_pagination(scope, kind, open_listing, provider_api, req
       4. First Page returns to the first rows
       5. Next Page shows a different set of rows; Previous Page returns
     """
-    if (kind, scope) == ("aimodel", "individual"):
-        request.applymarker(pytest.mark.xfail(
-            strict=True, reason="DataSpaceFrontend#545: AI model listing Next Page shows page 1 again"))
     spec = LISTINGS[kind]
     org = _owner(scope, request)
     listing = provider_api.listing(kind, org)
