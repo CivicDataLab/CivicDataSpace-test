@@ -10,6 +10,7 @@ import uuid
 import pytest
 
 from tests.api.publications import gql
+from tests.api.publish_ready import make_use_case_publishable
 
 pytestmark = [pytest.mark.api, pytest.mark.functional]
 
@@ -203,7 +204,8 @@ def test_empty_draft_cannot_publish(graphql_client):
 def test_published_use_case_cannot_be_edited(graphql_client):
     uc_id = _new(graphql_client)
     try:
-        gql(graphql_client, PUBLISH, {"i": uc_id})
+        make_use_case_publishable(graphql_client, uc_id)
+        assert gql(graphql_client, PUBLISH, {"i": uc_id})["data"]["publishUseCase"]["status"] == "PUBLISHED"
         body = _update(graphql_client, uc_id, title=f"[qa-matrix] after publish {uuid.uuid4().hex[:4]}")
         assert any("not in draft status" in m for m in _errors(body)), body
     finally:
