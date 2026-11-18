@@ -26,7 +26,7 @@ class EditorWizardPage(BasePage):
         chip_locator = (By.XPATH, W.FIELD_CHIPS.format(label=label))
 
         def titles():
-            return [el.get_attribute("title") for el in self.driver.find_elements(*chip_locator)]
+            return [el.get_attribute("title") for el in self.present_now(chip_locator)]
 
         for val in values:
             if not chips:
