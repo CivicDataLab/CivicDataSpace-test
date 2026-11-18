@@ -203,7 +203,6 @@ def test_prv_func_202g_model_information_gates_review(driver, base_url, test_cre
 
 @pytest.mark.functional
 @pytest.mark.timeout(420)
-@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#530: Model Information: a Description edited on its own is never autosaved; it is lost on reload unless another field is changed afterwards")
 def test_prv_func_202h_description_alone_is_autosaved(driver, base_url, test_credentials, delete_draft_after):
     page = new_draft(driver, base_url, test_credentials, delete_draft_after)
     page.go_to_details()
