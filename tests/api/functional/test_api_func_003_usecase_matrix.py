@@ -176,12 +176,10 @@ def test_unknown_use_case_is_refused(graphql_client):
     assert _errors(_update(graphql_client, "999999999", title="[qa-matrix] ghost"))
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: updateUseCase stores any platformUrl; URLField is never validated")
 def test_invalid_platform_url_is_refused(graphql_client, draft):
     assert _errors(_update(graphql_client, draft, platformUrl="not a url"))
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: no check that completedOn is on or after startedOn")
 def test_completed_before_started_is_refused(graphql_client, draft):
     assert _errors(_update(graphql_client, draft, startedOn="2025-06-01", completedOn="2024-01-01"))
 
