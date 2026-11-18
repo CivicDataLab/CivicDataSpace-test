@@ -97,13 +97,18 @@ def test_published_list_shows_only_after_publish(graphql_client, anon_graphql_cl
 
 # ─── AI model ─────────────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("is_public,visible", [(False, False), (True, True)], ids=["private", "public"])
-def test_ai_model_visibility_follows_is_public(graphql_client, anon_graphql_client, is_public, visible):
+# DataSpaceBackend 2d381d3: isPublic alone no longer publishes; status ACTIVE does.
+@pytest.mark.parametrize("is_public,active,visible", [(False, False, False), (True, False, False), (True, True, True)],
+                         ids=["private", "public-draft", "published"])
+def test_ai_model_visibility_follows_is_public(graphql_client, anon_graphql_client, is_public, active, visible):
     body = gql(graphql_client, "mutation($i: CreateAIModelInput!){ createAiModel(input:$i){ success data { id } } }",
                {"i": {"modelType": "TEXT_GENERATION", "provider": "CUSTOM", "name": f"qa-matrix-vis-{uuid.uuid4().hex[:8]}",
                       "isPublic": is_public}})
     model_id = int(body["data"]["createAiModel"]["data"]["id"])
     try:
+        if active:
+            gql(graphql_client, "mutation($i: UpdateAIModelInput!){ updateAiModel(input:$i){ success } }",
+                {"i": {"id": model_id, "status": "ACTIVE"}})
         got = gql(anon_graphql_client, "query($id: Int!){ getAiModel(modelId:$id){ id } }", {"id": model_id})
         assert ((got.get("data") or {}).get("getAiModel") is not None) == visible, got
     finally:
