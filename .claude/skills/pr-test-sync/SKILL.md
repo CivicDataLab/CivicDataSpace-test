@@ -189,6 +189,52 @@ because they'd have collected nothing meaningful.
 Prefer one or two tests that would genuinely have caught the bug over broad coverage of
 everything the diff touched.
 
+### 3a. Fix PRs: sweep the expected failures first
+
+When a product PR fixes a bug, the tests often already know about it, as a strict
+`xfail` naming the issue. The fix makes them XPASS, strict turns XPASS into a failure, and
+the deploy gate rolls back **the very deploy that ships the fix**. It happened on
+DataSpaceBackend#305 (#291 had to merge before the deploy could pass), and again on
+2026-11-18, when #308/#309 and two frontend fixes reached dev and 38 strict XPASSes failed every
+smoke run until CivicDataSpace-test#304.
+
+```bash
+git grep -n "DataSpaceBackend#292\|#292\b" origin/CI -- tests     # every issue the PR fixes
+pytest <those tests> -q -rxX                                       # XPASS = drop the mark
+pytest <those tests> -q --runxfail --tb=short                      # see the REAL outcome
+```
+
+- **XPASS:** remove the mark. If the fix changed the behaviour the test expects (a new
+  error instead of a stored value), update the assertion in the same commit.
+- **Still XFAIL: run with `--runxfail` before believing it.** A strict xfail without `raises=`
+  accepts *any* exception. After DataSpaceBackend#310 refused an empty-draft publish with
+  `data: null`, `body["data"]["publishUseCase"].get(...)` raised `TypeError`, and the test went
+  on reporting XFAIL for a bug that was fixed (#305). If the real failure isn't the
+  assertion the reason names, the bug is fixed and the test is broken. Fix the test.
+- **Fixed on dev only:** the removal must merge **as soon as the fix is on dev**. Dev's
+  gate runs the `CI` tests, so the xfail and the fix can't both be live. The fixed tests are
+  not `readonly`-gated, so prod doesn't care.
+- **When you add a new xfail** for a bug you found, write it so only that bug can satisfy it:
+  `@pytest.mark.xfail(strict=True, raises=AssertionError, reason="Repo#N: <symptom>")`,
+  and read the response defensively (`(body.get("data") or {}).get(...)`) so a refusal
+  fails at the assertion, not on a `None`.
+
+### 3b. Contract changes break existing tests: find them by name
+
+A new limit or rule makes old tests wrong, and they look like product failures. On
+2026-11-18: #309 capped collaborative slugs at 63 (the matrix still sent 75), and backend
+2d381d3 stopped showing AI models that were `isPublic` but not `ACTIVE` (func_008 expected
+them visible). Neither test was near a changed *page*, so the route grep below missed both.
+
+Grep the tests for every name from the diff: field, mutation, error message, enum value,
+REST param, limit. Run the hits against dev once the change is live. Update a test to the
+new contract only when the diff says the change is intended (commit message, PR body,
+code comment). Otherwise it's a regression to report, not a test to change.
+
+**Before you call anything a backend bug, read the resolver for the request shape.**
+DataSpaceBackend#290 was filed because a test sent `?q=`. The search view reads `query`,
+and treats every other param as a filter. One `grep` in the view would have saved the issue.
+
 ### Find the affected pages, and run the tests that already cover them
 
 New tests are half the job. The other half is making sure the existing tests on the
