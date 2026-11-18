@@ -135,7 +135,6 @@ class BasePage:
         screenshot shows SDG Goals empty with 'Saving...' still spinning. Returns
         at once when nothing is saving.
         """
-        from selenium.common.exceptions import StaleElementReferenceException
         from selenium.webdriver.common.by import By
         from selenium.webdriver.support.ui import WebDriverWait
 
@@ -143,8 +142,8 @@ class BasePage:
         # find_elements, not invisibility_of_element_located: the wrapped driver can
         # return None from find_element when nothing matches.
         saving = "//*[normalize-space(text())='Saving…' or normalize-space(text())='Saving...']"
-        WebDriverWait(self.driver, timeout, ignored_exceptions=[StaleElementReferenceException]).until(
-            lambda d: not any(e.is_displayed() for e in d.find_elements(By.XPATH, saving)),
+        WebDriverWait(self.driver, timeout).until(
+            self.gone((By.XPATH, saving)),
             message="Timed out waiting for the editor autosave to finish",
         )
 
