@@ -154,14 +154,26 @@ def test_search_event_timeframe_filter_separates_upcoming_from_past(
     )
 
 
+def _event_total(client):
+    resp = client.get("/api/search/event/", params={"size": 1})
+    assert resp.status_code == 200, f"event search failed ({resp.status_code}): {resp.text}"
+    return resp.json()["total"]
+
+
 @pytest.mark.smoke
 def test_unified_search_counts_events_by_default(anon_api_client, event_baseline):
     """/api/search/unified/ with no `types` param must include `event` in its
     per-type aggregation, matching /api/search/event/'s own total. Before
     #270, `event` was not in the default type list (or the index) at all, so
     this key would be entirely absent.
+
+    Dev is shared and events get published while this runs, so the module's
+    event_baseline goes stale. The event total is read just before and just
+    after the unified call and the unified count must fall between the two.
     """
+    before = _event_total(anon_api_client)
     resp = anon_api_client.get("/api/search/unified/", params={"size": 1})
+    after = _event_total(anon_api_client)
     assert resp.status_code == 200, f"unified search failed ({resp.status_code}): {resp.text}"
     body = resp.json()
     type_counts = body.get("aggregations", {}).get("types", {})
@@ -170,7 +182,8 @@ def test_unified_search_counts_events_by_default(anon_api_client, event_baseline
         f"unified search's default type aggregation has no 'event' key - "
         f"got {sorted(type_counts)}"
     )
-    assert type_counts["event"] == event_baseline["total"], (
+    low, high = sorted((before, after))
+    assert low <= type_counts["event"] <= high, (
         f"unified search counts {type_counts['event']} events, but "
-        f"/api/search/event/ itself reports {event_baseline['total']}"
+        f"/api/search/event/ itself reported {before} before and {after} after"
     )
