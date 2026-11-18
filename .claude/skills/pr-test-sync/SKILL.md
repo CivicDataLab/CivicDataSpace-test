@@ -11,6 +11,35 @@ repo, with the right markers, and hands you a draft PR — it never merges.
 **The output is a draft PR, always.** Not a merge, not a ready-for-review PR. The
 review gate is the point.
 
+## Fast path: the order that wastes least time
+
+Do these in order and stop at the first step that says stop. API checks take seconds,
+browser runs take minutes, and a run before the deploy is wasted, so the order matters.
+
+1. **Duplicate check** (§8). Seconds. Stop if a branch or PR exists.
+2. **Read the diff, not the title** (§0). Note three lists as you read:
+   - the issues it fixes (`Fixes #N`, `For #N`, `Closes #N` in the body, and its commits),
+   - every GraphQL field, mutation, REST param and error message it adds or changes,
+   - every route or component it changes.
+3. **Nothing user- or API-visible changed?** Stop, no tests (§3).
+4. **Is it on dev?** One request, not `gh run list` (see §0). If not deployed, stop and say
+   so. Don't write against code that isn't running.
+5. **Xfail sweep** (§3a). Grep the tests for each fixed issue, run those tests with
+   `--runxfail`. A fix PR's most urgent output is usually *removing* xfails, because
+   they fail the deploy gate the moment the fix deploys.
+6. **Existing tests the change breaks** (§3b). Grep the tests for every name from list 2 and
+   run them against dev. Contract changes (a new limit, a new rule) break old tests
+   before new ones are needed.
+7. **Only then write new tests** (§5), API-first: one GraphQL/REST test proves most
+   backend changes in seconds. Add a browser test only when the change is in the UI.
+8. **Red and green** (§6): run only the files you touched, `-q -rfExXs`, with the count
+   checked.
+9. **Security fix?** Read §7a before writing a single comment, commit message or PR line.
+10. **Draft PR**, using the short body template (§7).
+
+Run each suite **once** per step, and only the files you touched. A full-suite rerun
+"to be sure" costs an hour of rate limit (§6) and shows nothing your targeted run didn't.
+
 ## Who reads this file
 
 Two callers, and they have different capabilities:
