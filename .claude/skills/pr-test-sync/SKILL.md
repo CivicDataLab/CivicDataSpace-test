@@ -411,7 +411,8 @@ the doubt. Required, both directions:
    enough" below). Run again. **Confirm red, at the intended assertion.**
 3. Revert to the correct assertion. Confirm green.
 
-Paste both outputs in the PR body. This only ever touches the test's own assertions —
+Paste both outputs in the PR body (summary line plus the failing assertion; for a
+security fix, one line with no output at all, see §7a). This only ever touches the test's own assertions —
 never mutate the dev deployment to force a failure.
 
 If it passes before the feature exists, or passes with the assertion inverted, it isn't
@@ -597,15 +598,26 @@ put the tests somewhere they'd never run.
 gh pr create --repo CivicDataLab/$TEST_REPO --draft --title "..." --body-file body.md
 ```
 
-Body must contain:
+Body: short. A reviewer reads it in a minute, and the diff explains itself. #298's body was
+about 100 lines of narrative, curl transcripts and a skill-section citation, and it had
+to be rewritten. Use this shape and nothing more:
 
-- The source PR (link) and merge commit that triggered this.
-- What behaviour changed, from the diff — not from the PR title.
-- Which categories were added, and **why those and not the others**.
-- The red→green proof from §6, pasted.
-- Every gap: missing Page Object, category with no home in this repo, CI filter that
-  needed updating.
-- Anything deliberately not covered, and why.
+```markdown
+Covers <Repo>#<N> (merge `<sha8>`): <one sentence: what behaviour changed, from the diff>.
+
+- `<test file>`: <what it checks>, markers `<...>` (<why these, one clause>)
+- <xfails dropped / existing tests updated, one line each, with the reason>
+
+Checked:
+- dev: <N passed>
+- red: <how it failed, one line: the assertion it failed at>
+- prod: <N skipped (deployed_pr) | not run: writes>
+
+Gaps: <missing Page Object, untestable mechanism, UNVERIFIED tests>, or "none".
+```
+
+Paste output only as the summary line plus the one assertion line that matters, not the
+whole log. Don't cite this skill's section numbers to the reviewer.
 
 **Draft only. Never `--ready`, never merge, never enable auto-merge.**
 
