@@ -92,6 +92,10 @@ concurrency:
   group: smoke-${{ inputs.suite == 'readonly' && 'prod' || 'dev' }}
   cancel-in-progress: false
 
+  # Suites run one after another (api-smoke > consumer > provider > api-matrix):
+  # dev serves 2 uvicorn workers capped at 15 in-flight requests each, so parallel
+  # suites got 503/504s. if: !cancelled() keeps a failure from skipping the rest.
+
 jobs:
   # A caller that passes deployed_sha may start this at the same moment its
   # deploy starts (PR Gate does, on a merge into dev). Hold the suites until the
@@ -116,7 +120,7 @@ jobs:
           echo "::warning::Deploy of $EXPECTED_SHA not live after 25 min; running suites anyway"
 
   consumer-smoke:
-    needs: wait-deploy
+    needs: [wait-deploy, api-smoke]
     if: ${{ !cancelled() && !inputs.only_provider }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -515,7 +519,7 @@ jobs:
   # so a separate IP and a fresh allowance. Kept out of api-smoke so the
   # required check "Full Suite (dev) / api-smoke" keeps its name.
   api-matrix:
-    needs: wait-deploy
+    needs: [wait-deploy, provider-smoke]
     if: ${{ !cancelled() && !inputs.only_provider && inputs.suite != 'smoke' && inputs.suite != 'readonly' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -594,7 +598,7 @@ jobs:
   provider-smoke:
     # Negated so push/pull_request/workflow_dispatch runs (where inputs.* is
     # null, which GitHub coerces like false) still run it.
-    needs: wait-deploy
+    needs: [wait-deploy, consumer-smoke]
     if: ${{ !cancelled() && !inputs.skip_provider && inputs.suite != 'readonly' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
