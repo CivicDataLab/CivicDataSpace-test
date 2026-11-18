@@ -4,11 +4,9 @@
 # name the record they show, so two records of one kind have different titles.
 # The titles are server-rendered, so plain HTTP is enough - no browser.
 #
-# Dataset, use case and AI model detail pages already do this. Collaborative
-# detail pages use one generic title for every record (DataSpaceFrontend#541):
-# that case asserts the correct behaviour and is strict xfail, so CI stays
-# green while the bug exists and goes red (XPASS) once it is fixed, at which
-# point the marker has to come off.
+# Collaborative detail pages shared one generic title (DataSpaceFrontend#541)
+# until DataSpaceFrontend#543 gave each its own; that case runs only where the
+# site under test already serves #543.
 #
 # Records are picked at runtime from the public search API, never hardcoded.
 
@@ -56,18 +54,12 @@ def test_page_title_is_not_empty(dev_frontend_client, detail_paths, entity):
     assert _title(dev_frontend_client, path), f"{path} has an empty or missing <title>"
 
 
-def _generic(issue):
-    return pytest.mark.xfail(
-        strict=True, reason=f"{issue}: every record shares one generic <title>"
-    )
-
-
 @pytest.mark.parametrize(
     "entity",
     [
         "dataset",
         "usecase",
-        pytest.param("collaborative", marks=_generic("DataSpaceFrontend#541")),
+        pytest.param("collaborative", marks=pytest.mark.deployed_pr("DataSpaceFrontend#543", site="HOME_URL_DEV")),
         "aimodel",
     ],
 )
