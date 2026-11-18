@@ -190,12 +190,12 @@ def test_update_without_running_status_keeps_it(graphql_client, draft):
     assert _read(graphql_client, draft)["runningStatus"] == "ON_HOLD"
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: publishUseCase has no required-field check; an empty draft publishes")
 def test_empty_draft_cannot_publish(graphql_client):
     uc_id = _new(graphql_client)
     try:
         body = gql(graphql_client, PUBLISH, {"i": uc_id})
-        assert body["data"]["publishUseCase"].get("status") != "PUBLISHED"
+        assert _errors(body), f"empty draft was not refused: {body}"
+        assert ((body.get("data") or {}).get("publishUseCase") or {}).get("status") != "PUBLISHED", body
     finally:
         gql(graphql_client, DELETE, {"i": uc_id})
 
