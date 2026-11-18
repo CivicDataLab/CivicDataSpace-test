@@ -26,10 +26,12 @@ def _detail(page, base_url, c):
 def test_detail_shows_provider_values(page, base_url, published_collaborative):
     c = published_collaborative
     text = _detail(page, base_url, c).text()
-    today = datetime.date.today()
-    for value in (c["title"], c["summary"], c["tag"], c["geography"]["name"],
-                  f"{today:%B} {today.day}, {today.year}"):
+    for value in (c["title"], c["summary"], c["tag"], c["geography"]["name"]):
         assert value in text, f"{value!r} missing from collaborative detail"
+    # LAST UPDATED reads "18 Nov 2026" since the detail redesign, in UTC; a local
+    # runner may already be on the next day (IST after midnight).
+    days = {datetime.date.today(), datetime.datetime.now(datetime.timezone.utc).date()}
+    assert any(f"{d:%d %b %Y}" in text for d in days), f"none of {sorted(days)} on collaborative detail"
     alts = page.image_alts()
     assert c["sector"]["name"] in alts and c["sdg"]["name"] in alts, alts
     assert c["platform_url"] in page.external_links()
