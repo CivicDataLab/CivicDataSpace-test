@@ -154,10 +154,10 @@ def test_completed_before_started_is_refused(graphql_client, draft):
     assert _errors(_update(graphql_client, draft, startedOn="2025-06-01", completedOn="2024-01-01"))
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: publishCollaborative has no required-field check; an empty draft publishes")
 def test_empty_draft_cannot_publish(graphql_client, second):
     body = gql(graphql_client, PUBLISH, {"i": second})
-    assert body["data"]["publishCollaborative"].get("status") != "PUBLISHED"
+    assert _errors(body), f"empty draft was not refused: {body}"
+    assert ((body.get("data") or {}).get("publishCollaborative") or {}).get("status") != "PUBLISHED", body
 
 
 def test_unknown_slug_lookup_errors(graphql_client):
