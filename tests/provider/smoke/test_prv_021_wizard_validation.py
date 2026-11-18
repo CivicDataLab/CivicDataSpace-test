@@ -105,13 +105,8 @@ def test_prv_021_failed_continue_shows_an_error_in_view(kind, step, driver, open
     )
 
 
-NOT_ASSOCIATED = pytest.mark.xfail(
-    strict=True,
-    reason="DataSpaceFrontend#532: the use case Connect step's field errors are not linked to their controls",
-)
-
 ASSOCIATION_CASES = [
-    pytest.param(kind, step, id=f"{kind}-{step}", marks=NOT_ASSOCIATED if kind == "usecase" else ())
+    pytest.param(kind, step, id=f"{kind}-{step}")
     for kind, step in [("dataset", "metadata"), ("usecase", "connect"), ("collaborative", "about"), ("aimodel", "details")]
 ]
 
