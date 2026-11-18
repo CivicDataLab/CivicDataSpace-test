@@ -8,11 +8,24 @@ from locators.provider.editor_wizard_locators import EditorWizardLocators as W
 
 class CreateDatasetLocators:
     # ---- Dataset type modal (from "Create Dataset" on the list) ----
-    MODAL_TITLE = "//h2[contains(., 'Create New Dataset')] | //div[contains(., 'Select the type of dataset')]"
-    DATA_DATASET_CARD = "//button[.//h3[normalize-space()='Data Dataset']]"
-    PROMPT_DATASET_CARD = "//button[.//h3[normalize-space()='Prompt Dataset']]"
+    # Old modal (h3 cards, "Create Dataset") and the DatasetTypeModal from
+    # DataSpaceFrontend d9eb41a1 (radio cards, "Add New Dataset", "Continue").
+    MODAL_TITLE = (
+        "//h2[contains(., 'Create New Dataset')] | //div[contains(., 'Select the type of dataset')]"
+        " | //div[@role='dialog'][.//*[contains(text(), 'Add New Dataset')]]"
+    )
+    DATA_DATASET_CARD = (
+        "//button[.//h3[normalize-space()='Data Dataset']]"
+        " | //div[@role='dialog']//button[@role='radio'][.//*[normalize-space()='Dataset']]"
+    )
+    PROMPT_DATASET_CARD = (
+        "//button[.//h3[normalize-space()='Prompt Dataset']]"
+        " | //div[@role='dialog']//button[@role='radio'][.//*[normalize-space()='Prompt Dataset']]"
+    )
     # Scoped to the modal: the header has its own "Create Dataset" button.
-    CREATE_DATASET_BUTTON = "//div[@role='dialog']//button[normalize-space()='Create Dataset']"
+    CREATE_DATASET_BUTTON = (
+        "//div[@role='dialog']//button[normalize-space()='Create Dataset' or normalize-space()='Continue']"
+    )
 
     # ---- Steps: buttons in the Progress nav, labelled then subtitled ----
     STEP_BUTTON = "//main//button[starts-with(normalize-space(),'{label}')]"
