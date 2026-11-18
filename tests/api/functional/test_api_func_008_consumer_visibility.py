@@ -11,6 +11,7 @@ import uuid
 import pytest
 
 from tests.api.publications import gql
+from tests.api.publish_ready import make_collaborative_publishable, make_dataset_publishable, make_use_case_publishable
 
 pytestmark = [pytest.mark.api, pytest.mark.functional]
 
@@ -37,6 +38,7 @@ def dataset(graphql_client):
     title = f"[qa-matrix] visibility {uuid.uuid4().hex[:8]}"
     gql(graphql_client, "mutation($i: UpdateDatasetInput!){ updateDataset(updateDatasetInput:$i){ ... on TypeDataset { id } } }",
         {"i": {"dataset": dataset_id, "title": title, "description": "qa-matrix consumer check", "license": "CC0_1_0"}})
+    make_dataset_publishable(graphql_client, dataset_id)
     yield dataset_id, title
     gql(graphql_client, "mutation($id: UUID!){ unPublishDataset(datasetId:$id){ ... on TypeDataset { id } } }", {"id": dataset_id})
     gql(graphql_client, "mutation($id: UUID!){ deleteDataset(datasetId:$id) }", {"id": dataset_id})
@@ -81,6 +83,7 @@ def test_published_list_shows_only_after_publish(graphql_client, anon_graphql_cl
     title = f"[qa-matrix] {kind} visibility {uuid.uuid4().hex[:6]}"
     try:
         gql(graphql_client, "mutation($d: %sInputPartial!){ update%s(data:$d){ id } }" % (kind, kind), {"d": {"id": item_id, "title": title}})
+        (make_use_case_publishable if kind == "UseCase" else make_collaborative_publishable)(graphql_client, item_id)
 
         def listed():
             items = gql(anon_graphql_client, "{ %s { id } }" % listing)["data"][listing]
