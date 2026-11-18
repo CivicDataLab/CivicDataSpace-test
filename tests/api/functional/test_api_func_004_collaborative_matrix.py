@@ -69,10 +69,10 @@ def second(graphql_client):
 
 # ─── Slug (subdomain) ─────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("slug", ["a", "qa-matrix-7", "x" * 75, "0-0-0"], ids=["one-char", "hyphen-digit", "max-75", "digits"])
+@pytest.mark.parametrize("slug", ["a", "qa-matrix-7", "x" * 63, "0-0-0"], ids=["one-char", "hyphen-digit", "max-63", "digits"])
 def test_valid_slug_round_trips_and_resolves(graphql_client, draft, slug):
     slug = slug if slug != "a" else f"a{uuid.uuid4().hex[:5]}"
-    slug = slug if slug != "x" * 75 else (_slug() + "x" * 75)[:75]
+    slug = slug if slug != "x" * 63 else (_slug() + "x" * 63)[:63]
     body = _update(graphql_client, draft, slug=slug)
     assert not _errors(body), body
     assert _read(graphql_client, draft)["slug"] == slug
@@ -80,7 +80,7 @@ def test_valid_slug_round_trips_and_resolves(graphql_client, draft, slug):
 
 
 @pytest.mark.parametrize("slug", [
-    "Upper-Case", "has space", "under_score", "-leading", "trailing-", "double--hyphen", "dot.ted", "émoji-ü", "x" * 76,
+    "Upper-Case", "has space", "under_score", "-leading", "trailing-", "double--hyphen", "dot.ted", "émoji-ü", "x" * 64,
 ])
 def test_invalid_slug_is_refused_not_rewritten(graphql_client, draft, slug):
     before = _read(graphql_client, draft)["slug"]
@@ -109,7 +109,6 @@ def test_same_title_gets_its_own_slug(graphql_client, draft, second):
     assert theirs["urlSlug"] != mine["urlSlug"]
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: no reserved-subdomain list; 'www'/'api'/'admin' are accepted as collaborative slugs")
 @pytest.mark.parametrize("slug", ["www", "api", "admin"])
 def test_reserved_subdomain_is_refused(graphql_client, second, slug):
     assert _errors(_update(graphql_client, second, slug=slug))
@@ -151,7 +150,6 @@ def test_summary_over_200000_is_refused(graphql_client, draft):
     assert "Summary cannot exceed 200000 characters." in _errors(_update(graphql_client, draft, summary="s" * 200001))
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#292: no check that completedOn is on or after startedOn")
 def test_completed_before_started_is_refused(graphql_client, draft):
     assert _errors(_update(graphql_client, draft, startedOn="2025-06-01", completedOn="2024-01-01"))
 
