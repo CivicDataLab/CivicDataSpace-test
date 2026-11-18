@@ -488,6 +488,8 @@ API_BASE_URL=https://api.datakeep.civicdays.in pytest <file> --tb=line   # must 
 
 - Read-only and anonymous only. Never send a mutation or an authenticated write to prod
   (prod runs `readonly` tests only).
+- For a security fix, a prod red run shows the hole is open on prod. Keep its output out
+  of the repo and the PR (§7a).
 - The prod API is `api.datakeep.civicdays.in`. `api.civicdataspace.in` doesn't resolve,
   and a DNS or connection error is **not** a red. Every failure line must name the missing
   field or the old behaviour.
@@ -620,6 +622,35 @@ Paste output only as the summary line plus the one assertion line that matters, 
 whole log. Don't cite this skill's section numbers to the reviewer.
 
 **Draft only. Never `--ready`, never merge, never enable auto-merge.**
+
+### 7a. Security fixes: the test repos are PUBLIC
+
+`CivicDataSpace-test`, `DataSpaceBackend` and `DataSpaceFrontend` are public. A fix for a
+security bug usually ships **before** prod gets it, so anything you write about how the
+bug worked is a working attack on prod for anyone who reads it.
+CivicDataSpace-test#298 put curl commands that leaked an organisation's private records from
+prod, with counts and record ids, into its file header, commit message and PR body.
+Scrubbing it afterwards still left GitHub's body edit history and the force-push timeline,
+which only a repo admin can purge.
+
+A source PR is a security fix when it touches auth, permissions, membership, visibility
+of drafts or private data, secrets, SSRF/XSS/injection, or a GitHub security advisory
+(GHSA) exists for it. Then, in **every** comment, docstring, assertion message, commit
+message, PR title and PR body:
+
+- **Name the advisory by id only** (`Security context: GHSA-xxxx-xxxx-xxxx`). Never say how it
+  is exploited, which header or param does it, or what an attacker gets.
+- **Never write that prod is still vulnerable**, and never paste a request or response from
+  prod. Record the red run as one line: "fails against code without the fix".
+- **No curl lines, no counts, no ids, no org slugs** from a leak.
+- Test names and assertions say what must hold ("anonymous caller cannot list org AI
+  models"), not how to break it.
+- Gate with `deployed_pr` + `readonly` (§7) so it can merge before prod ships.
+- Grep your own diff, commit message and body before pushing:
+  `grep -inE "curl|exploit|leak|still (vulnerable|exploitable)|prod.*(leak|expose)"`.
+
+If a red run genuinely needs prod (read-only and anonymous, §6), run it, but keep its
+output out of the repo and the PR. Mention it in your report to the user, not on GitHub.
 
 ### `readonly` tests: say when it's safe to merge
 
