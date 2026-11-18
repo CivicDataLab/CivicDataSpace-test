@@ -91,6 +91,21 @@ Look for the deploy run on the **merge SHA**, and for `rollback: success`. Then 
 changed page in Playwright MCP and check that the new behaviour is actually there. `gh run list
 --branch dev` can list stale runs, so filter by SHA and don't trust that list alone.
 
+**Faster and more reliable: ask the running service what it runs.** A green deploy run
+proves little when the repo sets `SKIP_DEV_TESTS=true` (both DataSpace repos did from
+2026-11-17), and the runs list can be stale. One request answers it:
+
+```bash
+# backend: /health/ reports git_sha
+sha=$(curl -s https://dev.api.civicdataspace.in/health/ | python3 -c 'import json,sys;print(json.load(sys.stdin)["git_sha"])')
+# frontend: every page carries X-Git-Sha
+sha=$(curl -sI https://dev.civicdataspace.in | awk -F': ' 'tolower($1)=="x-git-sha"{print $2}' | tr -d '\r')
+gh api repos/CivicDataLab/$SRC/compare/<merge-sha>...$sha -q .status   # "ahead" or "identical" = deployed
+```
+
+`behind` or `diverged` means the change isn't live. This is the same check the
+`deployed_pr` marker makes.
+
 If dev is rolled back, say so, and don't redeploy on your own: it's a shared
 environment and the user's call. You can still verify locally (§6).
 
