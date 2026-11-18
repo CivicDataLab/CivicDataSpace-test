@@ -246,6 +246,17 @@ class EditorWizardPage(BasePage):
     def get_page_text(self) -> str:
         return self.find((By.TAG_NAME, "main")).text
 
+    def page_text_once_shown(self, messages, timeout: int = 15) -> str:
+        """The step's text once every one of `messages` shows, or as it stands at `timeout`.
+
+        Validation and review lists render a moment after a click or a load.
+        """
+        try:
+            self.wait_with_timeout(timeout).until(lambda d: all(m in self.get_page_text() for m in messages))
+        except TimeoutException:
+            pass
+        return self.get_page_text()
+
     def press_step(self, label: str):
         """Click a stepper button without expecting it to open."""
         self.wait_until_saved()
