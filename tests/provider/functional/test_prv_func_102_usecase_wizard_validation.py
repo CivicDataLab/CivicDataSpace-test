@@ -46,9 +46,10 @@ def test_prv_func_102_02_review_lists_missing_items_and_blocks_publish(
     page.upload_thumbnail(sample_logo_path)
 
     page.open_step_url("publish")
-    text = page.get_page_text()
-    for msg in ("Needs attention", "Add at least one content block.", "Select at least one sector.",
-                "Select at least one SDG goal.", "Connect at least one dataset."):
+    messages = ("Needs attention", "Add at least one content block.", "Select at least one sector.",
+                "Select at least one SDG goal.", "Connect at least one dataset.")
+    text = page.page_text_once_shown(messages)
+    for msg in messages:
         assert msg in text, f"Review step does not list {msg!r}"
     assert not page.is_publish_enabled(), "Publish Use Case is enabled with items missing"
 
@@ -77,8 +78,9 @@ def test_prv_func_102_04_connect_required_fields(driver, provider_dashboard, qa_
 
     page.press_continue()
     assert "/connect" in driver.current_url, "Continue left an empty Connect step"
-    text = page.get_page_text()
-    for msg in ("Select at least one SDG goal", "Select at least one sector", "Connect at least one dataset"):
+    messages = ("Select at least one SDG goal", "Select at least one sector", "Connect at least one dataset")
+    text = page.page_text_once_shown(messages)
+    for msg in messages:
         assert msg in text, f"Connect step does not show {msg!r}"
 
 
@@ -135,7 +137,7 @@ def test_prv_func_102_09_review_updates_as_items_are_fixed(driver, provider_dash
         page.select_sectors([sector_name])
 
     page.open_step_url("publish")
-    text = page.get_page_text()
+    text = page.page_text_once_shown(["Connect at least one dataset."])
     assert "Select at least one sector." not in text and "Select at least one SDG goal." not in text
     assert "Connect at least one dataset." in text  # the content block was added in 102_03
     assert not page.is_publish_enabled()
