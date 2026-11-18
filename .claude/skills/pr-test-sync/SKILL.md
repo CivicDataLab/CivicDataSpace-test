@@ -339,6 +339,15 @@ and the test kept passing without proving anything. The fixture now prefers a li
 *without* the param. Data you don't own can change under you, so re-check which record
 the fixture picks after any data edit.
 
+**Dev is shared and live: numbers move while the test runs.** Other suites, other workers
+and real users create records the whole time.
+- Never compare a count with a snapshot taken earlier in the module. Read it right before
+  and right after, and assert the value is between them (api_052's event count, #303).
+- Don't count the same account's records while another job writes to it. A two-lane CI
+  experiment had api-matrix create datasets for the account prv_018 was counting, and the
+  tabs showed 55 against the backend's 56. Own the data you count: a fresh org, or a
+  filter on your own unique title prefix.
+
 Browser jobs may not get the API URL. `consumer-smoke` had only `HOME_URL_DEV` until
 CivicDataSpace-test#122 added `API_BASE_URL` with api-smoke's expression. Check
 `run-smoke.yml`'s `env:` for your job before relying on a variable.
