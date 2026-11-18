@@ -12,6 +12,7 @@ from tests.api.conftest import (  # noqa: F401  (re-exported fixtures)
     anon_graphql_client, api_base_url, auth_token, graphql_client, keycloak_config,
 )
 from tests.api.publications import gql
+from tests.api.publish_ready import add_logo, add_resource, connect_dataset
 
 TITLE_TAIL = "जल डेटा 🌊"
 
@@ -56,6 +57,7 @@ def published_dataset(graphql_client, taxonomy):
             {"i": {"dataset": ds_id, "metadata": [], "description": values["description"], "tags": [tag],
                    "sectors": [taxonomy["sector"]["id"]], "geographies": [int(taxonomy["geography"]["id"])],
                    "license": values["license"], "accessType": "PUBLIC"}}), "addUpdateDatasetMetadata")
+        add_resource(graphql_client, ds_id)
         _ok(gql(graphql_client, "mutation($id: UUID!){ publishDataset(datasetId:$id){ ... on TypeDataset { status } } }",
                 {"id": ds_id}), "publishDataset")
         yield values
@@ -95,6 +97,9 @@ def _usecase_like(client, taxonomy, kind, metadata_mutation, metadata_input):
                 {"i": {"id": item_id, "metadata": [], "tags": [tag], "sectors": [taxonomy["sector"]["id"]],
                        "sdgs": [taxonomy["sdg"]["id"]], "geographies": [int(taxonomy["geography"]["id"])]}}),
             metadata_mutation)
+        if kind == "UseCase":
+            add_logo(client, kind, item_id)
+        connect_dataset(client, kind, item_id)
         _publish_kind(client, kind, arg, item_id)
         values["slug"] = _ok(gql(client, "query($p: ID!){ %s(pk:$p){ urlSlug } }" % lower, {"p": item_id}), lower)["urlSlug"]
         yield values
