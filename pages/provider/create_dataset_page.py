@@ -13,6 +13,8 @@ from locators.provider.editor_wizard_locators import EditorWizardLocators as W
 class CreateDatasetPage(EditorWizardPage):
     """Dataset wizard: Data Files (Prompt Files) -> Metadata -> Review & Publish."""
 
+    DRAFT_FIELD = (By.XPATH, L.SOURCE_INPUT)  # an optional text field, for type_without_leaving
+
     ENTITY = "Dataset"
 
     def is_form_visible(self) -> bool:
