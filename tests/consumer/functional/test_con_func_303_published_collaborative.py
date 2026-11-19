@@ -32,8 +32,10 @@ def test_detail_shows_provider_values(page, base_url, published_collaborative):
     # runner may already be on the next day (IST after midnight).
     days = {datetime.date.today(), datetime.datetime.now(datetime.timezone.utc).date()}
     assert any(f"{d:%d %b %Y}" in text for d in days), f"none of {sorted(days)} on collaborative detail"
-    alts = page.image_alts()
-    assert c["sector"]["name"] in alts and c["sdg"]["name"] in alts, alts
+    # The SDG shows as its goal icon, named by the link around it ("Goal 13:
+    # Climate Action. ..."). DataSpaceFrontend#543 took the sector off this page.
+    labels = page.aria_labels()
+    assert any(c["sdg"]["name"] in label for label in labels), labels
     assert c["platform_url"] in page.external_links()
 
 
