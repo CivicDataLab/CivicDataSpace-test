@@ -91,6 +91,11 @@ CHECKS = {
         "wcag": ["1.1.1 Non-text Content (A)"],
         "a11y_project": "All images have alt text",
     },
+    "image-alt-placeholder": {
+        "title": "Image alt text describes the image, not a placeholder like 'Logo'",
+        "wcag": ["1.1.1 Non-text Content (A)"],
+        "a11y_project": "All images have alt text",
+    },
     "color-contrast": {
         "title": "Text meets 4.5:1 (3:1 large) contrast ratio",
         "wcag": ["1.4.3 Contrast (Minimum) (AA)"],
