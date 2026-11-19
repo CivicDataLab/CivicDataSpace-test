@@ -10,6 +10,7 @@ A11Y Project: alt text, colour contrast, resizable text, single-column reflow
 """
 
 import pytest
+from selenium.webdriver.support.ui import WebDriverWait
 
 from utils import a11y
 from .conftest import PUBLIC_PAGES
@@ -61,6 +62,35 @@ def test_images_have_text_alternatives(driver, goto, page_id, path):
         detail={"url": path, **data, "problems": problems},
     )
     assert not problems, f"{page_id} ({path}): {'; '.join(problems)} — {data['missing'][:5]}"
+
+
+@pytest.mark.xfail(reason="DataSpaceFrontend#551: card icons and logos use alt 'Logo'", strict=True, raises=AssertionError)
+@pytest.mark.parametrize("page_id,path", PUBLIC_PAGES, ids=PAGE_IDS)
+def test_image_alt_is_not_a_placeholder(driver, goto, page_id, path):
+    """WCAG 1.1.1: an alt of 'Logo' or 'image' says nothing about which sector or
+    publisher the image shows. Images inside a link or button with its own
+    aria-label are skipped, since that label is what gets announced."""
+    goto(path)
+    # Cards load after the app shell that goto() waits for; read once the image count holds for 3 s.
+    seen = []
+    WebDriverWait(driver, 30, poll_frequency=1).until(
+        lambda d: seen.append(d.execute_script("return document.images.length")) or seen[-4:].count(seen[-1]) == 4
+    )
+    placeholders = driver.execute_script("""
+        const visible = (el) => el.offsetParent !== null || el.getClientRects().length;
+        return [...document.querySelectorAll('img')].filter(visible)
+            .filter(i => !i.closest('a[aria-label],button[aria-label]'))
+            .filter(i => /^(logo|image|icon|picture|photo|img)$/i.test((i.getAttribute('alt') || '').trim()))
+            .map(i => `${i.getAttribute('alt')}: ${decodeURIComponent((i.getAttribute('src') || '').split('/').pop()).slice(0, 50)}`);
+    """)
+
+    a11y.record(
+        check="image-alt-placeholder",
+        page=page_id,
+        status="pass" if not placeholders else "fail",
+        detail={"url": path, "placeholders": placeholders[:15]},
+    )
+    assert not placeholders, f"{page_id} ({path}): {len(placeholders)} image(s) with a placeholder alt — {placeholders[:5]}"
 
 
 @pytest.mark.parametrize("page_id,path", PUBLIC_PAGES, ids=PAGE_IDS)
