@@ -37,6 +37,8 @@ class EditorWizardLocators:
 
     # Messages a blocked Continue/stepper click shows under each field.
     INLINE_ERRORS = (By.XPATH, "//main//*[contains(@class,'InlineMessage-module_InlineError')]")
+    # The header's save badge (DataSpaceFrontend#544): 'Unsaved changes', 'Saving…' or 'All changes saved'.
+    SAVE_STATUS = (By.XPATH, "//*[normalize-space(text())='Unsaved changes' or normalize-space(text())='Saving…' or normalize-space(text())='All changes saved']")
     STEP = "//main//ol/li//button[starts-with(normalize-space(),'{label}')]"
 
     PICKER_EMPTY = (By.XPATH, "//*[contains(@class,'entity-row-picker') and contains(@class,'__empty')]")
