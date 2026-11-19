@@ -212,7 +212,7 @@ CLEAN = {"apiKey": DUMMY_KEY, "hfAuthToken": "hf_qamatrixdummynotasecret", "apiK
          "apiAuthHeaderName": "Authorization", "apiEndpointUrl": "https://api.example.com/v1/predict",
          "providerModelId": "qa-matrix-model-1", "apiResponsePath": "choices[0].message.content"}
 DIRTY = {"padded": lambda v: f" {v} ", "newline": lambda v: f"{v}\n", "inner_space": lambda v: f"{v[:5]} {v[5:]}"}
-SAVED_AS_IS = pytest.mark.xfail(strict=True, reason="known product defect, tracked by the backend team: provider fields are saved as sent")
+SAVED_AS_IS = pytest.mark.xfail(strict=True, raises=AssertionError, reason="known product defect, tracked by the backend team: provider fields are saved as sent")
 FIELD_SHAPES = [pytest.param(f, s, id=f"{f}-{s}", marks=[] if f == "apiEndpointUrl" else SAVED_AS_IS)
                 for f, s in itertools.product(CLEAN, DIRTY)]
 
