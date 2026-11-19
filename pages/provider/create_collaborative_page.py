@@ -11,6 +11,8 @@ from locators.provider.create_collaborative_locators import CreateCollaborativeL
 class CreateCollaborativePage(EditorWizardPage):
     """Collaborative wizard: About -> People -> Content -> Review & Publish."""
 
+    DRAFT_FIELD = L.PLATFORM_URL_INPUT  # an optional text field, for type_without_leaving
+
     ENTITY = "Collaborative"
 
     def edit_collaborative_name(self, name: str):

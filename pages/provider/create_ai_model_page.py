@@ -12,6 +12,8 @@ from locators.provider.editor_wizard_locators import EditorWizardLocators as W
 class CreateAiModelPage(EditorWizardPage):
     """AI model wizard: Versions -> Model Information -> Review & Publish."""
 
+    DRAFT_FIELD = L.INTENDED_USE_INPUT  # an optional text field, for type_without_leaving
+
     ENTITY = "AI Model"
 
     # ─── Versions ───────────────────────────────────────────────────────────────
