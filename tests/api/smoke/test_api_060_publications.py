@@ -1,4 +1,4 @@
-# tests/api/smoke/test_api_059_publications.py
+# tests/api/smoke/test_api_060_publications.py
 #
 # Covers DataSpaceFrontend#543: adds the consumer-facing Publications feature
 # (a new entity, distinct from datasets/use cases/collaboratives) — a listing
@@ -9,13 +9,18 @@
 #
 # Public and unauthenticated: the backend's `publications` query requires no
 # auth, and the consumer pages require no login. Records are read from the
-# live API, never hardcoded.
+# live API, never hardcoded. deployed_pr skips it until the frontend under
+# test serves #543.
 
 import re
 
 import pytest
 
-pytestmark = [pytest.mark.api, pytest.mark.smoke]
+pytestmark = [
+    pytest.mark.api,
+    pytest.mark.smoke,
+    pytest.mark.deployed_pr("DataSpaceFrontend#543", site="HOME_URL_DEV"),
+]
 
 PUBLICATIONS_QUERY = (
     "query{publications(includePublic:true, filters:{status:PUBLISHED}){id urlSlug}}"
