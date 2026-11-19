@@ -17,29 +17,21 @@ class UseCasesListPage(BasePage):
         """'drafts_empty', 'published_empty' or 'rows' (see BasePage.list_view_state)."""
         return self.list_view_state(UseCaseListPageLocators)
 
+    def dataset_count_label(self, usecase_title: str) -> str:
+        """Text of the 'Datasets' column for the row matching `usecase_title`."""
+        return self.table_cell_text(usecase_title, "Datasets")
+
     def is_loaded(self):
         return self.wait_with_timeout(10).until(
             EC.presence_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON)
         )
 
     def click_add_new_usecase(self):
-        import time
-
-        # Locate the button and JS-click (avoids hidden-tab duplicate issues)
-        btn = self.wait_with_timeout(10).until(
-            EC.presence_of_element_located(UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON),
-            message="Timed out waiting for 'Add New UseCase' button"
+        """Click "Create Use Case"; it creates a draft and opens the Builder step."""
+        self.click_until(
+            UseCaseListPageLocators.ADD_NEW_USECASE_BUTTON,
+            EC.visibility_of_element_located(CreateUsecaseLocators.TITLE_INPUT),
+            message="'Create Use Case' never opened the editor",
         )
-        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
-        self.driver.execute_script("arguments[0].click();", btn)
-
-        time.sleep(1)
-
-        # Wait for the UseCase creation form
-        self.wait_with_timeout(15).until(
-            EC.visibility_of_element_located(CreateUsecaseLocators.USECASE_SUMMARY_INPUT),
-            message="Timed out waiting for UseCase creation form to load"
-        )
-
         return CreateUsecasePage(self.driver)
 

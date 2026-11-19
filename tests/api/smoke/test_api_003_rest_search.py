@@ -33,8 +33,8 @@ def test_search_datasets_response_structure(anon_api_client):
 @pytest.mark.api
 @pytest.mark.functional
 def test_search_datasets_with_query_param(anon_api_client):
-    """Dataset search with a ?q= query param should still return 200."""
-    resp = anon_api_client.get("/api/search/dataset/", params={"q": "test"})
+    """Dataset search with a ?query= param should still return 200."""
+    resp = anon_api_client.get("/api/search/dataset/", params={"query": "test"})
     assert resp.status_code == 200, (
         f"Dataset search with query param failed ({resp.status_code}): {resp.text}"
     )

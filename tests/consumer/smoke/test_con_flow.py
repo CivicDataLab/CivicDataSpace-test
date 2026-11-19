@@ -3,6 +3,7 @@ import logging
 import re
 import pytest
 import requests
+from tests.api.client import _request_with_retries
 from pages.home_page import HomePage
 
 pytestmark = pytest.mark.readonly
@@ -24,7 +25,7 @@ def _published_use_case_count(card) -> int:
 
 def _check_download(url: str, timeout: int = 10) -> int:
     """Return HTTP status for a HEAD request to *url*."""
-    return requests.head(url, timeout=timeout, allow_redirects=True).status_code
+    return _request_with_retries(requests.head, url, timeout=timeout, allow_redirects=True).status_code
 # ----------------------------------------
 
 @pytest.mark.smoke

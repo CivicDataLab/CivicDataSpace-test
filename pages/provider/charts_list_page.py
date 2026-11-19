@@ -3,6 +3,7 @@ import time
 
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select
+from selenium.common.exceptions import TimeoutException
 
 from pages.base_page import BasePage
 from locators.provider.charts_locators import ChartsLocators
@@ -16,8 +17,8 @@ class ChartsListPage(BasePage):
 
     def is_loaded(self, timeout: int = 10) -> bool:
         self.wait_with_timeout(timeout).until(
-            EC.visibility_of_element_located(ChartsLocators.SHOWING_CHARTS_HEADING),
-            message="Timed out waiting for 'Showing Charts' heading"
+            EC.visibility_of_element_located(ChartsLocators.ADD_CHART_BTN),
+            message="Timed out waiting for the charts list"
         )
         return True
 
@@ -31,8 +32,8 @@ class ChartsListPage(BasePage):
         self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
         self.driver.execute_script("arguments[0].click();", btn)
         self.wait_with_timeout(10).until(
-            EC.visibility_of_element_located(ChartsLocators.CHARTS_EDITOR_HEADING),
-            message="Timed out waiting for Charts Editor to open"
+            EC.visibility_of_element_located(ChartsLocators.DATASET_SEARCH_INPUT),
+            message="Timed out waiting for the new chart wizard to open"
         )
         return self
 
@@ -123,3 +124,79 @@ class ChartsListPage(BasePage):
             EC.presence_of_element_located(ChartsLocators.CHART_SELECT_RESOURCE)
         )
         return Select(el).first_selected_option.text.strip()
+
+    # ── New chart wizard (Build step) ─────────────────────────────────────────────
+
+    def pick_first_dataset(self) -> str:
+        """Pick the first listed dataset that has files; returns its title.
+
+        Datasets other tests just made list first with no files. The picker hides
+        only the current dataset, so picking the top one again would alternate
+        between the same two: skip every title already tried instead.
+        """
+        tried = set()
+        for _ in range(8):
+            title = self._pick_top_dataset(tried)
+            tried.add(title)
+            self.wait_with_timeout(15).until(
+                EC.any_of(EC.presence_of_element_located(ChartsLocators.RESOURCE_COMBOBOX),
+                          EC.presence_of_element_located(ChartsLocators.NO_FILES_TEXT)),
+                message="The chart builder showed neither a File / Resource select nor a 'no files' note",
+            )
+            if not self.driver.find_elements(*ChartsLocators.NO_FILES_TEXT):
+                return title
+            self.change_dataset()
+        raise TimeoutException("No chart dataset with files: each one picked said 'No files are available in this dataset.'")
+
+    def _pick_top_dataset(self, skip=()) -> str:
+        box = self.wait_with_timeout(10).until(EC.presence_of_element_located(ChartsLocators.DATASET_SEARCH_INPUT))
+        box.click()
+        btn = self.wait_with_timeout(15).until(
+            EC.presence_of_element_located(ChartsLocators.DATASET_RESULT),
+            message="The chart dataset picker listed no datasets: this account has none published to chart",
+        )
+        title_of = lambda b: b.text.strip().split("\n")[0]
+        rows = self.driver.find_elements(*ChartsLocators.DATASET_RESULTS)
+        btn = next((b for b in rows if title_of(b) not in skip), None)
+        if btn is None:
+            raise TimeoutException(f"No chart dataset with files: all {len(rows)} listed said 'No files are available in this dataset.'")
+        title = title_of(btn)
+        self.driver.execute_script("arguments[0].click();", btn)
+        return title
+
+    def change_dataset(self) -> None:
+        btn = self.wait_with_timeout(10).until(EC.presence_of_element_located(ChartsLocators.CHANGE_DATASET_BTN))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", btn)
+        self.wait_with_timeout(10).until(EC.presence_of_element_located(ChartsLocators.DATASET_SEARCH_INPUT))
+
+    def get_resource_value(self) -> str:
+        return self.find(ChartsLocators.RESOURCE_COMBOBOX).text.strip()
+
+    def is_resource_select_shown(self, timeout: int = 3) -> bool:
+        return self.is_visible(ChartsLocators.RESOURCE_COMBOBOX, timeout=timeout)
+
+    def page_text(self) -> str:
+        time.sleep(1)  # validation text renders a tick after the click
+        return self.find(ChartsLocators.MAIN).text
+
+    def pick_first_resource(self) -> None:
+        combo = self.wait_with_timeout(15).until(EC.presence_of_element_located(ChartsLocators.RESOURCE_COMBOBOX))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", combo)
+        combo.click()
+        opt = self.wait_with_timeout(10).until(lambda d: next(
+            (o for o in d.find_elements(*ChartsLocators.RESOURCE_OPTION) if o.is_displayed()), None))
+        opt.click()
+
+    def choose_chart_type(self, name: str) -> None:
+        btn = self.wait_with_timeout(10).until(EC.presence_of_element_located(ChartsLocators.chart_type_card(name)))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", btn)
+
+    def click_continue(self) -> "ChartsListPage":
+        self.wait_for_autosave()
+        btn = self.wait_with_timeout(10).until(EC.presence_of_element_located(ChartsLocators.CONTINUE_BTN))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].click();", btn)
+        return self
+
+    def is_chart_builder_shown(self, timeout: int = 15) -> bool:
+        """Choosing a type reveals the field mapping and Live Preview in place."""
+        return self.is_visible(ChartsLocators.LIVE_PREVIEW_HEADING, timeout=timeout)

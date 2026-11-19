@@ -10,7 +10,7 @@ from pages.provider.organizations_page import OrganizationsPage
 
 @pytest.mark.functional
 @pytest.mark.smoke
-def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, test_credentials, writable_org):
+def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, test_credentials, writable_org, cleanup, account_lock):
     """
     Test Case ID: test_prv_009_org_edit_profile
     Verify User is able to edit organization profile details.
@@ -30,6 +30,9 @@ def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, t
     but applies it to organization profile management.
     """
 
+    # Put the description and the rest back afterwards. The uploaded logo cannot be
+    # removed once saved, so it is the one thing this test still changes.
+    cleanup.restore_profile(writable_org)
     driver.delete_all_cookies()
 
     # Step 1: Load homepage
@@ -71,8 +74,10 @@ def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, t
 
     # ─── Step 6: Organization Profile Details ──────────────────────────────────────────
 
-    # (6a) Organization Name / First Name field
-    org_name = "CivicDataLab"
+    # (6a) Organization Name: re-save the org's own name. Renaming it changes its
+    # slug: "CivicDataLab" collided with the real org's slug, and any rename
+    # would break `writable_org` for every other org-scoped test.
+    org_name = writable_org
     org_profile.enter_first_name(org_name)
     get_org_name = org_profile.get_first_name_value()
     assert get_org_name == org_name, (
@@ -101,11 +106,13 @@ def test_prv_009_org_edit_profile(driver, sample_profile_image_path, base_url, t
         "Step 6d failure: Organization logo/profile image upload did not succeed."
     )
 
-    # (6e) Click Save Button
+    # (6e) Save (waits for the "updated successfully" toast), then reload: the
+    # description must come back from the server, not from the form state.
     org_profile.click_save()
-    # Verify save was successful by checking if profile image is still uploaded
-    assert org_profile.is_profile_image_uploaded(), (
-        "Step 6e failure: Clicking save button did not succeed."
+    org_profile.reload()
+    saved_bio = org_profile.get_bio_text_value()
+    assert saved_bio == bio_text, (
+        f"Step 6e failure: After save and reload, expected description '{bio_text}', found '{saved_bio}'."
     )
 
     print("[SUCCESS] test_prv_009_org_edit_profile completed successfully")
