@@ -64,8 +64,8 @@ class PublishedItemPage(BasePage):
     def is_not_found(self) -> bool:
         return any(n in self.text() for n in L.NOT_FOUND_TEXTS)
 
-    def image_alts(self) -> list[str]:
-        return [i.get_attribute("alt") for i in self.finds(L.IMAGES_WITH_ALT)]
+    def aria_labels(self) -> list[str]:
+        return [e.get_attribute("aria-label") for e in self.finds(L.LABELLED)]
 
     def external_links(self) -> list[str]:
         return [a.get_attribute("href") for a in self.driver.find_elements(*L.EXTERNAL_LINKS)]

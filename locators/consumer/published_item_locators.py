@@ -9,7 +9,7 @@ from selenium.webdriver.common.by import By
 class PublishedItemLocators:
     BODY = (By.TAG_NAME, "body")
     TAB = "//*[@role='tab' or self::button][normalize-space()='{}']"
-    IMAGES_WITH_ALT = (By.CSS_SELECTOR, "img[alt]")
+    LABELLED = (By.CSS_SELECTOR, "[aria-label]")
     EXTERNAL_LINKS = (By.CSS_SELECTOR, "a[href^='http']")
     # Listing has finished loading: either the pager or an empty-state message.
     LISTING_SETTLED_TEXTS = ("Page 1 of", "No datasets found", "No collaboratives found", "Try adjusting")
