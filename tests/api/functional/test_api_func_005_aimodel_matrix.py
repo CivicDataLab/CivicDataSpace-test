@@ -231,3 +231,11 @@ def test_whitespace_in_call_field_is_refused_or_removed(graphql_client, model, p
     saved = _provider_fields(graphql_client, model, provider)[field]
     assert not any(c.isspace() for c in saved), f"{field} saved with whitespace: {saved!r}"
 
+
+@SAVED_AS_IS
+@pytest.mark.parametrize("shape", DIRTY)
+def test_whitespace_in_api_key_on_create_is_refused_or_removed(graphql_client, model, version, shape):
+    created = _create_provider(graphql_client, version, apiKey=DIRTY[shape](DUMMY_KEY))
+    if created["success"]:
+        saved = _provider_fields(graphql_client, model, created["data"]["id"])["apiKey"]
+        assert not any(c.isspace() for c in saved), f"apiKey saved with whitespace: {saved!r}"
