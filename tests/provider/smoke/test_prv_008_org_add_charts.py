@@ -58,23 +58,10 @@ def test_prv_008_org_add_charts(driver, base_url, test_credentials, writable_org
 
     # ── Step 5: Open the chart editor ─────────────────────────────────────────────
     charts_page.click_add_chart()
-
-    # ── Steps 6-7: Select a dataset and resource from live data ──────────────────
-    picked = charts_page.select_first_dataset_with_resource()
-    assert picked, f"Step 6 failure: no dataset in org '{writable_org}' has a resource to chart"
-    dataset, resource = picked
-    assert charts_page.get_selected_dataset() == dataset, (
-        f"Step 6 failure: Expected dataset '{dataset}', got '{charts_page.get_selected_dataset()}'"
-    )
-    assert charts_page.get_selected_resource() == resource, (
-        f"Step 7 failure: Expected resource '{resource}', got '{charts_page.get_selected_resource()}'"
-    )
-
-    # ── Step 8: Select chart type ─────────────────────────────────────────────────
-    charts_page.select_chart_type("BAR")
-
-    # ── Step 9: Create chart and verify detail editor opens ──────────────────────
-    charts_page.click_create_chart()
-    assert charts_page.is_chart_editor_open(), (
-        "Step 9 failure: Chart detail editor did not open after creating chart"
+    dataset = charts_page.pick_first_dataset()
+    assert dataset, "No dataset available to chart"
+    charts_page.pick_first_resource()
+    charts_page.choose_chart_type("Bar")
+    assert charts_page.is_chart_builder_shown(), (
+        "Chart builder (field mapping + Live Preview) did not appear after choosing a chart type"
     )

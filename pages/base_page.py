@@ -6,11 +6,32 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
     ElementClickInterceptedException,
+    NoSuchElementException,
     StaleElementReferenceException,
     TimeoutException,
 )
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
+
+# Counts GraphQL mutations still in flight, so a save wait can see the request
+# itself instead of trusting the 'Saving…' header. Injected into every page.
+SAVE_TRACKER_JS = """
+(() => {
+  if (window.__saves) return;
+  const s = window.__saves = {inflight: 0};
+  const orig = window.fetch;
+  window.fetch = function (input, init) {
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    const body = init && init.body;
+    if (!/graphql/i.test(url) || (typeof body === 'string' && !/"query"\\s*:\\s*"\\s*mutation/.test(body)))
+      return orig.apply(this, arguments);
+    s.inflight++;
+    const done = () => { s.inflight--; };
+    return orig.apply(this, arguments).then(r => { done(); return r; }, e => { done(); throw e; });
+  };
+})();
+"""
+
 
 class BasePage:
     def __init__(self, driver, timeout=15):
@@ -42,11 +63,12 @@ class BasePage:
 
             # 1) Triple-click + Ctrl/Cmd+A + Delete + native clear
             ActionChains(self.driver).double_click(el).perform()
-            for mod in (Keys.CONTROL, Keys.COMMAND):
-                try:
-                    el.send_keys(mod, "a")
-                except Exception:
-                    pass
+            # Only this platform's select-all: the other modifier types a literal "a"
+            # (Command+a on Linux), which the editors autosave over the real value.
+            try:
+                el.send_keys(Keys.COMMAND if platform.system() == "Darwin" else Keys.CONTROL, "a")
+            except Exception:
+                pass
             el.send_keys(Keys.DELETE)
             try:
                 el.clear()
@@ -114,9 +136,14 @@ class BasePage:
         at once when nothing is saving.
         """
         from selenium.webdriver.common.by import By
+        from selenium.webdriver.support.ui import WebDriverWait
 
-        self.wait_with_timeout(timeout).until(
-            EC.invisibility_of_element_located((By.XPATH, "//*[normalize-space(text())='Saving...']")),
+        # The header renders 'Saving…' (one ellipsis character); match both spellings.
+        # find_elements, not invisibility_of_element_located: the wrapped driver can
+        # return None from find_element when nothing matches.
+        saving = "//*[normalize-space(text())='Saving…' or normalize-space(text())='Saving...']"
+        WebDriverWait(self.driver, timeout).until(
+            self.gone((By.XPATH, saving)),
             message="Timed out waiting for the editor autosave to finish",
         )
 
@@ -149,14 +176,15 @@ class BasePage:
         TimeoutException here made a missing sector ("Budgets", dropped by the
         dev refresh) read as flakiness across five tests and every rerun.
         """
-        xpath = f"//div[@role='option' and normalize-space(.)='{option_text}']"
+        # Other widgets (e.g. the Bhashini language list, another combobox's
+        # closed list) keep role=option nodes in the DOM, so look only in this
+        # input's listbox: a hidden same-named option elsewhere never clicks.
+        listbox = combo.get_attribute("aria-controls")
+        scope = f"//*[@id='{listbox}']" if listbox else ""
+        xpath = f"{scope}//div[@role='option' and normalize-space(.)='{option_text}']"
         try:
             return self.wait_with_timeout(timeout).until(EC.element_to_be_clickable((By.XPATH, xpath)))
         except TimeoutException:
-            # Other widgets (e.g. the Bhashini language list) keep role=option
-            # nodes in the DOM, so read only this input's listbox.
-            listbox = combo.get_attribute("aria-controls")
-            scope = f"//*[@id='{listbox}']" if listbox else ""
             listed = [o.get_attribute("textContent").strip()
                       for o in self.driver.find_elements(By.XPATH, f"{scope}//*[@role='option']")]
             raise TimeoutException(
@@ -173,6 +201,8 @@ class BasePage:
 
         self.wait_until_saved()
         combo = self.wait.until(EC.element_to_be_clickable(input_locator))
+        # Centre it first: a field near the top sits under the editor's sticky bar.
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", combo)
         combo.click()
         combo.clear()
         combo.send_keys(option_text)
@@ -227,6 +257,32 @@ class BasePage:
 
     # ── Wait Utilities ─────────────────────────────────────────────────────────
 
+    def present_now(self, locator) -> list:
+        """Elements matching `locator` right now, without the driver's implicit wait.
+
+        The implicit wait makes a find with no match take 3s. That is the price
+        of every check for something that is usually not there.
+        """
+        implicit = self.driver.timeouts.implicit_wait
+        self.driver.implicitly_wait(0)
+        try:
+            return self.driver.find_elements(*locator)
+        finally:
+            self.driver.implicitly_wait(implicit)
+
+    def saves_settled(self, _driver=None) -> bool:
+        """No save request is in flight (always true where the tracker is absent)."""
+        return self.driver.execute_script("return !window.__saves || window.__saves.inflight === 0")
+
+    def gone(self, locator):
+        """`EC.invisibility_of_element_located` that answers at once when the element is absent."""
+        def check(_driver):
+            try:
+                return not any(e.is_displayed() for e in self.present_now(locator))
+            except StaleElementReferenceException:
+                return True
+        return check
+
     def wait_for_invisibility(self, locator, timeout=None):
         """Wait for element to become invisible"""
         wait = WebDriverWait(self.driver, timeout) if timeout else self.wait
@@ -263,6 +319,55 @@ class BasePage:
         return self.wait_with_timeout(timeout).until(
             settled, message=f"List page never showed rows or an empty state: {self.driver.current_url}"
         )
+
+    def table_cell_text(self, row_match_text: str, header_text: str, timeout: int = 15) -> str:
+        """Text of the `header_text` column's cell, in the row containing `row_match_text`.
+
+        Shared by the provider dashboard listing tables (Datasets, Use Cases,
+        Collaboratives, ...), which all render through the same
+        ProviderListingTable component. The column is found by its header
+        text rather than a hardcoded index, so this keeps working if columns
+        are reordered.
+
+        The tables page at 10 rows, so the row is searched for first: a
+        matching row on page 2 would otherwise read as missing.
+        """
+        search = self.wait_with_timeout(timeout).until(
+            EC.element_to_be_clickable((By.XPATH, "//main//input[starts-with(@placeholder,'Search ')]")),
+            message="List search box never appeared"
+        )
+        # Typing a long title races the table's debounced re-render, which drops
+        # a keystroke mid-way; the tail of the title is short and still narrows
+        # the list. The row itself is matched on the full title below.
+        search.click()
+        search.send_keys(row_match_text[-25:])
+        self.wait_with_timeout(timeout).until(
+            EC.visibility_of_element_located((By.XPATH, "//table//thead//th")),
+            message="Table header never appeared"
+        )
+        headers = self.finds((By.XPATH, "//table//thead//th"))
+        seen = []
+        index = None
+        for i, th in enumerate(headers, start=1):
+            # A sortable header also reads "Sorted in ascending order" above its label.
+            text = th.text.strip().splitlines()[-1].strip() if th.text.strip() else ""
+            seen.append(text)
+            if text == header_text:
+                index = i
+                break
+        if index is None:
+            raise NoSuchElementException(
+                f"No '{header_text}' column header found. Headers seen: {seen}"
+            )
+
+        row = self.wait_with_timeout(timeout).until(
+            EC.visibility_of_element_located(
+                (By.XPATH, f"//table//tbody/tr[.//*[normalize-space(text())='{row_match_text}']]")
+            ),
+            message=f"No table row found containing text '{row_match_text}'"
+        )
+        cell = row.find_element(By.XPATH, f"./td[{index}]")
+        return cell.text.strip()
 
     def save_failure_artifacts(self, tag: str) -> None:
         """Dump a screenshot + DOM so a timeout says what was actually on screen.
@@ -336,22 +441,27 @@ class BasePage:
         """
         last = None
         for attempt in range(attempts):
-            el = self.wait.until(EC.element_to_be_clickable(locator))
-            self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
             # First attempt native, later attempts JS. A native click can be
             # swallowed by an overlay at those coordinates WITHOUT Selenium
             # raising ElementClickIntercepted -- it reports success and the
             # handler never runs (test_prv_006: three clicks, and the network
             # log shows no mutation was ever sent). A dispatched JS click goes
             # straight to the element and still bubbles to React's listener.
-            if attempt == 0:
-                try:
-                    el.click()
-                except (ElementClickInterceptedException, StaleElementReferenceException) as exc:
-                    last = exc
+            try:
+                el = self.wait.until(EC.element_to_be_clickable(locator))
+                self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+                if attempt == 0:
+                    try:
+                        el.click()
+                    except ElementClickInterceptedException as exc:
+                        last = exc
+                        self.driver.execute_script("arguments[0].click();", el)
+                else:
                     self.driver.execute_script("arguments[0].click();", el)
-            else:
-                self.driver.execute_script("arguments[0].click();", el)
+            except StaleElementReferenceException as exc:
+                # A re-render replaced the element; find it again next attempt.
+                last = exc
+                continue
             try:
                 return self.wait_with_timeout(wait_each).until(condition)
             except TimeoutException as exc:
@@ -399,7 +509,7 @@ class BasePage:
                 "var a=document.activeElement;"
                 "return a ? a.tagName+'.'+(a.className||'') : 'none';"
             )
-            fld.send_keys(Keys.CONTROL + "a")
+            fld.send_keys((Keys.COMMAND if platform.system() == "Darwin" else Keys.CONTROL) + "a")
             fld.send_keys(Keys.DELETE)
             fld.send_keys(text)
             trace.append(
@@ -627,22 +737,21 @@ class BasePage:
             except Exception:
                 pass
 
-        saving_locator = (By.XPATH, "//*[normalize-space(text())='Saving...']")
+        saving_locator = (By.XPATH, "//*[normalize-space(text())='Saving…' or normalize-space(text())='Saving...']")
 
         try:
             # Poll at 100ms to catch brief Saving... indicator (default is 500ms)
-            WebDriverWait(self.driver, 5, poll_frequency=0.1).until(
+            WebDriverWait(self.driver, 2, poll_frequency=0.1).until(
                 EC.presence_of_element_located(saving_locator)
             )
             # Save in progress — wait until it finishes
-            WebDriverWait(self.driver, timeout).until(
-                EC.invisibility_of_element_located(saving_locator)
-            )
+            WebDriverWait(self.driver, timeout).until(self.gone(saving_locator))
+            WebDriverWait(self.driver, timeout).until(self.saves_settled, message="A save request is still in flight")
             _time.sleep(0.3)
         except TimeoutException:
             # Saving... didn't appear — either already saved or save was too fast
             # to catch. Add a generous margin to ensure the network round-trip
             # completes before navigating away.
-            _time.sleep(4)
+            _time.sleep(1.5)
 
         return self

@@ -1,0 +1,119 @@
+# pages/provider/wizard_validation_page.py
+
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+
+from locators.provider.editor_wizard_locators import EditorWizardLocators as W
+from pages.provider.editor_wizard_page import EditorWizardPage
+
+# The box of the visible element whose own text starts with arguments[0], in viewport coordinates.
+_BOX_JS = """
+var text = arguments[0], found = null;
+document.querySelectorAll('main *').forEach(function (e) {
+  var own = Array.from(e.childNodes).filter(function (n) { return n.nodeType == 3; })
+    .map(function (n) { return n.textContent; }).join('').trim();
+  if (own.indexOf(text) === 0 && e.offsetParent !== null) { found = e; }
+});
+if (!found) return null;
+var b = found.getBoundingClientRect();
+return {top: b.top, bottom: b.bottom, viewport: window.innerHeight};
+"""
+
+# Messages of visible field errors (elements whose id ends in -error) that no
+# aria-invalid control points to through aria-describedby.
+_UNASSOCIATED_JS = """
+var out = [];
+document.querySelectorAll('main [id$="-error"]').forEach(function (err) {
+  if (err.offsetParent === null || !err.textContent.trim()) return;
+  var linked = false;
+  document.querySelectorAll('[aria-describedby]').forEach(function (c) {
+    if ((c.getAttribute('aria-describedby') || '').split(/\\s+/).indexOf(err.id) >= 0 &&
+        c.getAttribute('aria-invalid') === 'true') linked = true;
+  });
+  if (!linked) out.push(err.textContent.trim());
+});
+return out;
+"""
+
+
+class WizardValidationPage(EditorWizardPage):
+    """What a wizard step says when Continue is pressed with required fields missing."""
+
+    def message_box(self, text: str):
+        """Where the visible message starting with `text` sits, or None when it is not shown."""
+        return self.driver.execute_script(_BOX_JS, text)
+
+    def press_continue(self, first_message: str) -> "WizardValidationPage":
+        """Press Continue once the step has missing fields and wait for `first_message` to show.
+
+        Fails if the editor moves on instead, or if the message never appears.
+        """
+        before = self.driver.current_url
+        try:
+            self.click_until(
+                W.CONTINUE_BUTTON, lambda d: self.message_box(first_message) is not None,
+                attempts=1, wait_each=15,
+                message=f"No {first_message!r} message after pressing Continue",
+            )
+        except TimeoutException as exc:
+            moved = " (the editor moved on)" if self.driver.current_url != before else ""
+            raise AssertionError(f"{exc.msg}{moved}") from None
+        assert self.driver.current_url == before, "Continue moved on although required fields are missing"
+        return self
+
+    def wait_for_field(self, label: str, timeout: int = 30) -> "WizardValidationPage":
+        """Wait until the field labelled `label` has rendered (the step's form replaced its loading skeleton)."""
+        loc = (By.XPATH, f"//label[contains(normalize-space(),'{label}')]/following::*[@role='combobox'][1]")
+        self.wait_with_timeout(timeout).until(
+            EC.visibility_of_element_located(loc), message=f"The {label!r} field never rendered")
+        return self
+
+    def has_message(self, text: str) -> bool:
+        return self.message_box(text) is not None
+
+    def missing_messages(self, texts, timeout: int = 5) -> list[str]:
+        """Which of `texts` are still not shown after `timeout`s (field errors can render one after another)."""
+        missing = list(texts)
+
+        def all_shown(d):
+            missing[:] = [t for t in texts if not self.has_message(t)]
+            return not missing
+
+        try:
+            self.wait_with_timeout(timeout).until(all_shown)
+        except TimeoutException:
+            pass
+        return missing
+
+    def is_in_view(self, text: str) -> bool:
+        """Is the message `text` fully inside the visible part of the window?"""
+        box = self.message_box(text)
+        return bool(box) and box["top"] >= 0 and box["bottom"] <= box["viewport"]
+
+    def any_in_view(self, texts, timeout: int = 5) -> bool:
+        """Does one of `texts` come to rest inside the window? The page smooth-scrolls to the first error."""
+        try:
+            WebDriverWait(self.driver, timeout, poll_frequency=0.2).until(lambda d: any(self.is_in_view(t) for t in texts))
+            return True
+        except TimeoutException:
+            return False
+
+    def unassociated_errors(self, timeout: int = 10) -> list[str]:
+        """Visible field errors that no invalid control is linked to after `timeout`s.
+
+        Under load the rich-text editor is marked invalid a moment after its
+        error shows; an error that is really unlinked stays unlinked.
+        """
+        orphans = []
+
+        def all_linked(d):
+            orphans[:] = d.execute_script(_UNASSOCIATED_JS)
+            return not orphans
+
+        try:
+            self.wait_with_timeout(timeout).until(all_linked)
+        except TimeoutException:
+            pass
+        return orphans

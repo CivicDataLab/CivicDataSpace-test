@@ -19,6 +19,7 @@
 import os
 
 import pytest
+from selenium.common.exceptions import TimeoutException
 import requests
 
 from pages.provider.collaboratives_list_page import CollaborativesListPage
@@ -108,8 +109,10 @@ def test_prv_015_empty_drafts_list_shows_create_button(
     if state == "rows":
         pytest.skip(f"{org} gained a {kind} draft during the test (a concurrent create flow)")
 
-    assert state == "drafts_empty", (
-        f"{url} (no ?tab) showed the '{state}' state for {org}'s empty {kind} drafts list; "
-        f"expected the Drafts empty state with its 'Add New' button. "
-        f"'published_empty' means the tab did not default to drafts (DataSpaceFrontend#471)."
-    )
+    # Since DataSpaceFrontend#504 every tab shows the same empty cell, so the
+    # #471 guarantee is the create button itself.
+    try:
+        page.is_loaded()
+    except TimeoutException:
+        pytest.fail(f"{url} (no ?tab): {org}'s empty {kind} list shows no create button "
+                    f"(DataSpaceFrontend#471)")

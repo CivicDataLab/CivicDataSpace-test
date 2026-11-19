@@ -21,7 +21,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-from selenium.common.exceptions import WebDriverException
+from selenium.common.exceptions import NoSuchElementException, WebDriverException
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 # Imports to get firefox driver working
@@ -64,6 +64,15 @@ def pytest_addoption(parser):
     )
 
 # ─── SELENIUM DRIVER FIXTURE ────────────────────────────────────────────────────
+# Requests provider tests never assert on; they only slow page loads. Consumer
+# analytics/SEO and a11y tests (Bhashini widget) keep them: blocked for tests/provider only.
+_PROVIDER_BLOCKED_URLS = [
+    "*googletagmanager.com*", "*google-analytics.com*", "*analytics.google.com*",
+    "*.sentry.io/*", "*translation-plugin.bhashini.co.in*",
+    "*fonts.googleapis.com*", "*fonts.gstatic.com*",
+]
+
+
 @pytest.fixture
 def driver(request):
     browser = request.config.getoption("--browser", default="chrome").lower()
@@ -153,6 +162,8 @@ def driver(request):
         print(f"[INFO] Using chromedriver at: {driver_path}")
         service = ChromeService(driver_path)
         drv = webdriver.Chrome(service=service, options=opts)
+        from pages.base_page import SAVE_TRACKER_JS
+        drv.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": SAVE_TRACKER_JS})
 
     elif browser == "firefox":
         gd = GeckoDriverManager().install()
@@ -168,8 +179,23 @@ def driver(request):
     print(f"[INFO] window handle: {drv.current_window_handle}")
 
     drv.implicitly_wait(3)
+
+    # chromedriver can answer find_element with a null element mid-navigation (seen
+    # on the Keycloak redirect); expected_conditions then crash on None.is_displayed().
+    # Raising NoSuchElementException makes every WebDriverWait retry instead.
+    _find_element = drv.find_element
+
+    def _find_element_or_raise(*args, **kwargs):
+        el = _find_element(*args, **kwargs)
+        if el is None:
+            raise NoSuchElementException(f"find_element{args} returned no element")
+        return el
+
+    drv.find_element = _find_element_or_raise
     try:
         drv.execute_cdp_cmd("Network.enable", {})
+        if "tests/provider/" in request.node.nodeid and os.getenv("BLOCK_THIRD_PARTY", "1") != "0":
+            drv.execute_cdp_cmd("Network.setBlockedURLs", {"urls": _PROVIDER_BLOCKED_URLS})
     except Exception:
         pass
 
@@ -234,16 +260,37 @@ def sample_cover_image_path():
         raise FileNotFoundError(f"Expected sample_profile_image.png at {cover_image_path}")
     return cover_image_path
 
+def _account_slots() -> list[int]:
+    """Slots from TEST_ACCOUNT_SLOTS (e.g. "2,3,4,5"), or [] when unset."""
+    return [int(s) for s in os.getenv("TEST_ACCOUNT_SLOTS", "").split(",") if s.strip()]
+
+
 def _account_index() -> int:
     """Which TEST_EMAIL_<n> slot this worker uses. gw0→1, gw1→2, gw2→3 …
+
+    With TEST_ACCOUNT_SLOTS set, workers cycle through those slots instead
+    (gw0→first, gw1→second, …, wrapping), so a run can leave a slot out and
+    put more than one worker on an account.
 
     A plain helper, not a fixture -- `writable_org` and `test_credentials` both
     need it, and session-scoped fixtures cannot be called directly.
     """
     worker = os.getenv("PYTEST_XDIST_WORKER", "")
+    slots = _account_slots()
     if worker.startswith("gw"):
-        return int(worker[2:]) + 1
-    return int(os.getenv("TEST_USER_INDEX", "1"))
+        n = int(worker[2:])
+        return slots[n % len(slots)] if slots else n + 1
+    return int(os.getenv("TEST_USER_INDEX", slots[0] if slots else "1"))
+
+
+@pytest.fixture
+def account_lock():
+    """Hold this account's lock for the test: for state one account has only one
+    of (its profile, its org's profile), when workers share the account."""
+    import fcntl, tempfile
+    with open(Path(tempfile.gettempdir()) / f"cds-account-{_account_index()}.lock", "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        yield
 
 
 @pytest.fixture(scope="session")
@@ -260,6 +307,11 @@ def test_credentials():
 
     email = os.getenv(f"TEST_EMAIL_{idx}")
     password = os.getenv(f"TEST_PASSWORD_{idx}")
+
+    # With TEST_ACCOUNT_SLOTS the slots are chosen on purpose: a missing one is
+    # a config error, not a reason to quietly share slot 1 with another worker.
+    if not (email and password) and _account_slots():
+        pytest.exit(f"TEST_ACCOUNT_SLOTS names slot {idx}, but TEST_EMAIL_{idx}/TEST_PASSWORD_{idx} are not set", returncode=3)
 
     # fall back to user 1 if the derived slot has no credentials configured
     if not (email and password):
@@ -363,11 +415,14 @@ def org_add_permission(test_credentials):
 # One org per account, so two concurrent workers never write the same org row.
 # Verified live 2026-09-24: account 1 has canAdd on all three; account 2 on
 # "my test agency" + "test org 2"; account 3 on "test org name" only.
+# Accounts 4 and 5 added 2026-11-12: canAdd on "test_org_4" / "test_org_5" only.
 # Override per slot with TEST_ORG_1 / TEST_ORG_2 / TEST_ORG_3.
 DEDICATED_ORG_BY_ACCOUNT = {
     1: "my test agency",
     2: "test org 2",
     3: "test org name",
+    4: "test_org_4",
+    5: "test_org_5",
 }
 
 
@@ -459,7 +514,7 @@ def sector_name():
 #  ─────────────────────── Login Fixtures (Phase 12) ─────────────────────────────
 
 @pytest.fixture
-def logged_in_provider(driver, base_url, test_credentials):
+def logged_in_provider(driver, base_url, test_credentials, request):
     """
     Auto-login as provider and return ProviderHomePage.
     Eliminates duplicated login setup across tests.
@@ -469,15 +524,18 @@ def logged_in_provider(driver, base_url, test_credentials):
             prov_home = logged_in_provider
             # ... continue test from logged-in state
     """
-    from pages.home_page import HomePage
+    from pages.home_page import HomePage, has_saved_session
 
     driver.delete_all_cookies()
     email, password = test_credentials
     home = HomePage(driver, base_url)
-    home.load()
-    assert home.is_loaded(), "Homepage did not load successfully"
-
-    prov_home = home.go_to_login(flow="provider", email=email, password=password)
+    # Saved cookies give an app session but no Keycloak one; `real_login`
+    # marks the tests that go back to Keycloak and need both.
+    real = request.node.get_closest_marker("real_login") is not None
+    if real or not has_saved_session(email):
+        home.load()
+        assert home.is_loaded(), "Homepage did not load successfully"
+    prov_home = home.go_to_login(flow="provider", email=email, password=password, reuse_session=not real)
     return prov_home
 
 @pytest.fixture
@@ -593,6 +651,13 @@ def pytest_sessionfinish(session, exitstatus):
     else:
         print("\n\n⚠️  report.json not found; skipping report generation.")
 
+    # Accessibility runs leave structured findings behind; turn them into
+    # ACCESSIBILITY_REPORT.md/.html. Skipped when the run had no a11y tests so
+    # an unrelated run never overwrites the last accessibility report.
+    if any((Path(os.getcwd()) / "reports" / "a11y").glob("*.json")):
+        print("\n📄 Generating ACCESSIBILITY_REPORT.md + .html …")
+        subprocess.run([sys.executable, "a11y_report_generator.py"], check=False)
+
 # --- pending_pr: tests written for an open product PR run only once it merges ---
 import functools as _functools
 import json as _json
@@ -664,8 +729,13 @@ def _deployed_pr_state(ref, api_base_url, site=None):
     return f"deployed_pr {ref}: {where} runs {deployed[:8]}, which doesn't include {merge_sha[:8]} yet"
 
 
+@pytest.hookimpl(tryfirst=True)  # before xdist reads xdist_group
 def pytest_collection_modifyitems(config, items):
     for item in items:
+        # --dist loadgroup: every file stays on one worker (the numbered flows share
+        # state) unless it is marked `spread`: its tests are independent and go to any worker.
+        if not item.get_closest_marker("spread"):
+            item.add_marker(pytest.mark.xdist_group(item.nodeid.split("::")[0]))
         marker = item.get_closest_marker("pending_pr")
         if marker:
             reason = _pending_pr_state(marker.args[0])

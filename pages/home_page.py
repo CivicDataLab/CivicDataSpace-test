@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from urllib.parse import urljoin
 import time
 from dotenv import load_dotenv
 from typing import Union
@@ -16,6 +17,13 @@ from selenium.common.exceptions import (
 )
 from selenium.webdriver import ActionChains
 from pages.base_page import BasePage
+
+# email -> cookies of the last real login in this process (one per xdist worker, memory only, never written to disk)
+_SESSIONS: dict[str, list[dict]] = {}
+
+
+def has_saved_session(email: str) -> bool:
+    return os.getenv("REUSE_LOGIN", "1") != "0" and email in _SESSIONS
 
 # ─── Consumer‐flow imports (PLACE YOUR ORIGINAL IMPORTS HERE) ─────────────────────
 #
@@ -60,11 +68,7 @@ class HomePage(BasePage):
     def load(self) -> None:
         """Navigate to the site root once."""
         self.driver.get(os.getenv("HOME_URL_DEV"))
-        # Wait for page to start loading and initial content to appear
-        time.sleep(2)
-        # Aggressively dismiss tour popup
-        self.dismiss_tour_popup()
-        # Double-check and dismiss again if it reappeared
+        self.wait_with_timeout(10).until(lambda d: d.execute_script("return document.readyState") == "complete")
         self.dismiss_tour_popup()
 
     def dismiss_tour_popup(self, timeout: int = 3) -> None:
@@ -72,6 +76,10 @@ class HomePage(BasePage):
         Dismiss the tour popup using multiple strategies.
         Safe to call even if popup doesn't exist.
         """
+        # The tour is not mounted on dev or prod (TourGuide is commented out in
+        # the frontend), so look once without waiting.
+        if not self.present_now(HomepageLocators.SKIP_TOUR_BUTTON):
+            return
         try:
             skip_btn = self.wait_with_timeout(timeout).until(
                 EC.presence_of_element_located(HomepageLocators.SKIP_TOUR_BUTTON)
@@ -240,7 +248,50 @@ class HomePage(BasePage):
 
     # ─── Provider‐flow login method ──────────────────────────────────────────────────
 
-    def go_to_login(self, flow: str = "consumer", email: str|None = None, password: str|None = None):
+    def _login_from_cached_session(self, email: str) -> bool:
+        """Load this worker's saved cookies for `email` instead of a Keycloak login.
+
+        Only returns True once the provider header is visible, i.e. the session
+        was accepted; a rejected or expired cookie drops the cache entry and
+        returns False so the caller logs in for real and refreshes it.
+        """
+        cookies = _SESSIONS.get(email)
+        if not cookies:
+            return False
+        url = self.url
+        if not self.driver.current_url.startswith(url):
+            # Cookies can only be set on the site's own origin; a tiny file gets
+            # the browser there without paying for the homepage.
+            self.driver.get(urljoin(url, "/robots.txt"))
+        self.driver.delete_all_cookies()
+        for c in cookies:
+            try:
+                # Without `domain` the cookie is host-only, as the site sets it.
+                # With it Chrome keeps a second, domain-wide copy; once the
+                # site refreshes the session both are sent and the server
+                # answers 431 (request headers too large).
+                self.driver.add_cookie({k: v for k, v in c.items() if k != "domain"})
+            except WebDriverException:
+                pass
+        # A real login lands on /dashboard, the only page that shows the header.
+        self.driver.get(urljoin(url, "/dashboard"))
+        try:
+            self.wait_with_timeout(10).until(
+                EC.visibility_of_element_located(ProviderHomepageLocators.HEADER)
+            )
+            return True
+        except TimeoutException:
+            _SESSIONS.pop(email, None)
+            self.driver.delete_all_cookies()
+            self.driver.get(url)
+            return False
+
+    def go_to_login(self, flow: str = "consumer", email: str|None = None, password: str|None = None, reuse_session: bool = True):
+        provider = flow.lower() == "provider"
+        email = (email or os.getenv("TEST_EMAIL")) if provider else email
+        if provider and reuse_session and os.getenv("REUSE_LOGIN", "1") != "0" and email \
+                and self._login_from_cached_session(email):
+            return ProviderHomePage(self.driver)
         self.logout()
 
         # Dismiss tour popup if it's blocking the login button
@@ -263,12 +314,22 @@ class HomePage(BasePage):
         except Exception:
             raise
 
-        try:
-            self.wait_with_timeout(10).until(
-                EC.visibility_of_element_located(LoginLocators.FORM)
-            )
-        except TimeoutException:
-            raise AssertionError("Tapped LOGIN / SIGN UP, but the login form never appeared.")
+        # Parallel workers all log in at once and the Keycloak redirect slows
+        # down, so wait longer and tap once more before giving up.
+        for attempt in range(2):
+            try:
+                self.wait_with_timeout(30).until(
+                    EC.visibility_of_element_located(LoginLocators.FORM)
+                )
+                break
+            except TimeoutException:
+                if attempt:
+                    raise AssertionError("Tapped LOGIN / SIGN UP twice, but the login form never appeared.")
+                try:
+                    btn = self.wait_with_timeout(10).until(EC.element_to_be_clickable(LoginLocators.LOGIN_BUTTON))
+                    self.driver.execute_script("arguments[0].click();", btn)
+                except TimeoutException:
+                    pass  # the button is gone: the form may still be on its way
 
         login_page = LoginPage(self.driver)
 
@@ -276,12 +337,11 @@ class HomePage(BasePage):
             email = email or os.getenv("TEST_EMAIL")
             password = password or os.getenv("TEST_PASSWORD")
             login_page.login(email, password)
-            try:
-                self.wait_with_timeout(10).until(
-                    EC.visibility_of_element_located(ProviderHomepageLocators.HEADER)
-                )
-            except TimeoutException:
-                raise
+            self.wait_with_timeout(10).until(
+                EC.visibility_of_element_located(ProviderHomepageLocators.HEADER)
+            )
+            if email:
+                _SESSIONS[email] = self.driver.get_cookies()
 
             return ProviderHomePage(self.driver)
 
@@ -295,6 +355,17 @@ class HomePage(BasePage):
     #     home.go_to_login(flow="provider", email=email, password=password)
 
     def logout(self):
+        # Nothing to click when this browser holds no session (a new browser,
+        # or cookies just cleared): the avatar never appears, only the wait.
+        if any("session-token" in c["name"] for c in self.driver.get_cookies()):
+            self._click_logout()
+
+        # 4. Always clear cookies/storage for total isolation
+        self.driver.delete_all_cookies()
+        self.driver.execute_script("window.localStorage.clear(); window.sessionStorage.clear();")
+        self.driver.refresh()
+
+    def _click_logout(self):
         try:
             # 1. Click the avatar/profile button
             avatar_btn = self.wait.until(
@@ -314,9 +385,3 @@ class HomePage(BasePage):
             )
         except Exception:
             pass
-
-        # 4. Always clear cookies/storage for total isolation
-        self.driver.delete_all_cookies()
-        self.driver.execute_script("window.localStorage.clear(); window.sessionStorage.clear();")
-        self.driver.refresh()
-

@@ -19,7 +19,7 @@ pytestmark = pytest.mark.readonly
 def test_graphql_introspection(graphql_client):
     """GraphQL introspection should succeed and return type information."""
     data = graphql_client.query("{ __typename }")
-    assert "__typename" in data or data is not None
+    assert data.get("__typename") == "Query", f"Unexpected root type: {data!r}"
 
 
 # ─── Dataset queries ─────────────────────────────────────────────────────────────

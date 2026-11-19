@@ -18,21 +18,18 @@ import os
 from urllib.parse import urlsplit
 
 import pytest
-import requests
 
 from pages.consumer.usecase_page import UseCasePage
+from utils.usecase_api import dashboards_by_usecase
 
-pytestmark = [pytest.mark.smoke, pytest.mark.readonly]
+# open_detail now waits on the #512 cover layout, which prod does not serve yet.
+pytestmark = [
+    pytest.mark.smoke,
+    pytest.mark.readonly,
+    pytest.mark.deployed_pr("DataSpaceFrontend#512", site="HOME_URL_DEV"),
+]
 
 BASE_URL = os.getenv("HOME_URL_DEV", "https://dev.civicdataspace.in")
-
-
-def _gql(api, query):
-    r = requests.post(f"{api.rstrip('/')}/api/graphql", json={"query": query}, timeout=20)
-    r.raise_for_status()
-    body = r.json()
-    assert not body.get("errors"), body["errors"]
-    return body["data"]
 
 
 def _is_justicehub(link):
@@ -47,10 +44,7 @@ def justicehub_usecase():
     api = os.getenv("API_BASE_URL")
     if not api:
         pytest.skip("API_BASE_URL not set: cannot find a use case with a JusticeHub dashboard")
-    published = [u["id"] for u in _gql(api, "{ useCases(pagination:{limit:500}){ id status } }")["useCases"]
-                 if u["status"] == "PUBLISHED"]
-    for uc_id in published:
-        dash = _gql(api, "{ usecaseDashboards(usecaseId:%s){ id name link } }" % uc_id)["usecaseDashboards"]
+    for uc_id, dash in dashboards_by_usecase(api).items():
         hit = next((d for d in dash if _is_justicehub(d["link"])), None)
         if hit:
             return uc_id, hit

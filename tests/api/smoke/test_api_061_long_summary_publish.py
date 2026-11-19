@@ -1,4 +1,4 @@
-# tests/api/smoke/test_api_028_long_summary_publish.py
+# tests/api/smoke/test_api_061_long_summary_publish.py
 #
 # Covers DataSpaceBackend#266 (fixed on dev by #278/#281, on main by #283) and
 # the summary limit raise in #227 (10k -> 200k characters).
@@ -13,6 +13,7 @@ import uuid
 import pytest
 
 from tests.api import publications as pub
+from tests.api.publish_ready import make_collaborative_publishable, make_use_case_publishable
 
 pytestmark = [pytest.mark.api, pytest.mark.smoke]
 
@@ -22,6 +23,7 @@ KINDS = {
         "update": "mutation($d: UseCaseInputPartial!){ updateUseCase(data:$d){ ... on TypeUseCase { id } } }",
         "publish": "mutation($id: String!){ publishUseCase(useCaseId:$id){ ... on TypeUseCase { status } } }",
         "delete": "mutation($id: String!){ deleteUseCase(useCaseId:$id) }",
+        "ready": make_use_case_publishable,
     },
     "collaborative": {
         "add": "mutation{ addCollaborative { ... on TypeCollaborative { id } } }",
@@ -34,6 +36,7 @@ KINDS = {
             "{ ... on TypeCollaborative { status } } }"
         ),
         "delete": "mutation($id: String!){ deleteCollaborative(collaborativeId:$id) }",
+        "ready": make_collaborative_publishable,
     },
 }
 
@@ -51,6 +54,7 @@ def test_long_summary_publishes_and_is_searchable(graphql_client_for, anon_api_c
 
     item_id = next(iter(_ok(pub.gql(owner, q["add"])).values()))["id"]
     try:
+        q["ready"](owner, item_id)  # DataSpaceBackend#310: publishing needs a logo, sector, SDG and dataset
         _ok(pub.gql(owner, q["update"], {"d": {"id": item_id, "title": f"api test {word}", "summary": summary}}))
 
         published = next(iter(_ok(pub.gql(owner, q["publish"], {"id": item_id})).values()))

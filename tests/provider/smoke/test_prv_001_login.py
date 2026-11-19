@@ -19,7 +19,7 @@ def test_prv_001_login_smoke(driver, base_url, test_credentials):
 
     # Step 1: click LOGIN / SIGN UP and expect a LoginPage
     email, password = test_credentials
-    prov_home = home.go_to_login(flow="provider", email=email, password=password)
+    prov_home = home.go_to_login(flow="provider", email=email, password=password, reuse_session=False)
     # Assert that go_to_login actually returned a ProviderHomePage
     assert isinstance(prov_home, ProviderHomePage), "Did not land on ProviderHomePage"
 
