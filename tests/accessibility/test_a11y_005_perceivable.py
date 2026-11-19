@@ -10,6 +10,7 @@ A11Y Project: alt text, colour contrast, resizable text, single-column reflow
 """
 
 import pytest
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 
 from utils import a11y
@@ -23,10 +24,22 @@ VIEWPORT_PAGES = [p for p in PUBLIC_PAGES if p[0] in ("home", "datasets", "about
 VIEWPORT_IDS = [p[0] for p in VIEWPORT_PAGES]
 
 
+def _wait_for_images(driver):
+    """Cards load after the app shell that goto() waits for; return once the image count holds for 3 s."""
+    seen = []
+    try:
+        WebDriverWait(driver, 30, poll_frequency=1).until(
+            lambda d: seen.append(d.execute_script("return document.images.length")) or seen[-4:].count(seen[-1]) == 4
+        )
+    except TimeoutException:  # a carousel or ticker keeps changing the count; check what rendered
+        pass
+
+
 @pytest.mark.parametrize("page_id,path", PUBLIC_PAGES, ids=PAGE_IDS)
 def test_images_have_text_alternatives(driver, goto, page_id, path):
     """WCAG 1.1.1 — informative images need alt text; decorative need alt=""."""
     goto(path)
+    _wait_for_images(driver)
     data = driver.execute_script("""
         const visible = (el) => el.offsetParent !== null || el.getClientRects().length;
         const imgs = [...document.querySelectorAll('img')].filter(visible);
@@ -71,11 +84,7 @@ def test_image_alt_is_not_a_placeholder(driver, goto, page_id, path):
     publisher the image shows. Images inside a link or button with its own
     aria-label are skipped, since that label is what gets announced."""
     goto(path)
-    # Cards load after the app shell that goto() waits for; read once the image count holds for 3 s.
-    seen = []
-    WebDriverWait(driver, 30, poll_frequency=1).until(
-        lambda d: seen.append(d.execute_script("return document.images.length")) or seen[-4:].count(seen[-1]) == 4
-    )
+    _wait_for_images(driver)
     placeholders = driver.execute_script("""
         const visible = (el) => el.offsetParent !== null || el.getClientRects().length;
         return [...document.querySelectorAll('img')].filter(visible)
