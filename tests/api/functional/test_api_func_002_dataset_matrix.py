@@ -146,6 +146,21 @@ def test_update_without_license_keeps_license(graphql_client, draft):
     assert (got["license"], got["accessType"]) == ("CC0_1_0", "RESTRICTED")
 
 
+METADATA = """
+mutation($i: UpdateMetadataInput!){ addUpdateDatasetMetadata(updateMetadataInput:$i){
+  success errors { nonFieldErrors } } }"""
+
+
+def test_metadata_save_without_license_keeps_license(graphql_client, draft):
+    """DataSpaceBackend#305: the editor's Metadata step saves through addUpdateDatasetMetadata, which
+    used to store the default license and PUBLIC access when the request left them out."""
+    _update(graphql_client, draft, license="CC0_1_0", accessType="RESTRICTED")
+    body = gql(graphql_client, METADATA, {"i": {"dataset": draft, "metadata": [], "description": "[qa-matrix] metadata only"}})
+    assert body["data"]["addUpdateDatasetMetadata"]["success"], body
+    got = _read(graphql_client, draft)
+    assert (got["description"], got["license"], got["accessType"]) == ("[qa-matrix] metadata only", "CC0_1_0", "RESTRICTED")
+
+
 # ─── Not found ────────────────────────────────────────────────────────────────
 
 def test_update_unknown_dataset_is_refused(graphql_client):
