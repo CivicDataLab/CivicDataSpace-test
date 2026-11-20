@@ -113,6 +113,10 @@ class CreateAiModelPage(EditorWizardPage):
         """A saved version keeps the sheet open, retitled Edit Version."""
         return self.is_visible(L.EDIT_VERSION_TITLE, timeout=timeout)
 
+    def shows_message(self, text: str, timeout: int = 10) -> bool:
+        """A toast or message containing `text` appears within `timeout` seconds."""
+        return self.is_visible((By.XPATH, L.MESSAGE.format(text=text)), timeout=timeout)
+
     def cancel_version_sheet(self):
         self.click_until(L.SHEET_CANCEL_BTN, EC.invisibility_of_element_located(L.VERSION_SHEET),
                          message="Cancel never closed the version sheet")
