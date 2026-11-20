@@ -141,7 +141,6 @@ class TestSignInPage:
         login_page.toggle_password()
         assert login_page.password_state() == ("password", "Show password")
 
-    @design_gap(39, "empty sign-in goes to the server instead of inline required-field errors")
     def test_empty_sign_in_is_validated_inline(self, login_page):
         login_page.submit()
         assert not login_page.document_was_replaced(), (
@@ -150,7 +149,6 @@ class TestSignInPage:
         errors = login_page.field_errors()
         assert "Email is required." in errors and "Password is required." in errors, errors
 
-    @design_gap(39, "credential error reads 'Invalid username or password.' under Email")
     def test_wrong_credentials_message_matches_design(self, login_page):
         login_page.sign_in(no_account_email(), "NotARealPassword1")
         assert login_page.field_errors() == ["Email or password is incorrect."]
@@ -165,18 +163,15 @@ class TestForgotPasswordPage:
         assert reset_page.submit_label() == "Send Reset Link"
         assert reset_page.back_to_sign_in_text() == "Back to Sign In"
 
-    @design_gap(40, "email typed on Sign In is not carried to the reset form")
     def test_email_carries_over_from_sign_in(self, login_page):
         email = no_account_email()
         reset_page = login_page.type_email(email).go_to_forgot_password()
         assert reset_page.email_value() == email
 
-    @design_gap(40, "empty reset request reads 'Please specify username.'")
     def test_empty_request_message_matches_design(self, reset_page):
         reset_page.request_reset("")
         assert "Email is required." in reset_page.field_errors()
 
-    @design_gap(33, "reset request returns to Sign In with a banner instead of 'Check your email'")
     def test_request_shows_check_your_email(self, reset_page):
         reset_page.request_reset(no_account_email())
         assert reset_page.heading() == "Check your email"
@@ -239,12 +234,10 @@ class TestRegistrationPage:
 
 
 class TestErrorPage:
-    @design_gap(32, "every error page is titled 'Google sign-in failed'")
     def test_bad_redirect_uri_is_not_blamed_on_google(self, driver):
         page = KeycloakErrorPage(driver).load_with_redirect(BASE_URL, "https://example.invalid/cb")
         assert page.heading() != "Google sign-in failed"
 
-    @design_gap(32, "every error page is titled 'Google sign-in failed'")
     def test_unknown_client_is_not_blamed_on_google(self, driver):
         page = KeycloakErrorPage(driver).load_with_client(BASE_URL, "qa-no-such-client")
         assert page.heading() != "Google sign-in failed"
@@ -261,7 +254,6 @@ class TestLegalLinks:
         assert not login_page.has_horizontal_scroll()
 
     @pytest.mark.mobile
-    @design_gap(43, "no legal links at all on mobile")
     def test_mobile_shows_legal_links(self, login_page):
         login_page.use_mobile_viewport()
         assert login_page.visible_legal_link_texts(), "No Privacy/Terms/Legal link visible at 390px"
