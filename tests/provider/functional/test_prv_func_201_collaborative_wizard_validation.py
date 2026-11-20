@@ -3,6 +3,8 @@
 # Collaborative wizard (About -> People -> Content -> Review & Publish):
 # required-field gating, subdomain and link validation, values kept across steps.
 
+import uuid
+
 import pytest
 
 pytestmark = pytest.mark.spread  # independent tests: may run on any worker
@@ -66,11 +68,17 @@ def test_prv_func_201b_subdomain_validation(driver, base_url, test_credentials, 
 
 @pytest.mark.functional
 @pytest.mark.timeout(420)
-@pytest.mark.xfail(strict=True, reason="Subdomain accepts 80 characters; a DNS label is at most 63 (DataSpaceBackend#292 validation gaps)")
 def test_prv_func_201c_subdomain_length_limit(driver, base_url, test_credentials, delete_draft_after):
+    """DataSpaceFrontend#549: the subdomain is cut to 63 characters (one DNS label) and the About form still saves."""
     page = new_draft(driver, base_url, test_credentials, delete_draft_after)
+    name = f"[qa-matrix] long subdomain {uuid.uuid4().hex[:6]}"
+    page.edit_collaborative_name(name)
     page.enter_slug("a" * 80)
-    assert len(page.get_slug_value()) <= 63, f"Slug kept {len(page.get_slug_value())} characters with no error"
+    assert page.get_slug_value() == "a" * 63, f"Slug kept {len(page.get_slug_value())} characters"
+    reloaded = page.reload()
+    # Before #549 a 64-80 character slug made the backend refuse the whole About save.
+    assert reloaded.get_slug_value() == "a" * 63, f"Saved slug: {reloaded.get_slug_value()!r}"
+    assert reloaded.get_collaborative_name_value() == name
 
 
 @pytest.mark.functional
