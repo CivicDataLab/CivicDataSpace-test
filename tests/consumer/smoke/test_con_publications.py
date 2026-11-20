@@ -11,7 +11,7 @@ import requests
 
 from pages.consumer.publications_page import PublicationsPage
 
-pytestmark = pytest.mark.smoke
+pytestmark = [pytest.mark.smoke, pytest.mark.readonly]
 
 BASE_URL = os.getenv("HOME_URL_DEV", "https://dev.civicdataspace.in").rstrip("/")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://dev.api.civicdataspace.in").rstrip("/")
