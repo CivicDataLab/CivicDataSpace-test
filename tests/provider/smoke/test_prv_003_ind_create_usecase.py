@@ -96,6 +96,7 @@ def test_prv_003_ind_create_usecase(driver, sample_logo_path, base_url,test_cred
     assert any(g.startswith(UseCaseTestData.GEOGRAPHY) for g in geos), f"Geography chips: {geos}"
 
     assert create_uc.connect_first_dataset()
+    create_uc.wait_until_step_completed("Connect")
 
     # ─── Step 8: Review & Publish ───────────────────────────────────────────────
     create_uc.click_continue("publish")
