@@ -243,6 +243,22 @@ class EditorWizardPage(BasePage):
             pass
         return self.get_step_text(label)
 
+    def wait_until_step_completed(self, label: str, timeout: int = 20):
+        """Wait for the stepper to mark `label` Completed.
+
+        The use case Connect step counts its datasets from the server copy, which
+        only updates when a refetch after the connect lands, about 1.5s after the
+        card shows. Until then Continue does nothing. If the refetch never lands
+        (a slow dev API), Continue stays dead; this names that instead of a 60s
+        click timeout.
+        """
+        self.wait_with_timeout(timeout).until(
+            lambda d: "Completed" in self.get_step_text(label),
+            message=f"The {label} step never showed Completed, so Continue would do nothing "
+                    f"(its data refetch never landed): {self.get_step_text(label)!r}",
+        )
+        return self
+
     def get_page_text(self) -> str:
         return self.find((By.TAG_NAME, "main")).text
 
