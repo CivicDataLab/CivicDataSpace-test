@@ -16,6 +16,7 @@
 # caller's own DRAFT dataset, and the `report=1` unmapped-field report.
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -24,15 +25,20 @@ pytestmark = [pytest.mark.api, pytest.mark.readonly, pytest.mark.deployed_pr("Da
 
 @pytest.fixture(scope="module")
 def published_dataset_id(anon_graphql_client):
-    """id of any published dataset on the target backend, read live."""
+    """id of a published dataset untouched for an hour, read live."""
     # `datasets`, not `datasetsTable` (#215): it exists on every backend, so on one
     # without #211 the tests below fail at their own assertions, not in setup.
+    # The newest dataset is often one a concurrent provider test just published
+    # and deletes on teardown, which 404s the export mid-test. One untouched for
+    # an hour is not a test's.
     rows = anon_graphql_client.query(
-        "{ datasets(includePublic: true, pagination: {limit: 1}) { id } }"
+        "{ datasets(includePublic: true, pagination: {limit: 20}) { id modified } }"
     )["datasets"]
-    if not rows:
-        pytest.skip("no published dataset on this backend to export")
-    return rows[0]["id"]
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+    for row in rows:
+        if datetime.fromisoformat(row["modified"]) < cutoff:
+            return row["id"]
+    pytest.skip("no published dataset untouched for an hour on this backend to export")
 
 
 @pytest.mark.smoke
