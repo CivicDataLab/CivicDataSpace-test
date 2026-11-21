@@ -40,11 +40,7 @@ def _edit_dataset(driver, sector, stem):
         assert reloaded.get_title_value() == f"{stem} renamed"
         assert f"Edited description {stem}" in reloaded.get_description_value()
         assert sector in reloaded.get_selected_sectors()
-        source = reloaded.get_source_website_value()
-        if source == "":
-            # Same race as the collaborative Platform URL, under parallel load.
-            pytest.xfail("DataSpaceFrontend#542: Source Website is sometimes saved empty")
-        assert source == "https://example.com/edited"
+        assert reloaded.get_source_website_value() == "https://example.com/edited"
 
     return check
 
@@ -81,11 +77,7 @@ def _edit_collaborative(driver, sector, stem):
         assert reloaded.get_collaborative_name_value() == f"{stem} renamed"
         assert f"Edited description {stem}" in reloaded.get_description_value()
         assert sector in reloaded.get_selected_sectors()
-        platform_url = reloaded.get_platform_url_value()
-        if platform_url == "":
-            # Intermittent (2 of ~10, only under parallel load): xfail on the exact symptom only.
-            pytest.xfail("DataSpaceFrontend#522: Platform URL is sometimes saved empty")
-        assert platform_url == "https://example.com/edited"
+        assert reloaded.get_platform_url_value() == "https://example.com/edited"
 
     return check
 
@@ -103,12 +95,7 @@ def _edit_aimodel(driver, sector, stem):
         assert reloaded.get_model_name_value() == f"{stem} renamed"
         assert f"Edited description {stem}" in reloaded.get_description_text()
         assert sector in reloaded.get_selected_sectors()
-        intended_use = reloaded.get_intended_use_value()
-        if intended_use == "":
-            # Intermittent (3 of 6 runs), so a strict xfail mark would fail the
-            # passing runs; xfail only on the exact symptom instead.
-            pytest.xfail("DataSpaceFrontend#522: Intended Use is sometimes saved empty")
-        assert intended_use == f"Edited intended use {stem}"
+        assert reloaded.get_intended_use_value() == f"Edited intended use {stem}"
 
     return check
 

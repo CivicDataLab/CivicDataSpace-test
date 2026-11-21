@@ -227,3 +227,34 @@ def test_prv_func_202i_cancel_discards_new_version(driver, base_url, test_creden
     page.cancel_version_sheet().reload()
     page.page_text()
     assert page.listed_versions() == [], f"Cancel kept a version: {page.listed_versions()}"
+
+
+def _custom_api_method(page, endpoint="https://example.com/v1"):
+    page.open_version_sheet().enter_version_name("1.0").open_access_form()
+    page.pick_sheet_option(L.PROVIDER_TYPE_SELECT, "Custom API")
+    page.fill_sheet_field("accessName", "[qa-matrix] refused save")
+    page.fill_sheet_field("providerModelId", "qa-model")
+    page.fill_sheet_field("apiEndpointUrl", endpoint)
+    return page
+
+
+@pytest.mark.functional
+@pytest.mark.timeout(420)
+def test_prv_func_202j_backend_refusal_is_shown(driver, base_url, test_credentials, delete_draft_after):
+    """DataSpaceFrontend#549: a provider save the backend refuses shows its message instead of a success."""
+    page = _custom_api_method(new_draft(driver, base_url, test_credentials, delete_draft_after),
+                              endpoint="http://my-model-server/v1")  # a browser-valid URL the backend refuses
+    page.press_add_access_method()
+    page.press_save_version()
+    assert page.shows_message("API endpoint URL must be a valid URL"), "The backend's refusal was not shown"
+
+
+@pytest.mark.functional
+@pytest.mark.timeout(420)
+def test_prv_func_202k_timeout_over_600_refused(driver, base_url, test_credentials, delete_draft_after):
+    """DataSpaceFrontend#549: a timeout above the backend's 600 s limit is refused before saving."""
+    page = _custom_api_method(new_draft(driver, base_url, test_credentials, delete_draft_after))
+    page.fill_sheet_field("apiTimeoutSeconds", "900")
+    page.press_add_access_method()
+    assert page.shows_message("Timeout must be between 1 and 600 seconds"), "A 900 s timeout was not refused"
+    assert page.is_access_form_open(), "The access method form closed on a 900 s timeout"

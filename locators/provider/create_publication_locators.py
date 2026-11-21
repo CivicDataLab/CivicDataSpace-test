@@ -21,3 +21,8 @@ class CreatePublicationLocators:
     DATE_INPUT = (By.XPATH, "//input[@name='publicationDate']")
     RESOURCE_TYPE_SELECT = (By.XPATH, W.SELECT_BY_LABEL.format(label="Resource Type"))
     NO_CONTRIBUTORS = (By.XPATH, "//main//*[normalize-space()='No contributors added yet.']")
+
+    FILE_INPUT = (By.XPATH, "//main//input[@type='file']")
+    TOAST = "//*[normalize-space(text())='{text}']"  # toasts render outside <main>
+    FILES_COUNT = (By.XPATH, "//main//*[starts-with(normalize-space(),'Files (')]")
+    EXTERNAL_LINK_INPUT = (By.XPATH, "//input[@name='externalSourceLink']")

@@ -243,6 +243,22 @@ class EditorWizardPage(BasePage):
             pass
         return self.get_step_text(label)
 
+    def wait_until_step_completed(self, label: str, timeout: int = 20):
+        """Wait for the stepper to mark `label` Completed.
+
+        The use case Connect step counts its datasets from the server copy, which
+        only updates when a refetch after the connect lands, about 1.5s after the
+        card shows. Until then Continue does nothing. If the refetch never lands
+        (a slow dev API), Continue stays dead; this names that instead of a 60s
+        click timeout.
+        """
+        self.wait_with_timeout(timeout).until(
+            lambda d: "Completed" in self.get_step_text(label),
+            message=f"The {label} step never showed Completed, so Continue would do nothing "
+                    f"(its data refetch never landed): {self.get_step_text(label)!r}",
+        )
+        return self
+
     def get_page_text(self) -> str:
         return self.find((By.TAG_NAME, "main")).text
 
@@ -336,6 +352,17 @@ class EditorWizardPage(BasePage):
             lambda d: self.STEP_URL.search(d.current_url), message="The editor never settled on a step"
         )
         return self
+
+    def type_without_leaving(self, text: str):
+        """Type into the step's DRAFT_FIELD and stay in it, so its save has not started."""
+        field = self.wait.until(EC.element_to_be_clickable(self.DRAFT_FIELD))
+        field.click()
+        field.send_keys(text)
+        return self
+
+    def save_status(self) -> str:
+        """The header's save badge text."""
+        return self.wait.until(EC.visibility_of_element_located(W.SAVE_STATUS)).text.strip()
 
     def wait_until_synced(self, timeout: int = 30, confirm: bool = True):
         """Wait for a started autosave to finish and the header to read 'All changes saved'.

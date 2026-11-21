@@ -54,10 +54,11 @@ def test_graphql_datasets_items_have_required_fields(graphql_client):
     """Each dataset item must have id, title, and status fields."""
     data = graphql_client.query(DATASETS_QUERY)
     datasets = data.get("datasets", [])
-    # Deliberately NOT a skip: every environment this suite targets is populated
-    # (54 datasets on dev as of 2026-09-09). An empty list here means the query or
-    # the index is broken, and skipping would hide exactly that.
-    assert datasets, "datasets query returned an empty list — broken query or index, not an empty environment"
+    # A skip, unlike the use case and organization checks below: an authenticated
+    # `datasets` lists only the caller's own datasets, and the prod test account
+    # owns none (2026-11-20), so an empty list is a real answer there.
+    if not datasets:
+        pytest.skip("This account owns no datasets; nothing to check the fields of")
     first = datasets[0]
     assert "id" in first, f"Dataset missing 'id': {first}"
     assert "title" in first, f"Dataset missing 'title': {first}"
