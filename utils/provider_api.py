@@ -40,13 +40,14 @@ KINDS = {
     "collaborative": ("collaborativesTable", "id", "deleteCollaborative(collaborativeId: $id)", "String!"),
     "aimodel": ("aiModelsTable", "id", "deleteAiModel(modelId: $id) { success }", "Int!"),
     "publication": ("publicationsTable", "id", "deletePublication(publicationId: $id) { success }", "UUID!"),
+    "event": ("eventsTable", "id", "deleteEvent(eventId: $id) { success }", "UUID!"),
 }
 CHART_DELETE = {
     "TypeResourceChart": ("deleteResourceChart(chartId: $id)", "UUID!"),
     "TypeResourceChartImage": ("deleteResourceChartImage(resourceChartImageId: $id)", "UUID!"),
 }
 # Dependants first: a dataset can be referenced by charts and use cases.
-ORDER = ["chart", "publication", "collaborative", "usecase", "aimodel", "dataset"]
+ORDER = ["chart", "publication", "event", "collaborative", "usecase", "aimodel", "dataset"]
 PAGE = 100  # the API rejects a larger limit
 
 
@@ -116,7 +117,7 @@ class ProviderAPI:
             sel = ("__typename ... on TypeResourceChart { id name status } "
                    "... on TypeResourceChartImage { id name status }")
         else:
-            sel = "id status " + {"aimodel": "displayName", "publication": "title"}.get(kind, "title")
+            sel = "id status " + {"aimodel": "displayName", "publication": "title", "event": "name"}.get(kind, "title")
         rows, offset = [], 0
         while True:
             body = self.gql(
@@ -176,6 +177,13 @@ class ProviderAPI:
         elif kind == "publication":
             self._renew()
             record_id = publications.create(self.client, org=org, title=title)["id"]
+        elif kind == "event":
+            made = self._mutate(
+                "mutation{ createEvent(input:{}){ success data { id } } }", org)
+            record_id = made["createEvent"]["data"]["id"]
+            self._mutate(
+                "mutation($i: UpdateEventInput!){ updateEvent(input:$i){ success } }",
+                org, {"i": {"id": record_id, "name": title}})
         else:
             raise ValueError(f"cannot create a {kind} draft through the API")
         return str(record_id)

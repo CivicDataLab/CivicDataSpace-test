@@ -32,6 +32,8 @@ class AiModelsLocators:
     EDIT_VERSION_TITLE = (By.XPATH, "//*[@role='dialog']//h2[normalize-space()='Edit Version']")
     SAVE_VERSION_BTN = (By.XPATH, "//button[normalize-space()='Save Version']")
     SAVED_VERSION = "//main//*[normalize-space()='Version {name}']"
+    # A toast or inline message containing the text, e.g. the backend's refusal of a provider save.
+    MESSAGE = "//*[contains(normalize-space(text()), \"{text}\")]"
 
     # Model Information
     MODEL_NAME_INPUT = (By.XPATH, "//input[@name='modelName']")

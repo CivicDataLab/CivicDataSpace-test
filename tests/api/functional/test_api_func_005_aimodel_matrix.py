@@ -200,3 +200,42 @@ def test_non_positive_timeout_is_refused(graphql_client, provider, value):
 
 def test_endpoint_url_over_500_is_refused(graphql_client, provider):
     assert _failed(_update_provider(graphql_client, provider, apiEndpointUrl="https://example.com/" + "p" * 500))
+
+
+# ─── Provider fields that go into the outbound model call ─────────────────────
+# A stray space pasted into a masked API key field was saved as-is on prod and
+# every call to the model then failed with 401. Each of these values is sent
+# to the model provider, so whitespace in any of them breaks the call: the
+# server must refuse it or save the value without it.
+
+CLEAN = {"apiKey": DUMMY_KEY, "hfAuthToken": "hf_qamatrixdummynotasecret", "apiKeyPrefix": "Bearer",
+         "apiAuthHeaderName": "Authorization", "apiEndpointUrl": "https://api.example.com/v1/predict",
+         "providerModelId": "qa-matrix-model-1", "apiResponsePath": "choices[0].message.content"}
+DIRTY = {"padded": lambda v: f" {v} ", "newline": lambda v: f"{v}\n", "inner_space": lambda v: f"{v[:5]} {v[5:]}"}
+SAVED_AS_IS = pytest.mark.xfail(strict=True, raises=AssertionError, reason="known product defect, tracked by the backend team: provider fields are saved as sent")
+FIELD_SHAPES = [pytest.param(f, s, id=f"{f}-{s}", marks=[] if f == "apiEndpointUrl" else SAVED_AS_IS)
+                for f, s in itertools.product(CLEAN, DIRTY)]
+
+
+def _provider_fields(client, model_id, provider_id):
+    body = gql(client, "query($id: Int!){ getAiModel(modelId:$id){ versions { providers { id %s } } } }" % " ".join(CLEAN),
+               {"id": int(model_id)})
+    assert "errors" not in body, body["errors"]
+    return _provider(body["data"]["getAiModel"], provider_id)
+
+
+@pytest.mark.parametrize("field,shape", FIELD_SHAPES)
+def test_whitespace_in_call_field_is_refused_or_removed(graphql_client, model, provider, field, shape):
+    assert not _failed(_update_provider(graphql_client, provider, **{field: CLEAN[field]}))
+    _update_provider(graphql_client, provider, **{field: DIRTY[shape](CLEAN[field])})
+    saved = _provider_fields(graphql_client, model, provider)[field]
+    assert not any(c.isspace() for c in saved), f"{field} saved with whitespace: {saved!r}"
+
+
+@SAVED_AS_IS
+@pytest.mark.parametrize("shape", DIRTY)
+def test_whitespace_in_api_key_on_create_is_refused_or_removed(graphql_client, model, version, shape):
+    created = _create_provider(graphql_client, version, apiKey=DIRTY[shape](DUMMY_KEY))
+    if created["success"]:
+        saved = _provider_fields(graphql_client, model, created["data"]["id"])["apiKey"]
+        assert not any(c.isspace() for c in saved), f"apiKey saved with whitespace: {saved!r}"

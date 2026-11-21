@@ -43,18 +43,13 @@ UPDATE = {
     "publication": ("mutation($i: UpdatePublicationInput!){ updatePublication(input:$i){ success } }",
                     lambda rid, title: {"i": {"id": rid, "title": title}}),
 }
-# Known product defects, tracked privately by the backend team.
-BROKEN = {(k, role, a) for k in ("usecase", "collaborative") for role in ("viewer", "outsider")
-          for a in ("update", "delete")} | {(k, "editor", "delete") for k in ("usecase", "collaborative")}
 
 
 def _cases():
     for kind in UPDATE:
         for role in ROLES:
             for action in ("create", "update", "delete", "list"):
-                marks = [pytest.mark.xfail(strict=True, reason="known product defect, tracked by the backend team")] \
-                    if (kind, role, action) in BROKEN else []
-                yield pytest.param(kind, role, action, id=f"{kind}-{role}-{action}", marks=marks)
+                yield pytest.param(kind, role, action, id=f"{kind}-{role}-{action}")
 
 
 @pytest.fixture(scope="module")

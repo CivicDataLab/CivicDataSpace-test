@@ -24,6 +24,7 @@ LISTINGS = {
     "usecase": {"section": "Use Cases", "noun": "use case", "draft": "DRAFT", "published": "PUBLISHED"},
     "collaborative": {"section": "Collaboratives", "noun": "collaborative", "draft": "DRAFT", "published": "PUBLISHED"},
     "aimodel": {"section": "AI Models", "noun": "AI model", "draft": "REGISTERED", "published": "ACTIVE"},
+    "event": {"section": "Events", "noun": "event", "draft": "DRAFT", "published": "PUBLISHED"},
 }
 
 scopes = pytest.mark.parametrize("scope", ["individual", "org"])

@@ -82,7 +82,7 @@ def test_draft_publication_cannot_be_linked(owner, usecase_id, publications):
 
 def test_another_user_cannot_link_to_my_use_case(graphql_client_for, owner, usecase_id, publications):
     body = pub.gql(graphql_client_for(3), LINK, {"u": usecase_id, "p": publications()})
-    assert _error(body) == ["You don't have permission to modify this."], body
+    assert _error(body) == ["You don't have permission to change this use case"], body
     assert _linked(owner, usecase_id) == []
 
 

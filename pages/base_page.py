@@ -15,22 +15,28 @@ from selenium.webdriver.common.action_chains import ActionChains
 
 # Counts GraphQL mutations still in flight, so a save wait can see the request
 # itself instead of trusting the 'Saving…' header. Injected into every page.
+# A save first reads the session (/api/auth/session) for its token and only then
+# sends the mutation, so that read counts too, and `last` lets a wait require a
+# short quiet spell: otherwise the gap between the two looks like "nothing in flight".
 SAVE_TRACKER_JS = """
 (() => {
   if (window.__saves) return;
-  const s = window.__saves = {inflight: 0};
+  const s = window.__saves = {inflight: 0, last: 0};
   const orig = window.fetch;
   window.fetch = function (input, init) {
     const url = typeof input === 'string' ? input : (input && input.url) || '';
     const body = init && init.body;
-    if (!/graphql/i.test(url) || (typeof body === 'string' && !/"query"\\s*:\\s*"\\s*mutation/.test(body)))
-      return orig.apply(this, arguments);
-    s.inflight++;
-    const done = () => { s.inflight--; };
+    const session = /\\/api\\/auth\\/session/.test(url);
+    const mutation = /graphql/i.test(url) && !(typeof body === 'string' && !/"query"\\s*:\\s*"\\s*mutation/.test(body));
+    if (!session && !mutation) return orig.apply(this, arguments);
+    s.inflight++; s.last = performance.now();
+    const done = () => { s.inflight--; s.last = performance.now(); };
     return orig.apply(this, arguments).then(r => { done(); return r; }, e => { done(); throw e; });
   };
 })();
 """
+
+SAVE_QUIET_MS = 400
 
 
 class BasePage:
@@ -271,8 +277,12 @@ class BasePage:
             self.driver.implicitly_wait(implicit)
 
     def saves_settled(self, _driver=None) -> bool:
-        """No save request is in flight (always true where the tracker is absent)."""
-        return self.driver.execute_script("return !window.__saves || window.__saves.inflight === 0")
+        """No save request is in flight, nor was one for SAVE_QUIET_MS (always true where the tracker is absent)."""
+        return self.driver.execute_script(
+            "const s = window.__saves;"
+            " return !s || (s.inflight === 0 && performance.now() - s.last > arguments[0]);",
+            SAVE_QUIET_MS,
+        )
 
     def gone(self, locator):
         """`EC.invisibility_of_element_located` that answers at once when the element is absent."""

@@ -10,6 +10,8 @@ from locators.provider.create_usecase_locators import CreateUsecaseLocators as L
 class CreateUsecasePage(EditorWizardPage):
     """Use case wizard: Builder -> Connect -> Review & Publish."""
 
+    DRAFT_FIELD = L.SUBTITLE_INPUT  # an optional text field, for type_without_leaving
+
     ENTITY = "Use Case"
 
     def enter_title(self, title: str):
