@@ -20,16 +20,21 @@ class CreateAiModelPage(EditorWizardPage):
 
     def add_version(self, name: str, access_name: str, model_id: str, endpoint_url: str):
         """Add a version with one Custom API access method, and save it."""
+        return self.add_version_with_methods(name, [(access_name, model_id, endpoint_url)])
+
+    def add_version_with_methods(self, name: str, methods: list[tuple[str, str, str]]):
+        """Add a version with a Custom API access method per (name, model id, endpoint url), and save it."""
         self.click_until(L.ADD_VERSION_BTN, EC.visibility_of_element_located(L.VERSION_SHEET),
                          message="Add Version never opened its sheet")
-        self.click_until(L.ADD_ACCESS_METHOD_BTN, EC.visibility_of_element_located(L.ACCESS_NAME_INPUT),
-                         message="Add Access Method never showed its form")
-        self.clear_and_type(L.ACCESS_NAME_INPUT, access_name)
-        self.choose_select_option(L.PROVIDER_SELECT, "Custom API")
-        self.clear_and_type(L.PROVIDER_MODEL_ID_INPUT, model_id)
-        self.clear_and_type(L.API_ENDPOINT_INPUT, endpoint_url)
-        self.click_until(L.ADD_ACCESS_METHOD_BTN, EC.invisibility_of_element_located(L.ACCESS_NAME_INPUT),
-                         message="The access method was never added to the version")
+        for access_name, model_id, endpoint_url in methods:
+            self.click_until(L.ADD_ACCESS_METHOD_BTN, EC.visibility_of_element_located(L.ACCESS_NAME_INPUT),
+                             message="Add Access Method never showed its form")
+            self.clear_and_type(L.ACCESS_NAME_INPUT, access_name)
+            self.choose_select_option(L.PROVIDER_SELECT, "Custom API")
+            self.clear_and_type(L.PROVIDER_MODEL_ID_INPUT, model_id)
+            self.clear_and_type(L.API_ENDPOINT_INPUT, endpoint_url)
+            self.click_until(L.ADD_ACCESS_METHOD_BTN, EC.invisibility_of_element_located(L.ACCESS_NAME_INPUT),
+                             message=f"The access method {access_name!r} was never added to the version")
         self.click_until(L.SAVE_VERSION_BTN, EC.invisibility_of_element_located(L.VERSION_SHEET),
                          message="Save Version never closed the sheet")
         self.wait_with_timeout(20).until(
@@ -37,6 +42,38 @@ class CreateAiModelPage(EditorWizardPage):
             message=f"Version {name} is not listed after saving",
         )
         return self
+
+    # ─── Test Access Methods (inside a saved version's sheet) ───────────────────
+
+    def open_version(self, name: str):
+        self.click_until((By.XPATH, L.EDIT_VERSION_BTN.format(name=name)), EC.visibility_of_element_located(L.ACCESS_TEST_INPUT),
+                         message=f"Edit Version {name} never opened its sheet")
+        return self
+
+    def run_access_tests(self, test_input: str, timeout: int = 60):
+        """Type the Test Input, press Test All Access Methods and wait for every row to finish."""
+        self.clear_and_type(L.ACCESS_TEST_INPUT, test_input)
+        self.wait.until(EC.element_to_be_clickable(L.TEST_ALL_ACCESS_BTN)).click()
+        self.wait_with_timeout(timeout).until(lambda d: not d.find_elements(*L.ACCESS_TEST_TESTING),
+                                              message="An access method test never finished")
+        return self
+
+    def access_test_status(self, access_name: str) -> str:
+        return self.wait.until(
+            EC.visibility_of_element_located((By.XPATH, L.ACCESS_TEST_STATUS.format(name=access_name))),
+            message=f"No test result row for {access_name!r}").text.strip()
+
+    def access_test_detail(self, access_name: str) -> str:
+        """Open the row and its See details, and return the response detail text."""
+        toggle = self.wait.until(EC.element_to_be_clickable((By.XPATH, L.ACCESS_TEST_TOGGLE.format(name=access_name))))
+        if toggle.get_attribute("aria-expanded") != "true":
+            toggle.click()
+        panel = self.driver.find_element(By.XPATH, L.ACCESS_TEST_PANEL.format(name=access_name))
+        self.wait.until(lambda d: panel.find_element(By.XPATH, L.ACCESS_TEST_SEE_DETAILS).is_displayed(),
+                        message=f"{access_name!r} has no See details")
+        panel.find_element(By.XPATH, L.ACCESS_TEST_SEE_DETAILS).click()
+        return self.wait.until(lambda d: panel.find_element(By.XPATH, L.ACCESS_TEST_DETAIL).text.strip() or False,
+                               message=f"{access_name!r} details never showed")
 
     # ─── Version sheet, one control at a time ──────────────────────────────────
 
