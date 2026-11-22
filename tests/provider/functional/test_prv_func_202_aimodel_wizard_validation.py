@@ -119,7 +119,8 @@ def test_prv_func_202c_invalid_endpoint_url_rejected(driver, base_url, test_cred
 
 @pytest.mark.functional
 @pytest.mark.timeout(420)
-@pytest.mark.xfail(strict=True, reason="Timeout (seconds) has no bounds: 0, -5 and 100000 are all valid (DataSpaceBackend#292 negatives)")
+@pytest.mark.xfail(strict=True, reason="The Timeout (seconds) field shows no inline error for 0, -5 or 100000; "
+                   "the backend refuses them on save (202k, api_func_005), so this is a frontend-only gap")
 def test_prv_func_202d_timeout_bounds(driver, base_url, test_credentials, delete_draft_after):
     page = new_draft(driver, base_url, test_credentials, delete_draft_after)
     page.open_version_sheet().open_access_form()
