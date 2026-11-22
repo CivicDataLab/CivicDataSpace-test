@@ -92,10 +92,25 @@ class ListingTablePage(BasePage):
     def titles(self) -> list[str]:
         return [r["title"] for r in self.rows()]
 
-    def wait_for_rows(self, predicate, message: str) -> list[dict]:
-        """Wait until the visible rows satisfy `predicate`, then return them."""
+    def row_texts(self) -> list[str]:
+        """Each visible row's full text, read in one pass (no stale rows).
+
+        Tells rows apart when titles repeat, e.g. many default-named "New AI
+        Model" drafts (DataSpaceFrontend#545).
+        """
+        return self.driver.execute_script(
+            "return arguments[0].map(r => r.innerText)", self.driver.find_elements(*L.ROWS)
+        )
+
+    def wait_for_rows(self, predicate, message: str, read=None) -> list:
+        """Wait until the visible rows satisfy `predicate`, then return them.
+
+        `read` picks the row view (default `rows`, or e.g. `row_texts`).
+        """
+        read = read or self.rows
+
         def check(d):
-            rows = self.rows()
+            rows = read()
             return (rows,) if predicate(rows) else False  # an empty list would read as "not yet"
 
         return self.wait_with_timeout(30).until(check, message=message)[0]
