@@ -365,6 +365,19 @@ class HomePage(BasePage):
         self.driver.execute_script("window.localStorage.clear(); window.sessionStorage.clear();")
         self.driver.refresh()
 
+    def sign_out(self):
+        """Log Out from the avatar menu, as a user would. Raises if any step is missing."""
+        self.wait.until(EC.element_to_be_clickable(HomepageLocators.LOGOUT_PROFILE_LOGO),
+                        message="No profile chip to open: not signed in").click()
+        self.wait.until(EC.element_to_be_clickable(HomepageLocators.LOGOUT),
+                        message="The profile menu has no Log Out").click()
+        self.wait_with_timeout(15).until(EC.visibility_of_element_located(HomepageLocators.LOGIN_SIGN_UP),
+                                         message="LOGIN / SIGN UP never came back after Log Out")
+        return self
+
+    def signed_in_chip_shown(self) -> bool:
+        return bool(self.driver.find_elements(*HomepageLocators.LOGOUT_PROFILE_LOGO))
+
     def _click_logout(self):
         try:
             # 1. Click the avatar/profile button
