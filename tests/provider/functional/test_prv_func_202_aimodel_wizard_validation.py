@@ -242,12 +242,16 @@ def _custom_api_method(page, endpoint="https://example.com/v1"):
 @pytest.mark.functional
 @pytest.mark.timeout(420)
 def test_prv_func_202j_backend_refusal_is_shown(driver, base_url, test_credentials, delete_draft_after):
-    """DataSpaceFrontend#549: a provider save the backend refuses shows its message instead of a success."""
+    """DataSpaceFrontend#549: an access method the backend refuses shows its message instead of a success.
+
+    Add Access Method is the call that reaches the backend; its error toast lasts ~3 s, so check it before
+    anything else (checking after Save Version only passed while that toast happened to still be up).
+    """
     page = _custom_api_method(new_draft(driver, base_url, test_credentials, delete_draft_after),
                               endpoint="http://my-model-server/v1")  # a browser-valid URL the backend refuses
     page.press_add_access_method()
-    page.press_save_version()
     assert page.shows_message("API endpoint URL must be a valid URL"), "The backend's refusal was not shown"
+    assert page.is_access_form_open(), "The refused access method form closed as if it had been added"
 
 
 @pytest.mark.functional
