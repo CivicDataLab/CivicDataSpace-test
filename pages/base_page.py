@@ -346,11 +346,10 @@ class BasePage:
             EC.element_to_be_clickable((By.XPATH, "//main//input[starts-with(@placeholder,'Search ')]")),
             message="List search box never appeared"
         )
-        # Typing a long title races the table's debounced re-render, which drops
-        # a keystroke mid-way; the tail of the title is short and still narrows
-        # the list. The row itself is matched on the full title below.
+        # The full title: a dropped keystroke (DataSpaceFrontend#523, not seen in
+        # 20 burst-typed runs on 2026-11-22) must fail here, not be typed around.
         search.click()
-        search.send_keys(row_match_text[-25:])
+        search.send_keys(row_match_text)
         self.wait_with_timeout(timeout).until(
             EC.visibility_of_element_located((By.XPATH, "//table//thead//th")),
             message="Table header never appeared"

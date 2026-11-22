@@ -40,6 +40,8 @@ BASE_URL = os.getenv("HOME_URL_DEV", "https://dev.civicdataspace.in")
 @pytest.fixture
 def keycloak_admin():
     """Admin client, or skip. Guarantees anything created can be removed."""
+    if os.getenv("REGISTRATION_TESTS") == "off":
+        pytest.skip("REGISTRATION_TESTS=off: no accounts created in the realm dev and prod share")
     admin = KeycloakAdmin()
     if not admin.available():
         pytest.skip(

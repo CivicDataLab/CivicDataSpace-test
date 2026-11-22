@@ -134,6 +134,11 @@ def public_ai_model(graphql_client, taxonomy):
     assert created["success"], created
     values["id"] = int(created["data"]["id"])
     try:
+        # isPublic alone is a draft, hidden from the public since DataSpaceBackend#306;
+        # status ACTIVE publishes it.
+        activated = _ok(gql(graphql_client, "mutation($i: UpdateAIModelInput!){ updateAiModel(input:$i){ success } }",
+                            {"i": {"id": values["id"], "status": "ACTIVE"}}), "updateAiModel")
+        assert activated["success"], activated
         yield values
     finally:
         gql(graphql_client, "mutation($id: Int!){ deleteAiModel(modelId:$id){ success } }", {"id": values["id"]})
