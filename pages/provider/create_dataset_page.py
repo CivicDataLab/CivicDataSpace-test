@@ -30,6 +30,36 @@ class CreateDatasetPage(EditorWizardPage):
         )
         return self
 
+    def import_from_platform(self, platform: str, url: str) -> str:
+        """Data Files > Public Platform: pick `platform`, paste `url`, Generate.
+
+        Generate creates a new dataset and opens its Data Files step; returns that id.
+        """
+        before = self.driver.current_url
+        self.click_until((By.XPATH, L.PUBLIC_PLATFORM_TAB), EC.visibility_of_element_located((By.XPATH, L.PLATFORM_SELECT)),
+                         message="The Public Platform tab never showed the platform select")
+        self.choose_select_option((By.XPATH, L.PLATFORM_SELECT), platform)
+        self.clear_and_type((By.XPATH, L.PLATFORM_URL_INPUT), url)
+        self.wait.until(EC.element_to_be_clickable((By.XPATH, L.GENERATE_BUTTON))).click()
+        self.wait_with_timeout(45).until(lambda d: d.current_url != before and "/edit/resources" in d.current_url,
+                                         message=f"Generate did not open a new dataset for {url}")
+        return self.driver.current_url.split("/dataset/")[1].split("/")[0]
+
+    def toast_shown(self, text: str, timeout: int = 10) -> bool:
+        try:
+            self.wait_with_timeout(timeout).until(EC.visibility_of_any_elements_located((By.XPATH, L.TOAST.format(text=text))))
+            return True
+        except TimeoutException:
+            return False
+
+    def file_listed(self, text: str, timeout: int = 15) -> bool:
+        # The file list renders twice (one copy hidden), so any visible match counts.
+        try:
+            self.wait_with_timeout(timeout).until(EC.visibility_of_any_elements_located((By.XPATH, L.FILE_ROW_TEXT.format(text=text))))
+            return True
+        except TimeoutException:
+            return False
+
     def go_to_metadata_tab(self):
         self._go_to_step("Metadata", "metadata")
         # The list row is found by this name after publishing.

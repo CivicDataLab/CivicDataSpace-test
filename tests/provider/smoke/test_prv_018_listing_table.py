@@ -181,12 +181,16 @@ def test_prv_019_listing_pagination(scope, kind, open_listing, provider_api, req
     assert not table.page_button_enabled("Next Page") and not table.page_button_enabled("Last Page")
     assert table.page_button_enabled("Previous Page") and table.page_button_enabled("First Page")
 
+    # Compared on the rows' full text, not title + status: default-named drafts
+    # ("New AI Model") repeat, so page 2 can look like page 1 by title alone
+    # (DataSpaceFrontend#545).
     table.go_to_page("First Page")
     table.wait_for_rows(lambda r: r == first_page, "First Page did not return to the first rows")
+    first_texts = table.row_texts()
 
     table.go_to_page("Next Page")
-    table.wait_for_rows(lambda r: r != first_page, "Page 2 shows the same rows as page 1")
+    table.wait_for_rows(lambda r: r != first_texts, "Page 2 shows the same rows as page 1", read=table.row_texts)
     assert table.page() == (2, pages)
 
     table.go_to_page("Previous Page")
-    table.wait_for_rows(lambda r: r == first_page, "Previous Page did not return to the first rows")
+    table.wait_for_rows(lambda r: r == first_texts, "Previous Page did not return to the first rows", read=table.row_texts)
