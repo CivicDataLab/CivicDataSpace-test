@@ -59,5 +59,13 @@ class CreateDatasetLocators:
     SHEET_CLOSE_BUTTON = PROMPT_FILE_SHEET + "//button[normalize-space()='Close']"
     PROMPT_FORMAT_SELECT = PROMPT_FILE_SHEET + W.SELECT_BY_LABEL.format(label="Prompt Format")
 
+    # ---- Data Files > Public Platform (DataSpace#251) ----
+    PUBLIC_PLATFORM_TAB = "//main//button[normalize-space()='Public Platform']"
+    PLATFORM_SELECT = "//main//button[@role='combobox'][normalize-space()='Select a platform...']"
+    PLATFORM_URL_INPUT = "//main//input[@name='datasetUrl']"
+    GENERATE_BUTTON = "//main//button[normalize-space()='Generate']"
+    TOAST = "//*[normalize-space(text())='{text}']"  # toasts render outside <main>
+    FILE_ROW_TEXT = "//main//*[text()[contains(normalize-space(.), '{text}')]]"
+
     # ---- Review & Publish ----
     PUBLISH_DATASET_BUTTON = "//main//button[normalize-space()='Publish Dataset']"
