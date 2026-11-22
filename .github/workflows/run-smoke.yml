@@ -127,11 +127,17 @@ jobs:
 
     env:
       HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
-      # For the functional login test. Deliberately NOT KEYCLOAK_CLIENT_SECRET:
-      # without it the registration tests skip instead of creating users in the
-      # Keycloak realm that dev and prod share.
       TEST_EMAIL_1:    ${{ secrets.TEST_EMAIL_1 }}
       TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+      # con_func_301-304 set up their published items through the API, which needs
+      # a token. Without these four they skipped in every run since they were added.
+      KEYCLOAK_URL: ${{ vars.KEYCLOAK_URL || 'https://auth.civicdatalab.in' }}
+      KEYCLOAK_REALM: ${{ vars.KEYCLOAK_REALM || 'DataSpace' }}
+      KEYCLOAK_CLIENT_ID: ${{ vars.KEYCLOAK_CLIENT_ID || 'dataspace' }}
+      KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+      # The secret also unlocks the registration tests, which create users in the
+      # Keycloak realm dev and prod share. Keep them off in CI.
+      REGISTRATION_TESTS: "off"
       # test_con_usecase_dashboards looks up which use cases link dashboards.
       # Same resolution as api-smoke, so a prod readonly run reads prod data.
       API_BASE_URL: ${{ inputs.api_base_url || vars.API_BASE_URL || 'https://dev.api.civicdataspace.in' }}
