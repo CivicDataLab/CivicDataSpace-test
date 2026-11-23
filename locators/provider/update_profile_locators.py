@@ -13,6 +13,8 @@ class UpdateProfilePageLocators:
     BIO_TEXT_INPUT = (By.XPATH, '//textarea[@name="bio"] | //textarea[@name="description"]')
     SAVE_BUTTON = (By.XPATH, '//button[normalize-space()="Save changes"]')
     SAVED_TOAST = (By.XPATH, '//*[text()[contains(., "updated successfully")]]')
+    # The browser's own message when the request never reached the API (a dev blip).
+    FETCH_FAILED_TOAST = (By.XPATH, '//*[text()[contains(., "Failed to fetch")]]')
     # ProfilePictureField: a picked file previews as a blob: <img> beside the input.
     PICTURE_SAVED = (By.XPATH, '//input[@id="profile-picture" or @id="organization-logo"]/../..//img[not(starts-with(@src, "blob:"))]')
     PICTURE_PREVIEW = (By.XPATH, '//input[@id="profile-picture" or @id="organization-logo"]/../..//img[starts-with(@src, "blob:")]')
