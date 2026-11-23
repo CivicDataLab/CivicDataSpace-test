@@ -110,7 +110,7 @@ def test_text_meets_contrast_minimum(driver, goto, page_id, path):
     and background images), so re-implementing it here would be strictly worse.
     """
     goto(path)
-    results = a11y.run_axe_settled(driver, tags=["wcag2aa"])
+    results = a11y.run_axe(driver, tags=["wcag2aa"])
 
     contrast = [v for v in results.get("violations", []) if v.get("id") == "color-contrast"]
     node_count = sum(len(v.get("nodes", [])) for v in contrast)

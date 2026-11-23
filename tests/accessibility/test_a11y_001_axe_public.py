@@ -22,7 +22,7 @@ def test_public_page_has_no_critical_axe_violations(driver, goto, page_id, path)
     """Each public page must pass an axe WCAG 2.1 A/AA scan cleanly."""
     goto(path)
 
-    results = a11y.run_axe_settled(driver)
+    results = a11y.run_axe(driver)
     blocking = a11y.blocking_violations(results)
     all_violations = results.get("violations", [])
 
