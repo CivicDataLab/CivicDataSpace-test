@@ -62,6 +62,16 @@ def goto(driver, base_url):
             # A slow/degraded backend shouldn't turn into a confusing timeout
             # deep inside a scan; let the test assert on what actually rendered.
             pass
+        if path == "/":
+            # The home page's stat cards (Datasets, Use cases, ...) render about a second after
+            # load, from an API call. Scanning before they exist passed locally; scanning after
+            # they exist fails contrast in CI. Always scan the full page.
+            try:
+                WebDriverWait(driver, 15).until(
+                    lambda d: d.execute_script("return !!document.querySelector('a[data-tour=\"datasets-link\"]')")
+                )
+            except Exception:
+                pass
         return url
 
     return _goto
@@ -93,7 +103,7 @@ KNOWN_FAILURES = {
 KNOWN_FAILURES.update({
     (test, p): f"{FRONTEND}#556: text below the 4.5:1 contrast minimum"
     for test in ("test_public_page_has_no_critical_axe_violations", "test_text_meets_contrast_minimum")
-    for p in ("datasets", "sectors", "usecases", "collaboratives")
+    for p in ("home", "datasets", "sectors", "usecases", "collaboratives")
 })
 # Intermittent: the header row's width depends on when the Bhashini language widget
 # finishes loading, so the same page overflows on one run and not the next (home failed in
