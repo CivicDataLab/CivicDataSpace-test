@@ -98,13 +98,17 @@ KNOWN_FAILURES.update({
 # Intermittent: the header row's width depends on when the Bhashini language widget
 # finishes loading, so the same page overflows on one run and not the next (home failed in
 # CI with datasets passing; the reverse happened locally). Not strict, or the passes go red.
+# The profile section's unlabelled file input and low-contrast "Delete account" failed on every
+# local run but passed once in CI (XPASS, run 45175986731), so it is not strict either.
 INTERMITTENT_FAILURES = {
     ("test_text_resizes_to_200_percent", p): f"{FRONTEND}#557: header row overflows at 200% text, depending on load timing"
     for p in ("home", "datasets", "about-us")
 }
+INTERMITTENT_FAILURES[("test_provider_section_has_no_critical_axe_violations", "profile")] = (
+    "DataSpace#218: unlabelled file input and low-contrast Delete account on Profile")
 KNOWN_FAILURES.update({
-    ("test_provider_section_has_no_critical_axe_violations", p): "DataSpace#218: invalid ARIA / unlabelled input on the provider routes"
-    for p in ("datasets", "usecases", "charts", "profile")
+    ("test_provider_section_has_no_critical_axe_violations", p): "DataSpace#218: invalid ARIA on the provider routes"
+    for p in ("datasets", "usecases", "charts")
 })
 
 
