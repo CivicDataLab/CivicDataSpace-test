@@ -64,6 +64,10 @@ class CreateDatasetLocators:
     PLATFORM_SELECT = "//main//button[@role='combobox'][normalize-space()='Select a platform...']"
     PLATFORM_URL_INPUT = "//main//input[@name='datasetUrl']"
     GENERATE_BUTTON = "//main//button[normalize-space()='Generate']"
+    FILE_UPLOAD_TAB = "//main//button[normalize-space()='File Upload']"
+    # The "Change upload method?" confirm shown when the other method is already in use.
+    SWITCH_DIALOG = "//*[@role='alertdialog'][.//h2[normalize-space()='Change upload method?']]"
+    SWITCH_DIALOG_BUTTON = SWITCH_DIALOG + "//button[normalize-space()='{label}']"
     TOAST = "//*[normalize-space(text())='{text}']"  # toasts render outside <main>
     FILE_ROW_TEXT = "//main//*[text()[contains(normalize-space(.), '{text}')]]"
 
