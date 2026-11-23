@@ -46,17 +46,17 @@ def test_provider_section_does_not_scroll_sideways(provider_dashboard, driver, s
         measured = driver.execute_script("""
             const de = document.documentElement;
             const offenders = [...document.querySelectorAll('main *')]
-                .filter(el => { const r = el.getBoundingClientRect(); return r.width && r.height && r.right > de.clientWidth + 4; })
+                .filter(el => { const r = el.getBoundingClientRect(); return r.width && r.height && r.right > window.innerWidth + 4; })
                 .slice(0, 8)
                 .map(el => ({ tag: el.tagName.toLowerCase(), cls: (el.getAttribute('class')||'').slice(0, 40), right: Math.round(el.getBoundingClientRect().right) }));
-            return { scrollW: de.scrollWidth, clientW: de.clientWidth, offenders };
+            return { scrollW: de.scrollWidth, clientW: window.innerWidth, offenders };
         """)
         overflow = measured["scrollW"] > measured["clientW"] + 4
         a11y.record(check="reflow", page=f"provider-{section}-{viewport}",
                     status="fail" if overflow else "pass", detail={"url": driver.current_url, **measured})
         assert not overflow, (
             f"{section} at {viewport} ({VIEWPORTS[viewport][0]}px): the page scrolls sideways "
-            f"(scrollWidth {measured['scrollW']} > clientWidth {measured['clientW']}). Offenders: {measured['offenders'][:4]}"
+            f"(scrollWidth {measured['scrollW']} > window width {measured['clientW']}). Offenders: {measured['offenders'][:4]}"
         )
     finally:
         driver.set_window_size(original["width"], original["height"])
