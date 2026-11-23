@@ -28,6 +28,7 @@ import hashlib
 import json
 import os
 import re
+import time
 from pathlib import Path
 
 # ─── Paths ─────────────────────────────────────────────────────────────────────
@@ -201,6 +202,20 @@ def run_axe(driver, tags=None, include=None) -> dict:
     if not outcome.get("ok"):
         raise RuntimeError(f"axe-core failed to run: {outcome.get('error')}")
     return outcome["results"]
+
+
+def run_axe_settled(driver, tags=None, include=None, settle: float = 2.0) -> dict:
+    """run_axe, and on any violation scan once more after `settle` seconds.
+
+    A fade-in or counter animation shows a mid-transition colour, which axe reads as
+    low contrast (home failed once in CI, then passed on every rerun). A real defect
+    fails both scans.
+    """
+    results = run_axe(driver, tags=tags, include=include)
+    if results.get("violations"):
+        time.sleep(settle)
+        results = run_axe(driver, tags=tags, include=include)
+    return results
 
 
 def blocking_violations(axe_results: dict) -> list:
