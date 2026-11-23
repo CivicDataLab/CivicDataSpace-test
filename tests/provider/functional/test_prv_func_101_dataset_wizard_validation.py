@@ -76,7 +76,6 @@ def test_prv_func_101_02_unsupported_file_types_not_added(driver, provider_dashb
     assert "qa_matrix.exe" not in names and "qa_matrix.png" not in names, f"Unsupported files were listed: {names}"
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#529: Unsupported file types are dropped silently: no error tells the user why")
 def test_prv_func_101_03_unsupported_file_type_shows_error(driver, provider_dashboard, qa_drafts, tmp_path):
     exe = tmp_path / "qa_matrix.exe"
     exe.write_bytes(b"MZ not really a program")
@@ -131,7 +130,6 @@ def test_prv_func_101_06_publish_blocked_while_metadata_incomplete(driver, provi
     assert not page.is_publish_enabled(), "Publish Dataset is enabled with no description, sector or tags"
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#529: Dataset Review & Publish shows '—' for missing fields but no list of what to fix (the use case review has one)")
 def test_prv_func_101_07_review_lists_missing_items(driver, provider_dashboard, qa_drafts, sample_csv_path, tmp_path):
     page = _with_file(qa_drafts, "data", provider_dashboard, driver, sample_csv_path, tmp_path)
 
@@ -191,7 +189,6 @@ def test_prv_func_101_11_long_title_within_limit_persists(driver, provider_dashb
     assert page.get_title_value() == title
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#528: A 400-char title shows 'All changes saved' but is silently not saved; no limit or error shown")
 def test_prv_func_101_12_over_long_title_rejected_visibly(driver, provider_dashboard, qa_drafts, sample_csv_path, tmp_path):
     title = QA_TAG + " " + "L" * 400
     page = _with_file(qa_drafts, "data", provider_dashboard, driver, sample_csv_path, tmp_path)
@@ -203,7 +200,6 @@ def test_prv_func_101_12_over_long_title_rejected_visibly(driver, provider_dashb
     assert error_shown or page.get_title_value() == title, "Over-long title was dropped without any message"
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#529: The description counter counts the editor's HTML: 1001 typed chars show as 1008/1000")
 def test_prv_func_101_13_description_counter_shows_over_limit(driver, provider_dashboard, qa_drafts, sample_csv_path, tmp_path):
     page = _with_file(qa_drafts, "data", provider_dashboard, driver, sample_csv_path, tmp_path)
     page.go_to_metadata_tab()
@@ -212,7 +208,6 @@ def test_prv_func_101_13_description_counter_shows_over_limit(driver, provider_d
     assert page.get_description_counter() == "Character limit: 1001/1000"
 
 
-@pytest.mark.xfail(strict=True, reason="DataSpaceFrontend#528: A description over 1000 chars shows 'All changes saved' and no error, but is not saved")
 def test_prv_func_101_14_over_limit_description_rejected_visibly(driver, provider_dashboard, qa_drafts, sample_csv_path, tmp_path):
     text = "E" * 1001
     page = _with_file(qa_drafts, "data", provider_dashboard, driver, sample_csv_path, tmp_path)
