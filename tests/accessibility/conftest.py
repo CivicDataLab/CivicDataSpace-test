@@ -114,6 +114,9 @@ INTERMITTENT_FAILURES = {
     ("test_text_resizes_to_200_percent", p): f"{FRONTEND}#557: header row overflows at 200% text, depending on load timing"
     for p in ("home", "datasets", "about-us")
 }
+# Same header row, at a 320px viewport (WCAG 1.4.10): 317 > 305 on home in CI, passes locally.
+INTERMITTENT_FAILURES[("test_content_reflows_at_320px", "home")] = (
+    f"{FRONTEND}#557: the header row overflows at 320px, depending on load timing")
 INTERMITTENT_FAILURES[("test_provider_section_has_no_critical_axe_violations", "profile")] = (
     "DataSpace#218: unlabelled file input and low-contrast Delete account on Profile")
 KNOWN_FAILURES.update({
