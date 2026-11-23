@@ -165,8 +165,6 @@ def test_others_cannot_change_draft_parts(draft, who, name):
     assert after == before, f"{name} by {who} was refused but still changed the draft: {before} -> {after}"
 
 
-@pytest.mark.xfail(strict=True, reason="createAccessModel refuses another dataset's file ('Resource with ID ... does not exist') "
-                                      "but still saves an empty access model on the dataset: the create is not atomic")
 def test_access_model_cannot_take_another_datasets_file(draft):
     owner, parts = draft
     other = _new_dataset(owner)
