@@ -1,4 +1,4 @@
-# tests/api/smoke/test_api_053_external_contributors.py
+# tests/api/smoke/test_api_066_external_contributors.py
 #
 # Pending coverage for DataSpaceBackend#224 (open on `dev`, not merged yet):
 # a new `ExternalContributor` model wired as M2M onto Publication, UseCase and
