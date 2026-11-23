@@ -177,7 +177,7 @@ class ProviderAPI:
             record_id = made["createAiModel"]["data"]["id"]
         elif kind == "publication":
             self._renew()
-            record_id = publications.create(self.client, org=org, title=title)["id"]
+            record_id = self._resend_once(lambda: publications.create(self.client, org=org, title=title))["id"]
         elif kind == "event":
             made = self._mutate_draft(
                 "mutation{ createEvent(input:{}){ success data { id } } }", org)
@@ -190,20 +190,24 @@ class ProviderAPI:
         return str(record_id)
 
     def _mutate_draft(self, query, org=None, variables=None):
-        """_mutate for creating or naming a draft: send it once more after a 502/503/504.
+        return self._resend_once(lambda: self._mutate(query, org, variables))
 
-        Mutations are never resent by `gql`, since one might have applied. Here a repeat is
-        harmless: renaming is idempotent, and at worst a lost create leaves one more
-        untitled draft, which dev test leftovers already tolerate. prv_029 died on a lone 502
-        from an overloaded dev while creating its draft.
+    @staticmethod
+    def _resend_once(call):
+        """Run `call`, and once more after a 502/503/504.
+
+        Mutations are never resent by `gql`, since one might have applied. Creating or
+        naming a draft is different: a repeat is harmless, since renaming is idempotent and a
+        lost create leaves at most one more untitled draft, which dev test leftovers already
+        tolerate. prv_029 and api_056 died on a 502 from an overloaded dev while creating one.
         """
         try:
-            return self._mutate(query, org, variables)
+            return call()
         except requests.HTTPError as exc:
             if exc.response is None or exc.response.status_code not in GATEWAY_STATUSES:
                 raise
             time.sleep(3)
-            return self._mutate(query, org, variables)
+            return call()
 
     def _mutate(self, query, org=None, variables=None):
         body = self.gql(query, variables, org)
