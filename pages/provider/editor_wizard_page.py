@@ -51,6 +51,11 @@ class EditorWizardPage(BasePage):
                     if not picked(None):  # a slow chip from the last attempt: do not toggle it off
                         self.select_combobox_option(field, val)
                     self.wait_with_timeout(5).until(picked)
+                    # The pick registers, then the save's refetch can reset the form and drop
+                    # the chip (prv_003 read an empty SDG Goals right after picking). Settle, then check.
+                    self.wait_until_synced()
+                    if not picked(None):
+                        raise TimeoutException(f"{label!r}: {val!r} was dropped when the pick saved")
                     break
                 except (TimeoutException, StaleElementReferenceException) as exc:
                     last = exc
