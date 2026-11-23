@@ -7,9 +7,8 @@
 # /terms, /contact and /accessibility behave the same way but whether those
 # pages should exist is a product decision, so only invented paths are asserted.
 #
-# The unknown-path test asserts the correct behaviour and is strict xfail: CI
-# stays green while the bug exists and goes red (XPASS) once it is fixed, at
-# which point the marker has to come off. The control must always pass.
+# The unknown-path test asserts the correct behaviour, so it fails until
+# DataSpaceFrontend#540 is fixed. The control must always pass.
 
 import pytest
 
@@ -22,10 +21,6 @@ def test_known_public_page_is_not_redirected(dev_frontend_client):
     assert resp.status_code == 200, f"/privacy -> {resp.status_code} {resp.headers.get('Location', '')}"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="DataSpaceFrontend#540: unknown paths redirect anonymous visitors to /login",
-)
 @pytest.mark.parametrize("path", ["/no-such-page-zz", "/no-such-section-zz/no-such-child-zz"])
 def test_unknown_path_is_404_not_login_redirect(dev_frontend_client, path):
     """Unknown paths return 404 for an anonymous visitor rather than redirecting to login."""
