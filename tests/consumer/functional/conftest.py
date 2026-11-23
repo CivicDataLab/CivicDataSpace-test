@@ -11,6 +11,7 @@ import pytest
 from tests.api.conftest import (  # noqa: F401  (re-exported fixtures)
     anon_graphql_client, api_base_url, auth_token, graphql_client, keycloak_config,
 )
+from tests.api import publications as pub
 from tests.api.publications import gql
 from tests.api.publish_ready import add_logo, add_resource, connect_dataset
 
@@ -142,3 +143,35 @@ def public_ai_model(graphql_client, taxonomy):
         yield values
     finally:
         gql(graphql_client, "mutation($id: Int!){ deleteAiModel(modelId:$id){ success } }", {"id": values["id"]})
+
+
+@pytest.fixture(scope="module")
+def published_publication(graphql_client):
+    """A publication with two contributors, a PDF, a video, a link and a licence, published through the API."""
+    lookups = _ok(gql(graphql_client, "{ resourceTypes { id name } activeSectors(pagination: {limit: 1}) { id name } geographies { id name } }"))
+    if not lookups["resourceTypes"]:
+        pytest.skip("no active resource types on this backend, so nothing can be published (DataSpaceBackend#217)")
+    tail = uuid.uuid4().hex[:6]
+    values = {
+        "title": f"[qa-matrix] publication {tail} {TITLE_TAIL}", "description": f"qa-matrix publication description {tail}",
+        "authors": [f"Asha Rao {tail}", f"Vikram Sen {tail}"], "publicationDate": "2024-03-05",
+        "license": "CC_BY_4_0_ATTRIBUTION", "externalSourceLink": f"https://example.org/qa-matrix/{tail}",
+        "resource_type": lookups["resourceTypes"][0], "sector": lookups["activeSectors"][0], "geography": lookups["geographies"][0],
+        "file_name": f"qa-matrix-{tail}.pdf",
+    }
+    created = pub.create(
+        graphql_client, title=values["title"], description=values["description"], authors=values["authors"],
+        publicationDate=values["publicationDate"], license=values["license"], externalSourceLink=values["externalSourceLink"],
+        resourceTypeId=values["resource_type"]["id"], sectorIds=[values["sector"]["id"]],
+        geographyIds=[int(values["geography"]["id"])],
+    )
+    values["id"] = values["slug"] = created["id"]  # the slug gains a suffix when published; the id always opens the page
+    try:
+        assert pub.add_file(graphql_client, created["id"], values["file_name"], pub.PDF_BYTES)["success"]
+        assert pub.add_youtube(graphql_client, created["id"], "https://youtu.be/dQw4w9WgXcQ")["success"]
+        published = pub.publish(graphql_client, created["id"])
+        assert published["success"], published["errors"]
+        yield values
+    finally:
+        pub.unpublish(graphql_client, created["id"])
+        pub.delete(graphql_client, created["id"])

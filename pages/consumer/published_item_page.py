@@ -13,7 +13,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from locators.consumer.published_item_locators import PublishedItemLocators as L
 from pages.base_page import BasePage
 
-DETAIL_PATHS = {"dataset": "datasets", "usecase": "usecases", "collaborative": "collaboratives", "aimodel": "aimodels"}
+DETAIL_PATHS = {"dataset": "datasets", "usecase": "usecases", "collaborative": "collaboratives", "aimodel": "aimodels",
+                "publication": "publications"}
 
 
 class PublishedItemPage(BasePage):
