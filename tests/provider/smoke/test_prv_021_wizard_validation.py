@@ -5,8 +5,8 @@
 # message where the user can see it, and tie each field error to its control.
 #
 # The messages are the product's own wording. Where the provider exploration
-# found the behaviour wrong, the test states the CORRECT behaviour and is a
-# strict xfail, so fixing the product turns it red until the marker is removed.
+# found the behaviour wrong, the test states the CORRECT behaviour, so it fails
+# until the product is fixed.
 # The draft comes from the API ('zz-auto-' name) and the `cleanup` fixture
 # deletes it.
 
