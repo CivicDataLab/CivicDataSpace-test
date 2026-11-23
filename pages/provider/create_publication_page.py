@@ -119,6 +119,17 @@ class CreatePublicationPage(EditorWizardPage):
         self.wait.until(lambda d: box.get_attribute("value") == "", message="The resource name never cleared")
         return self
 
+    def type_blank(self, field: str):
+        """Put three spaces in the name or description, which clear_and_type would not accept."""
+        box = self.wait.until(EC.element_to_be_clickable(L.RESOURCE_NAME_INPUT if field == "name" else L.DESCRIPTION_INPUT))
+        box.click()
+        box.send_keys(Keys.CONTROL, "a")
+        box.send_keys(Keys.COMMAND, "a")
+        box.send_keys(Keys.BACKSPACE)
+        box.send_keys("   ")
+        self.wait.until(lambda d: box.get_attribute("value") == "   ", message=f"The {field} never took the spaces")
+        return self.wait_until_synced()
+
     def enter_external_link(self, url: str):
         self.clear_and_type(L.EXTERNAL_LINK_INPUT, url)
         return self
