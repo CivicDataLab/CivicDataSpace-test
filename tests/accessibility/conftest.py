@@ -95,10 +95,13 @@ KNOWN_FAILURES.update({
     for test in ("test_public_page_has_no_critical_axe_violations", "test_text_meets_contrast_minimum")
     for p in ("datasets", "sectors", "usecases", "collaboratives")
 })
-KNOWN_FAILURES.update({
-    ("test_text_resizes_to_200_percent", p): f"{FRONTEND}#557: header row overflows at 200% text"
-    for p in ("datasets", "about-us")
-})
+# Intermittent: the header row's width depends on when the Bhashini language widget
+# finishes loading, so the same page overflows on one run and not the next (home failed in
+# CI with datasets passing; the reverse happened locally). Not strict, or the passes go red.
+INTERMITTENT_FAILURES = {
+    ("test_text_resizes_to_200_percent", p): f"{FRONTEND}#557: header row overflows at 200% text, depending on load timing"
+    for p in ("home", "datasets", "about-us")
+}
 KNOWN_FAILURES.update({
     ("test_provider_section_has_no_critical_axe_violations", p): "DataSpace#218: invalid ARIA / unlabelled input on the provider routes"
     for p in ("datasets", "usecases", "charts", "profile")
@@ -111,6 +114,8 @@ def pytest_collection_modifyitems(items):
         if not str(item.fspath).startswith(here):
             continue
         callspec = getattr(item, "callspec", None)
-        reason = KNOWN_FAILURES.get((item.originalname, callspec.id if callspec else None))
-        if reason:
-            item.add_marker(pytest.mark.xfail(reason=reason, strict=True, raises=AssertionError))
+        key = (item.originalname, callspec.id if callspec else None)
+        if key in KNOWN_FAILURES:
+            item.add_marker(pytest.mark.xfail(reason=KNOWN_FAILURES[key], strict=True, raises=AssertionError))
+        elif key in INTERMITTENT_FAILURES:
+            item.add_marker(pytest.mark.xfail(reason=INTERMITTENT_FAILURES[key], strict=False, raises=AssertionError))
