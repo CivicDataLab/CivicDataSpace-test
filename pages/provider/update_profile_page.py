@@ -37,15 +37,25 @@ class UpdateProfilePage(EditorWizardPage):
         return self.upload_file_to_dropzone(path_to_file)
 
     def click_save(self):
-        """Click "Save changes" and wait for the "... updated successfully" toast."""
-        btn = self.wait_with_timeout(10).until(
-            EC.element_to_be_clickable(UpdateProfilePageLocators.SAVE_BUTTON))
-        btn.click()
-        self.wait_with_timeout(20).until(
-            EC.visibility_of_element_located(UpdateProfilePageLocators.SAVED_TOAST),
-            message="No 'updated successfully' toast after Save changes",
-        )
-        return self
+        """Click "Save changes" and wait for the "... updated successfully" toast.
+
+        A request that never reaches the API shows "Failed to fetch" instead (prv_022 hit it
+        once during a dev blip). Saving the same values again is harmless, so press Save once more.
+        """
+        for attempt in range(2):
+            btn = self.wait_with_timeout(10).until(
+                EC.element_to_be_clickable(UpdateProfilePageLocators.SAVE_BUTTON))
+            btn.click()
+            self.wait_with_timeout(20).until(
+                lambda d: d.find_elements(*UpdateProfilePageLocators.SAVED_TOAST)
+                or d.find_elements(*UpdateProfilePageLocators.FETCH_FAILED_TOAST),
+                message="No 'updated successfully' toast after Save changes",
+            )
+            if self.driver.find_elements(*UpdateProfilePageLocators.SAVED_TOAST):
+                return self
+            self.wait_with_timeout(10).until(
+                EC.invisibility_of_element_located(UpdateProfilePageLocators.FETCH_FAILED_TOAST))
+        raise TimeoutException("Save changes failed twice with 'Failed to fetch'")
 
     def reload(self):
         self.driver.refresh()
