@@ -5,6 +5,8 @@ The root conftest.py supplies `driver`, `base_url`, `test_credentials` and the
 provider login fixtures; this file only adds what the a11y tests need on top.
 """
 
+import os
+
 import pytest
 
 from utils import a11y
@@ -75,3 +77,40 @@ def _reset_a11y_findings(request):
     if not hasattr(request.config, "workerinput"):
         a11y.clear_findings()
     return None
+
+
+# ─── Known failures ────────────────────────────────────────────────────────────
+#
+# Real accessibility defects on dev, each tracked by an issue. They run as strict
+# xfails, so CI stays green while they exist and goes red the moment one is fixed
+# (an unexpected pass): delete its entry then. A new failure not listed here fails.
+
+FRONTEND = "DataSpaceFrontend"
+KNOWN_FAILURES = {
+    ("test_skip_to_content_mechanism_exists", p): f"{FRONTEND}#555: no skip-to-content link"
+    for p in ("home", "datasets", "about-us")
+}
+KNOWN_FAILURES.update({
+    (test, p): f"{FRONTEND}#556: text below the 4.5:1 contrast minimum"
+    for test in ("test_public_page_has_no_critical_axe_violations", "test_text_meets_contrast_minimum")
+    for p in ("datasets", "sectors", "usecases", "collaboratives")
+})
+KNOWN_FAILURES.update({
+    ("test_text_resizes_to_200_percent", p): f"{FRONTEND}#557: header row overflows at 200% text"
+    for p in ("datasets", "about-us")
+})
+KNOWN_FAILURES.update({
+    ("test_provider_section_has_no_critical_axe_violations", p): "DataSpace#218: invalid ARIA / unlabelled input on the provider routes"
+    for p in ("datasets", "usecases", "charts", "profile")
+})
+
+
+def pytest_collection_modifyitems(items):
+    here = os.path.dirname(__file__)
+    for item in items:
+        if not str(item.fspath).startswith(here):
+            continue
+        callspec = getattr(item, "callspec", None)
+        reason = KNOWN_FAILURES.get((item.originalname, callspec.id if callspec else None))
+        if reason:
+            item.add_marker(pytest.mark.xfail(reason=reason, strict=True, raises=AssertionError))
