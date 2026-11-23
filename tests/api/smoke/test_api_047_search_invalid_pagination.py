@@ -7,9 +7,8 @@
 # list pages then render blank (DataSpaceBackend#303). publisher search already
 # copes, so it is not listed.
 #
-# The bad-input test asserts the correct behaviour and is strict xfail: it keeps
-# CI green while the bug exists and goes red (XPASS) once it is fixed, at which
-# point the marker has to come off. The control test (page=1) must always pass.
+# The bad-input test asserts the correct behaviour, so it fails until
+# DataSpaceBackend#303 is fixed. The control test (page=1) must always pass.
 
 import pytest
 
@@ -31,10 +30,6 @@ def test_search_valid_page_is_ok(anon_api_client, entity):
     assert resp.status_code == 200, f"{entity} search page=1 -> {resp.status_code}: {resp.text[:200]}"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="DataSpaceBackend#303: search API answers 500 for invalid page/size",
-)
 @pytest.mark.parametrize("params", BAD_PARAMS)
 @pytest.mark.parametrize("entity", ENTITIES)
 def test_search_invalid_pagination_is_not_a_server_error(anon_api_client, entity, params):
