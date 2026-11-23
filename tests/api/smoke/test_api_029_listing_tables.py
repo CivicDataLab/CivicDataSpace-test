@@ -224,6 +224,13 @@ def test_publications_table_title_filter_narrows_results(anon_graphql_client):
         """,
         {"word": target["title"]},
     )["publicationsTable"]
+    if target["id"] not in {r["id"] for r in filtered["data"]}:
+        # A concurrent test's publication can be deleted between the two queries.
+        again = anon_graphql_client.query(
+            "{ publicationsTable(includePublic: true, limit: 50) { data { id } } }"
+        )["publicationsTable"]["data"]
+        if target["id"] not in {r["id"] for r in again}:
+            pytest.skip(f"{target['title']!r} was deleted while the test ran")
     assert 0 < filtered["totalItemsCount"] < page["totalItemsCount"], (
         f"filtering publications on {target['title']!r} should narrow {page['totalItemsCount']} rows, "
         f"got {filtered['totalItemsCount']}"
