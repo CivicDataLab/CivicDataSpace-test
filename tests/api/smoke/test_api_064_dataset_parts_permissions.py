@@ -10,7 +10,7 @@
 # caller must read none of them and change none of them. The owner reading all
 # of them is the control that makes the "sees nothing" checks mean something.
 #
-# Replaces the discovery in test_api_050, which can only find a leaking draft
+# Replaces test_api_050 (removed), whose discovery could only find a leaking draft
 # while the bug exists, so it skips now that the fix is live.
 
 import json

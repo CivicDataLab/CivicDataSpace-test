@@ -27,9 +27,10 @@ import json
 import os
 import time
 
+import requests
 
 from tests.api import publications
-from tests.api.client import GraphQLClient
+from tests.api.client import GATEWAY_STATUSES, GraphQLClient
 from tests.api.conftest import _exchange_for_django_token, _get_keycloak_token
 
 # kind -> (listing field, selection, delete mutation, delete variable type).
@@ -153,40 +154,60 @@ class ProviderAPI:
         """
         org = self._owner(org_name)
         if kind == "dataset":
-            made = self._mutate(
+            made = self._mutate_draft(
                 "mutation{ addDataset(createInput:{datasetType: DATA}){ success data { id } } }", org)
             record_id = made["addDataset"]["data"]["id"]
-            self._mutate(
+            self._mutate_draft(
                 "mutation($i: UpdateDatasetInput!){ updateDataset(updateDatasetInput:$i){ __typename } }",
                 org, {"i": {"dataset": record_id, "title": title}})
         elif kind in ("usecase", "collaborative"):
             add, update = ("addUseCase", "updateUseCase") if kind == "usecase" else ("addCollaborative", "updateCollaborative")
-            made = self._mutate("mutation{ %s { __typename ... on Type%s { id } } }" % (
+            made = self._mutate_draft("mutation{ %s { __typename ... on Type%s { id } } }" % (
                 add, "UseCase" if kind == "usecase" else "Collaborative"), org)
             record_id = made[add]["id"]
-            self._mutate(
+            self._mutate_draft(
                 "mutation($i: %sInputPartial!){ %s(data:$i){ id } }" % (
                     "UseCase" if kind == "usecase" else "Collaborative", update),
                 org, {"i": {"id": record_id, "title": title}})
         elif kind == "aimodel":
-            made = self._mutate(
+            made = self._mutate_draft(
                 "mutation($i: CreateAIModelInput!){ createAiModel(input:$i){ success data { id } } }", org,
                 {"i": {"name": title.lower().replace(" ", "-"), "displayName": title,
                        "modelType": "TEXT_GENERATION", "provider": "CUSTOM"}})
             record_id = made["createAiModel"]["data"]["id"]
         elif kind == "publication":
             self._renew()
-            record_id = publications.create(self.client, org=org, title=title)["id"]
+            record_id = self._resend_once(lambda: publications.create(self.client, org=org, title=title))["id"]
         elif kind == "event":
-            made = self._mutate(
+            made = self._mutate_draft(
                 "mutation{ createEvent(input:{}){ success data { id } } }", org)
             record_id = made["createEvent"]["data"]["id"]
-            self._mutate(
+            self._mutate_draft(
                 "mutation($i: UpdateEventInput!){ updateEvent(input:$i){ success } }",
                 org, {"i": {"id": record_id, "name": title}})
         else:
             raise ValueError(f"cannot create a {kind} draft through the API")
         return str(record_id)
+
+    def _mutate_draft(self, query, org=None, variables=None):
+        return self._resend_once(lambda: self._mutate(query, org, variables))
+
+    @staticmethod
+    def _resend_once(call):
+        """Run `call`, and once more after a 502/503/504.
+
+        Mutations are never resent by `gql`, since one might have applied. Creating or
+        naming a draft is different: a repeat is harmless, since renaming is idempotent and a
+        lost create leaves at most one more untitled draft, which dev test leftovers already
+        tolerate. prv_029 and api_056 died on a 502 from an overloaded dev while creating one.
+        """
+        try:
+            return call()
+        except requests.HTTPError as exc:
+            if exc.response is None or exc.response.status_code not in GATEWAY_STATUSES:
+                raise
+            time.sleep(3)
+            return call()
 
     def _mutate(self, query, org=None, variables=None):
         body = self.gql(query, variables, org)

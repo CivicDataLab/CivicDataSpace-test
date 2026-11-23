@@ -30,20 +30,55 @@ class CreateDatasetPage(EditorWizardPage):
         )
         return self
 
+    def fill_platform(self, platform: str, url: str):
+        """Data Files > Public Platform: pick `platform` and paste `url`, without pressing Generate."""
+        self.click_until((By.XPATH, L.PUBLIC_PLATFORM_TAB), EC.visibility_of_element_located((By.XPATH, L.PLATFORM_SELECT)),
+                         message="The Public Platform tab never showed the platform select")
+        self.choose_select_option((By.XPATH, L.PLATFORM_SELECT), platform)
+        self.clear_and_type((By.XPATH, L.PLATFORM_URL_INPUT), url)
+        return self
+
     def import_from_platform(self, platform: str, url: str) -> str:
         """Data Files > Public Platform: pick `platform`, paste `url`, Generate.
 
         Generate creates a new dataset and opens its Data Files step; returns that id.
         """
         before = self.driver.current_url
-        self.click_until((By.XPATH, L.PUBLIC_PLATFORM_TAB), EC.visibility_of_element_located((By.XPATH, L.PLATFORM_SELECT)),
-                         message="The Public Platform tab never showed the platform select")
-        self.choose_select_option((By.XPATH, L.PLATFORM_SELECT), platform)
-        self.clear_and_type((By.XPATH, L.PLATFORM_URL_INPUT), url)
+        self.fill_platform(platform, url)
         self.wait.until(EC.element_to_be_clickable((By.XPATH, L.GENERATE_BUTTON))).click()
         self.wait_with_timeout(45).until(lambda d: d.current_url != before and "/edit/resources" in d.current_url,
                                          message=f"Generate did not open a new dataset for {url}")
         return self.driver.current_url.split("/dataset/")[1].split("/")[0]
+
+    def press_upload_method_tab(self, tab: str):
+        """Click the 'File Upload' or 'Public Platform' tab; a confirm may open instead of switching."""
+        locator = L.FILE_UPLOAD_TAB if tab == "File Upload" else L.PUBLIC_PLATFORM_TAB
+        self.wait.until(EC.element_to_be_clickable((By.XPATH, locator))).click()
+        return self
+
+    def switch_dialog_text(self, timeout: int = 5) -> str:
+        """Text of the 'Change upload method?' confirm, or '' when it did not open."""
+        try:
+            return self.wait_with_timeout(timeout).until(
+                EC.visibility_of_element_located((By.XPATH, L.SWITCH_DIALOG))).text
+        except TimeoutException:
+            return ""
+
+    def answer_switch_dialog(self, label: str):
+        self.wait.until(EC.element_to_be_clickable((By.XPATH, L.SWITCH_DIALOG_BUTTON.format(label=label)))).click()
+        self.wait_with_timeout(10).until(EC.invisibility_of_element_located((By.XPATH, L.SWITCH_DIALOG)))
+        return self
+
+    def is_platform_tab_shown(self, timeout: int = 5) -> bool:
+        return self.is_visible((By.XPATH, L.PLATFORM_URL_INPUT), timeout) or self.is_visible((By.XPATH, L.PLATFORM_SELECT), timeout)
+
+    def is_platform_reset(self) -> bool:
+        """The platform select is back at its placeholder and no URL input shows."""
+        return (self.is_visible((By.XPATH, L.PLATFORM_SELECT), 5)
+                and not self.is_visible((By.XPATH, L.PLATFORM_URL_INPUT), 1))
+
+    def get_platform_url(self) -> str:
+        return self.find((By.XPATH, L.PLATFORM_URL_INPUT)).get_attribute("value")
 
     def toast_shown(self, text: str, timeout: int = 10) -> bool:
         try:
