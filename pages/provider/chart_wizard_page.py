@@ -1,6 +1,7 @@
 # pages/provider/chart_wizard_page.py
 
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
 from locators.provider.chart_wizard_locators import ChartWizardLocators as L
@@ -74,3 +75,21 @@ class ChartWizardPage(EditorWizardPage):
             message="Publishing the chart never confirmed with 'Chart published'",
         )
         return self
+
+    def is_publish_enabled(self) -> bool:
+        """Whether 'Publish Changes' on Review & Publish can be pressed (it is disabled until every check passes)."""
+        btn = self.wait.until(EC.presence_of_element_located(L.PUBLISH_BUTTON))
+        return btn.get_attribute("aria-disabled") != "true" and btn.is_enabled()
+
+    def clear_chart_name(self):
+        """Empty the name the way a user would; element.clear() never reaches React's onChange."""
+        box = self.wait.until(EC.element_to_be_clickable(L.CHART_NAME_INPUT))
+        self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});arguments[0].focus();", box)
+        box.send_keys(Keys.CONTROL, "a")
+        box.send_keys(Keys.COMMAND, "a")
+        box.send_keys(Keys.BACKSPACE)
+        self.wait.until(lambda d: box.get_attribute("value") == "", message="The chart name never cleared")
+        return self.wait_until_synced()
+
+    def chart_name(self) -> str:
+        return self.wait.until(EC.presence_of_element_located(L.CHART_NAME_INPUT)).get_attribute("value")
