@@ -102,3 +102,15 @@ def test_a_deleted_chart_cannot_be_deleted_again(owner, parts):
     assert gql(owner, DELETE, {"c": chart})["data"]["deleteResourceChart"] is True
     assert DENIED in _error(gql(owner, DELETE, {"c": chart}))
     assert "does not exist" in _error(gql(owner, READ, {"c": chart}))
+
+
+def test_a_chart_name_over_the_limit_is_a_validation_error_not_a_database_error(owner, parts):
+    """Hard fail until DataSpaceBackend#325 is fixed: the raw 'varying(50)' database error is returned."""
+    body = gql(owner, EDIT, {"i": {"chartId": parts["chart"], "resource": parts["resource"], "name": "n" * 51}})
+    assert "varying" not in str(body.get("errors")), f"the database error reaches the client (DataSpaceBackend#325): {body['errors'][0]['message'][:80]}"
+
+
+def test_a_whitespace_only_chart_name_is_refused(owner, parts):
+    """Hard fail until DataSpaceBackend#325 is fixed: a blank name is saved."""
+    body = gql(owner, EDIT, {"i": {"chartId": parts["chart"], "resource": parts["resource"], "name": "   "}})
+    assert body.get("errors"), "a whitespace-only chart name was saved (DataSpaceBackend#325)"
