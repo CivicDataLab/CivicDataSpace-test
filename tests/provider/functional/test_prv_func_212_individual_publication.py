@@ -50,7 +50,7 @@ def test_prv_func_212_individual_publishes_a_publication_and_it_is_public(
         lambda d: [p for p in requests.get(f"{api_base}/api/search/publication/", params={"size": 100, "search": name}, timeout=30).json()["results"]
                    if p["title"] == name] or False)
     page = PublishedItemPage(driver).open_detail(base_url, "publication", found[0]["id"], name)
-    assert description in page.text(), f"The public page does not show the description: {page.text()[:300]}"
+    assert page.shows(description, timeout=30), f"The public page does not show the description: {page.text()[:300]}"
 
     driver.get(dashboard)
     table = ListingTablePage(driver).open_section("Publications")
