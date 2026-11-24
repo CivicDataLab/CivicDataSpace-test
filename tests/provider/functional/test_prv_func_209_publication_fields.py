@@ -196,3 +196,17 @@ def test_prv_func_209i_unsupported_file_type_is_ignored(driver, open_listing, pr
     page.attach_file(str(pdf))
     page.wait_with_timeout(30).until(lambda d: page.file_count() >= 1, "The control PDF was never added")
     assert page.file_count() == 1, "The .txt file was added to the list"
+
+
+def test_prv_func_209j_adding_a_contributor_twice_keeps_one(driver, open_listing, provider_api, cleanup):
+    """Hard fail until DataSpaceFrontend#560 is fixed: the second add of the same person is saved as a second author."""
+    first, me = _my_name(provider_api)
+    page, pid, _ = _open(driver, open_listing, provider_api, cleanup, "details")
+    page.add_contributor(first)
+    assert page.is_connected("Contributors", me), f"{me!r} was not listed after being added"
+    try:
+        page.add_contributor(first)
+    except Exception:
+        pass  # a picker that no longer offers the person is the same refusal
+    page.wait_until_synced()
+    assert _saved(provider_api, pid)["authors"] == [me], "The contributor was saved twice (DataSpaceFrontend#560)"
