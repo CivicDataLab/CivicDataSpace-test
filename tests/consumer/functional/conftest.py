@@ -13,7 +13,7 @@ from tests.api.conftest import (  # noqa: F401  (re-exported fixtures)
 )
 from tests.api import publications as pub
 from tests.api.publications import gql
-from tests.api.publish_ready import add_logo, add_resource, connect_dataset
+from tests.api.publish_ready import PNG_1PX, _upload, add_logo, add_resource, connect_dataset
 
 TITLE_TAIL = "जल डेटा 🌊"
 
@@ -175,3 +175,26 @@ def published_publication(graphql_client):
     finally:
         pub.unpublish(graphql_client, created["id"])
         pub.delete(graphql_client, created["id"])
+
+
+UPDATE_IMAGE = ("mutation($i: ResourceChartImageInputPartial!){ updateResourceChartImage(input:$i){ "
+                "... on TypeResourceChartImage { id name status } ... on OperationInfo { messages { message } } } }")
+
+
+def set_image_chart(client, dataset_id, image_id, name, description):
+    body = _upload(client, UPDATE_IMAGE, {"i": {"id": image_id, "dataset": dataset_id, "name": name, "description": description, "image": None}},
+                   "variables.i.image", "chart.png", PNG_1PX)
+    return _ok(body, "updateResourceChartImage")
+
+
+@pytest.fixture(scope="module")
+def image_chart(graphql_client, published_dataset):
+    """A draft image chart on the published dataset; the test publishes, edits and removes it."""
+    ds_id = published_dataset["id"]
+    chart = _ok(gql(graphql_client, "mutation($d: UUID!){ addResourceChartImage(dataset:$d){ ... on TypeResourceChartImage { id } } }",
+                    {"d": ds_id}), "addResourceChartImage")
+    values = {"id": chart["id"], "dataset": ds_id, "name": f"[qa-matrix] image chart {uuid.uuid4().hex[:6]}"}
+    set_image_chart(graphql_client, ds_id, chart["id"], values["name"], "qa-matrix image chart")
+    yield values
+    gql(graphql_client, "mutation($i: UUID!){ unpublishResourceChartImage(resourceChartImageId:$i) }", {"i": chart["id"]})
+    gql(graphql_client, "mutation($i: UUID!){ deleteResourceChartImage(resourceChartImageId:$i) }", {"i": chart["id"]})
