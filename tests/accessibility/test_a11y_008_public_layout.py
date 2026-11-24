@@ -20,9 +20,8 @@ PAGES = PUBLIC_PAGES + [("publications", "/publications")]
 VIEWPORTS = {"phone": (320, 900), "tablet": (768, 1024), "desktop": (1280, 800)}
 # a11y_005 already measures these three at 320px.
 COVERED = {("home", "phone"), ("datasets", "phone"), ("about-us", "phone")}
-# The home page overflows at 768px (scrollWidth 850 > 753, the hero column is 60% wide); held until it has an issue to cite.
-HELD = {("home", "tablet")}
-CASES = [pytest.param(p, path, v, id=f"{p}-{v}") for p, path in PAGES for v in VIEWPORTS if (p, v) not in COVERED | HELD]
+# home-tablet fails until DataSpaceFrontend#562 is fixed (the hero column is 60% wide and ends at 848 of 753): a hard fail, not skipped.
+CASES = [pytest.param(p, path, v, id=f"{p}-{v}") for p, path in PAGES for v in VIEWPORTS if (p, v) not in COVERED]
 
 
 @pytest.mark.parametrize("page_id,path,viewport", CASES)
