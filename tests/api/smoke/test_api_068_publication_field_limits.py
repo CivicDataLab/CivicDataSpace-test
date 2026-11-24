@@ -88,3 +88,13 @@ def test_publishing_needs_real_text_not_spaces(owner, drafts, fields, field, mes
     payload = pub.publish(owner, data["id"])
     assert not payload["success"], f"A publication with a spaces-only {field} was published"
     assert message in pub.errors_of(payload).get(field, []), payload["errors"]
+
+
+def test_publishing_needs_a_real_title(owner, drafts):
+    """Hard fail until DataSpaceBackend#324 is fixed: a spaces-only title is published."""
+    ready = pub.complete_fields(owner)
+    ready["license"] = "CC_BY_4_0_ATTRIBUTION"
+    data = drafts(**{**ready, "title": "   "})
+    pub.add_youtube(owner, data["id"], "https://youtu.be/dQw4w9WgXcQ")
+    payload = pub.publish(owner, data["id"])
+    assert not payload["success"], "A publication with a spaces-only title was published (DataSpaceBackend#324)"
