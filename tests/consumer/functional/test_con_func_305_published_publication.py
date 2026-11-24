@@ -44,3 +44,11 @@ def test_unpublished_publication_content_is_no_longer_served(page, base_url, gra
     pub.unpublish(graphql_client, p["id"])
     text = page.open_detail(base_url, "publication", p["slug"], "\u0000never").text()
     assert p["title"] not in text and p["description"] not in text, "unpublished publication still served"
+
+
+def test_unpublished_publication_is_a_404(page, base_url, graphql_client, published_publication):
+    """Hard fail until DataSpaceFrontend#561 is fixed: the page of an unpublished publication answers HTTP 500."""
+    p = published_publication
+    pub.unpublish(graphql_client, p["id"])
+    page.open_detail(base_url, "publication", p["slug"], p["title"])
+    assert page.is_not_found(), "an unpublished publication does not show the not-found page (DataSpaceFrontend#561)"
