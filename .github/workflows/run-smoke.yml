@@ -83,6 +83,8 @@ on:
 env:
   # pending_pr marker (conftest.py) reads PR merge state from the GitHub API
   GH_PR_TOKEN: ${{ github.token }}
+  # known_failures.txt entries do not fail the run; prod (readonly) keeps the strict gate
+  KNOWN_FAILURES: ${{ inputs.suite == 'readonly' && 'off' || 'on' }}
 
 # One full run against an environment at a time: two overlapping runs pushed
 # dev's API into 503s (2026-11-13). Queued, never cancelled mid-run. Groups are
