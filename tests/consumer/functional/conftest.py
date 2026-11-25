@@ -11,8 +11,9 @@ import pytest
 from tests.api.conftest import (  # noqa: F401  (re-exported fixtures)
     anon_graphql_client, api_base_url, auth_token, graphql_client, keycloak_config,
 )
+from tests.api import publications as pub
 from tests.api.publications import gql
-from tests.api.publish_ready import add_logo, add_resource, connect_dataset
+from tests.api.publish_ready import PNG_1PX, _upload, add_logo, add_resource, connect_dataset
 
 TITLE_TAIL = "जल डेटा 🌊"
 
@@ -142,3 +143,58 @@ def public_ai_model(graphql_client, taxonomy):
         yield values
     finally:
         gql(graphql_client, "mutation($id: Int!){ deleteAiModel(modelId:$id){ success } }", {"id": values["id"]})
+
+
+@pytest.fixture(scope="module")
+def published_publication(graphql_client):
+    """A publication with two contributors, a PDF, a video, a link and a licence, published through the API."""
+    lookups = _ok(gql(graphql_client, "{ resourceTypes { id name } activeSectors(pagination: {limit: 1}) { id name } geographies { id name } }"))
+    if not lookups["resourceTypes"]:
+        pytest.skip("no active resource types on this backend, so nothing can be published (DataSpaceBackend#217)")
+    tail = uuid.uuid4().hex[:6]
+    values = {
+        "title": f"[qa-matrix] publication {tail} {TITLE_TAIL}", "description": f"qa-matrix publication description {tail}",
+        "authors": [f"Asha Rao {tail}", f"Vikram Sen {tail}"], "publicationDate": "2024-03-05",
+        "license": "CC_BY_4_0_ATTRIBUTION", "externalSourceLink": f"https://example.org/qa-matrix/{tail}",
+        "resource_type": lookups["resourceTypes"][0], "sector": lookups["activeSectors"][0], "geography": lookups["geographies"][0],
+        "file_name": f"qa-matrix-{tail}.pdf",
+    }
+    created = pub.create(
+        graphql_client, title=values["title"], description=values["description"], authors=values["authors"],
+        publicationDate=values["publicationDate"], license=values["license"], externalSourceLink=values["externalSourceLink"],
+        resourceTypeId=values["resource_type"]["id"], sectorIds=[values["sector"]["id"]],
+        geographyIds=[int(values["geography"]["id"])],
+    )
+    values["id"] = values["slug"] = created["id"]  # the slug gains a suffix when published; the id always opens the page
+    try:
+        assert pub.add_file(graphql_client, created["id"], values["file_name"], pub.PDF_BYTES)["success"]
+        assert pub.add_youtube(graphql_client, created["id"], "https://youtu.be/dQw4w9WgXcQ")["success"]
+        published = pub.publish(graphql_client, created["id"])
+        assert published["success"], published["errors"]
+        yield values
+    finally:
+        pub.unpublish(graphql_client, created["id"])
+        pub.delete(graphql_client, created["id"])
+
+
+UPDATE_IMAGE = ("mutation($i: ResourceChartImageInputPartial!){ updateResourceChartImage(input:$i){ "
+                "... on TypeResourceChartImage { id name status } ... on OperationInfo { messages { message } } } }")
+
+
+def set_image_chart(client, dataset_id, image_id, name, description):
+    body = _upload(client, UPDATE_IMAGE, {"i": {"id": image_id, "dataset": dataset_id, "name": name, "description": description, "image": None}},
+                   "variables.i.image", "chart.png", PNG_1PX)
+    return _ok(body, "updateResourceChartImage")
+
+
+@pytest.fixture(scope="module")
+def image_chart(graphql_client, published_dataset):
+    """A draft image chart on the published dataset; the test publishes, edits and removes it."""
+    ds_id = published_dataset["id"]
+    chart = _ok(gql(graphql_client, "mutation($d: UUID!){ addResourceChartImage(dataset:$d){ ... on TypeResourceChartImage { id } } }",
+                    {"d": ds_id}), "addResourceChartImage")
+    values = {"id": chart["id"], "dataset": ds_id, "name": f"[qa-matrix] image chart {uuid.uuid4().hex[:6]}"}
+    set_image_chart(graphql_client, ds_id, chart["id"], values["name"], "qa-matrix image chart")
+    yield values
+    gql(graphql_client, "mutation($i: UUID!){ unpublishResourceChartImage(resourceChartImageId:$i) }", {"i": chart["id"]})
+    gql(graphql_client, "mutation($i: UUID!){ deleteResourceChartImage(resourceChartImageId:$i) }", {"i": chart["id"]})

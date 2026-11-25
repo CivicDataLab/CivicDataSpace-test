@@ -121,8 +121,10 @@ INTERMITTENT_FAILURES[("test_provider_section_has_no_critical_axe_violations", "
     "DataSpace#218: unlabelled file input and low-contrast Delete account on Profile")
 KNOWN_FAILURES.update({
     ("test_provider_section_has_no_critical_axe_violations", p): "DataSpace#218: invalid ARIA on the provider routes"
-    for p in ("datasets", "usecases", "charts")
+    for p in ("datasets", "charts")
 })
+INTERMITTENT_FAILURES[("test_provider_section_has_no_critical_axe_violations", "usecases")] = (
+    "DataSpace#218: invalid ARIA on the provider routes (passed once in CI on 2026-11-24, still fails locally)")
 
 
 def pytest_collection_modifyitems(items):

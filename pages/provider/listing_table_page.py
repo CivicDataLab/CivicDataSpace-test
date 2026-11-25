@@ -177,6 +177,19 @@ class ListingTablePage(BasePage):
 
     # ─── Row actions and their confirm dialog ────────────────────────────────
 
+    def row_buttons(self, title: str) -> list[str]:
+        """The labels of a row's action buttons ('Edit Foo', 'Unpublish', 'Delete'), read from their text."""
+        row = (By.XPATH, L.ROW_BY_TITLE.format(title=title))
+        self.wait_with_timeout(20).until(EC.visibility_of_element_located(row), message=f"No row titled {title!r}")
+        return [b.get_attribute("textContent").strip() for b in self.driver.find_elements(By.XPATH, L.ROW_BY_TITLE.format(title=title) + "//td[last()]//button")]
+
+    def toast_shown(self, text: str, timeout: int = 10) -> bool:
+        try:
+            self.wait_with_timeout(timeout).until(EC.visibility_of_element_located((By.XPATH, f"//*[normalize-space(text())='{text}']")))
+            return True
+        except TimeoutException:
+            return False
+
     def row_action(self, title: str, action: str) -> "ListingTablePage":
         """Click a row's 'Edit', 'Unpublish' or 'Delete' button."""
         row = (By.XPATH, L.ROW_BY_TITLE.format(title=title))
