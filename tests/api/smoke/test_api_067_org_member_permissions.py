@@ -26,6 +26,8 @@ CASES = {  # id -> (caller slot, org, admin slot, action)
     "viewer-promotes-themselves": (5, "test_org_4", 4, "promote-self"),
     "viewer-removes-a-member": (5, "test_org_4", 4, "remove-other"),
     "editor-removes-a-member": (4, "test_org_5", 5, "remove-other"),
+    "editor-makes-a-member-admin": (4, "test_org_5", 5, "assign-other"),
+    "editor-promotes-themselves": (4, "test_org_5", 5, "promote-self"),
 }
 ROSTER = "{ userByOrganization { id organizationMemberships { organization { name } role { name } } } }"
 ADD = "mutation($i: AddRemoveUserToOrganizationInput!){ addUserToOrganization(input:$i){ success } }"
@@ -96,6 +98,6 @@ def test_api_067_only_an_admin_manages_members(accounts, case):
         if now.get(ids[caller]) != before.get(ids[caller]) and ids[caller] in before and action == "promote-self":
             original = before[ids[caller]][0]
             accounts[admin].gql(ASSIGN, {"i": {"userId": ids[caller], "roleId": roles[original]}}, org=org)
-    assert not allowed, f"{case}: the API let a non-admin through"
+    assert not allowed, f"{case}: the API let a non-admin through (GHSA-jpwq-7557-2g82)"
     assert after == expected, f"{case}: the roster changed even though the call was refused: {after} != {expected}"
     assert roster() == before, f"{case}: the roster was not restored"
