@@ -34,16 +34,16 @@ def pages_under_test():
     api = os.getenv("API_BASE_URL")
     if not api:
         pytest.skip("API_BASE_URL not set: cannot pick a dataset and a use case")
-    data = gql(api, "{ datasets(includePublic: true, pagination: {limit: 25}) { id urlSlug title created } useCases(pagination: {limit: 500}) { id urlSlug title status } }")
-    # Provider tests running alongside publish datasets and delete them minutes later;
+    data = gql(api, "{ datasets(includePublic: true, pagination: {limit: 25}) { id urlSlug title created } useCases(pagination: {limit: 500}) { id urlSlug title status created } }")
+    # Provider tests running alongside publish datasets and use cases and delete them minutes later;
     # one that has stayed published for an hour is not one of those.
     settled = datetime.now(timezone.utc) - timedelta(hours=1)
     ds = next((d for d in data["datasets"] if datetime.fromisoformat(d["created"]) < settled), None)
     if ds is None:
         pytest.skip("no dataset that has been published for an hour")
-    use_case = next((u for u in data["useCases"] if u["status"] == "PUBLISHED" and u["title"].strip()), None)
+    use_case = next((u for u in data["useCases"] if u["status"] == "PUBLISHED" and u["title"].strip() and datetime.fromisoformat(u["created"]) < settled), None)
     if use_case is None:
-        pytest.skip("no published use case")
+        pytest.skip("no use case that has been published for an hour")
     return {
         "dataset": (f"/datasets/{ds['urlSlug'] or ds['id']}", ds["title"].strip()),
         "usecase": (f"/usecases/{use_case['urlSlug'] or use_case['id']}", use_case["title"].strip()),
