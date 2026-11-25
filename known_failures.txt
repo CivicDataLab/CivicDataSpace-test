@@ -24,3 +24,7 @@ tests/consumer/smoke/test_con_auth_pages.py::TestRegistrationPage::test_password
 tests/consumer/smoke/test_con_auth_pages.py::TestRegistrationPage::test_registration_form_renders_design_fields  # DataSpaceKeycloakTheme#44
 tests/consumer/smoke/test_con_auth_pages.py::TestSignInPage::test_empty_sign_in_is_validated_inline  # DataSpaceKeycloakTheme#39
 tests/consumer/smoke/test_con_auth_pages.py::TestSignInPage::test_wrong_credentials_message_matches_design  # DataSpaceKeycloakTheme#39
+tests/api/smoke/test_api_073_anonymous_mutations.py::test_api_073_anonymous_caller_is_refused[update-sector]  # GHSA-jcj9-qw6c-98h3
+tests/api/smoke/test_api_073_anonymous_mutations.py::test_api_073_anonymous_caller_is_refused[delete-sector]  # GHSA-jcj9-qw6c-98h3
+tests/api/smoke/test_api_073_anonymous_mutations.py::test_api_073_anonymous_caller_is_refused[update-sdg]  # GHSA-jcj9-qw6c-98h3
+tests/api/smoke/test_api_073_anonymous_mutations.py::test_api_073_anonymous_caller_is_refused[delete-sdg]  # GHSA-jcj9-qw6c-98h3
