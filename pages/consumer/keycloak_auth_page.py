@@ -240,6 +240,9 @@ class KeycloakLoginPage(_KeycloakPage):
         self._await(KeycloakLoginLocators.USERNAME)
         return self
 
+    def submit_stays_in_browser(self):
+        return self.submit_in_browser(KeycloakLoginLocators.SUBMIT)
+
     def sign_in_as(self, email, password):
         """Sign in as a real (throwaway) account. Waits for Keycloak to move on from the form."""
         self.type_email(email)
