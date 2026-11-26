@@ -247,6 +247,9 @@ class KeycloakResetPage(_KeycloakPage):
             el.send_keys(email)
         self.mark_document()
         self._find(KeycloakResetLocators.SUBMIT).click()
+        if email:
+            # A filled form goes to the server; without this wait the old page's heading is read.
+            WebDriverWait(self.driver, 20).until(lambda d: self.document_was_replaced())
         self._wait_ready()
         self._await(KeycloakShellLocators.HEADING)
         return self
