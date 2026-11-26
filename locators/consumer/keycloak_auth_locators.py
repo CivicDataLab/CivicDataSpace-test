@@ -18,6 +18,7 @@ class KeycloakShellLocators:
     LEGAL_LINKS = (By.CSS_SELECTOR, ".civic-legal-links a")
     ALERT = (By.CSS_SELECTOR, ".pf-c-alert")
     FIELD_ERROR = (By.CSS_SELECTOR, ".civic-field-error")
+    PASSWORD_RULES = (By.CSS_SELECTOR, "#password-requirements li")
     ANY_LINK = (By.TAG_NAME, "a")
 
 
@@ -60,6 +61,7 @@ class KeycloakRegisterLocators:
     GOOGLE_BROKER_LINK = (By.CSS_SELECTOR, "a[href*='/broker/google/login']")
     TERMS_ROW = (By.CSS_SELECTOR, ".civic-terms")
     TERMS_ERROR = (By.ID, "input-error-termsAccepted")
+    EMAIL_ERROR_SIGN_IN_LINK = (By.CSS_SELECTOR, "#input-error-email a")
 
     # The privacy consent checkbox. Note it carries required=false in the DOM,
     # so nothing about the markup guarantees consent is enforced - the tests
@@ -69,3 +71,9 @@ class KeycloakRegisterLocators:
     SUBMIT = (By.CSS_SELECTOR, "input[type=submit], button[type=submit]")
     PRIVACY_LINK = (By.CSS_SELECTOR, "a[href*='/privacy']")
     BACK_TO_LOGIN = (By.CSS_SELECTOR, "a[href*='login-actions'], a[href*='protocol/openid-connect/auth']")
+
+
+class KeycloakUpdatePasswordLocators:
+    NEW_PASSWORD = (By.ID, "password-new")
+    CONFIRM = (By.ID, "password-confirm")
+    SUBMIT = (By.CSS_SELECTOR, "#kc-passwd-update-form [type=submit]:not([name=cancel-aia])")
