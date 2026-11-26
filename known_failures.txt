@@ -1,0 +1,42 @@
+# One test id per line, "# reason" after it. Function-level ids cover every parameter;
+# an id ending in "]" covers that parameter only. A listed test still fails and shows
+# in the report, but does not fail the run. Delete the line when the bug is fixed
+# (the run summary says when a listed test starts passing).
+tests/api/smoke/test_api_048_unknown_route_not_login.py::test_unknown_path_is_404_not_login_redirect  # DataSpaceFrontend#540
+tests/api/smoke/test_api_067_org_member_permissions.py::test_api_067_only_an_admin_manages_members  # GHSA-jpwq-7557-2g82
+tests/api/smoke/test_api_068_publication_field_limits.py::test_publishing_needs_a_real_title  # DataSpaceBackend#324
+tests/api/smoke/test_api_072_user_lookup_privacy.py::test_api_072_anonymous_user_lookup_hides_the_email  # GHSA-v29h-63vw-gw4f
+tests/accessibility/test_a11y_008_public_layout.py::test_public_page_does_not_scroll_sideways[home-tablet]  # home scrolls sideways at 768px
+tests/provider/smoke/test_prv_026_stored_description_html.py::test_description_html_is_not_run_on_the_public_page  # stored description HTML runs on the public page
+tests/consumer/smoke/test_con_auth_pages.py::TestErrorPage::test_bad_redirect_uri_is_not_blamed_on_google  # DataSpaceKeycloakTheme#32
+tests/consumer/smoke/test_con_auth_pages.py::TestErrorPage::test_unknown_client_is_not_blamed_on_google  # DataSpaceKeycloakTheme#32
+tests/consumer/smoke/test_con_auth_pages.py::TestForgotPasswordPage::test_email_carries_over_from_sign_in  # DataSpaceKeycloakTheme#40
+tests/consumer/smoke/test_con_auth_pages.py::TestForgotPasswordPage::test_empty_request_message_matches_design  # DataSpaceKeycloakTheme#40
+tests/consumer/smoke/test_con_auth_pages.py::TestForgotPasswordPage::test_request_shows_check_your_email  # DataSpaceKeycloakTheme#33
+tests/consumer/smoke/test_con_auth_pages.py::TestLegalLinks::test_footer_has_privacy_terms_legal  # DataSpaceKeycloakTheme#43
+tests/consumer/smoke/test_con_auth_pages.py::TestLegalLinks::test_mobile_shows_legal_links  # DataSpaceKeycloakTheme#43
+tests/consumer/smoke/test_con_auth_pages.py::TestRegistrationPage::test_consent_covers_terms_and_privacy  # DataSpaceKeycloakTheme#42
+tests/consumer/smoke/test_con_auth_pages.py::TestRegistrationPage::test_password_requirements_are_shown  # DataSpaceKeycloakTheme#41
+tests/consumer/smoke/test_con_auth_pages.py::TestRegistrationPage::test_registration_form_renders_design_fields  # DataSpaceKeycloakTheme#44
+tests/consumer/smoke/test_con_auth_pages.py::TestSignInPage::test_empty_sign_in_is_validated_inline  # DataSpaceKeycloakTheme#39
+tests/consumer/smoke/test_con_auth_pages.py::TestSignInPage::test_wrong_credentials_message_matches_design  # DataSpaceKeycloakTheme#39
+tests/api/smoke/test_api_073_anonymous_mutations.py::test_api_073_anonymous_caller_is_refused[update-sector]  # GHSA-jcj9-qw6c-98h3
+tests/api/smoke/test_api_073_anonymous_mutations.py::test_api_073_anonymous_caller_is_refused[delete-sector]  # GHSA-jcj9-qw6c-98h3
+tests/api/smoke/test_api_073_anonymous_mutations.py::test_api_073_anonymous_caller_is_refused[update-sdg]  # GHSA-jcj9-qw6c-98h3
+tests/api/smoke/test_api_073_anonymous_mutations.py::test_api_073_anonymous_caller_is_refused[delete-sdg]  # GHSA-jcj9-qw6c-98h3
+tests/consumer/functional/test_con_func_302_published_usecase.py::test_detail_shows_platform_url_status_and_dates  # DataSpaceFrontend#527
+tests/consumer/functional/test_con_func_305_published_publication.py::test_unpublished_publication_is_a_404  # DataSpaceFrontend#561
+tests/consumer/functional/test_con_func_307_chart_visibility.py::test_con_func_307_draft_chart_is_not_served_to_anonymous_callers  # GHSA-44hh-j78p-7387
+tests/consumer/functional/test_con_func_307_chart_visibility.py::test_con_func_307_unpublished_chart_is_not_served_to_anonymous_callers  # GHSA-44hh-j78p-7387
+tests/provider/functional/test_prv_func_101_dataset_wizard_validation.py::test_prv_func_101_03_unsupported_file_type_shows_error  # DataSpaceFrontend#529
+tests/provider/functional/test_prv_func_101_dataset_wizard_validation.py::test_prv_func_101_07_review_lists_missing_items  # DataSpaceFrontend#529
+tests/provider/functional/test_prv_func_101_dataset_wizard_validation.py::test_prv_func_101_12_over_long_title_rejected_visibly  # DataSpaceFrontend#528
+tests/provider/functional/test_prv_func_101_dataset_wizard_validation.py::test_prv_func_101_13_description_counter_shows_over_limit  # DataSpaceFrontend#529
+tests/provider/functional/test_prv_func_101_dataset_wizard_validation.py::test_prv_func_101_14_over_limit_description_rejected_visibly  # DataSpaceFrontend#528
+tests/provider/functional/test_prv_func_202_aimodel_wizard_validation.py::test_prv_func_202d_timeout_bounds  # DataSpaceBackend#292
+tests/provider/functional/test_prv_func_202_aimodel_wizard_validation.py::test_prv_func_202f_version_name_required  # DataSpaceFrontend#530
+tests/provider/functional/test_prv_func_202_aimodel_wizard_validation.py::test_prv_func_202i_cancel_discards_new_version  # DataSpaceFrontend#530
+tests/provider/functional/test_prv_func_209_publication_fields.py::test_prv_func_209j_adding_a_contributor_twice_keeps_one  # DataSpaceFrontend#560
+tests/provider/functional/test_prv_func_211_chart_ui.py::test_prv_func_211a_each_chart_type_names_what_it_still_needs  # dev data: no chart dataset with files (not a product bug)
+tests/provider/functional/test_prv_func_209_publication_fields.py::test_prv_func_209e_contributor_is_added_and_removed  # intermittent in CI: contributor not listed after adding; passes locally
+tests/provider/functional/test_prv_func_209_publication_fields.py::test_prv_func_209f_details_are_saved_and_shown_in_review  # intermittent in CI: same contributor add step; passes locally

@@ -132,10 +132,11 @@ class ChartsListPage(BasePage):
 
         Datasets other tests just made list first with no files. The picker hides
         only the current dataset, so picking the top one again would alternate
-        between the same two: skip every title already tried instead.
+        between the same two: skip every title already tried instead. Test datasets
+        pile up on dev on purpose, so walk the list (capped) rather than a fixed few.
         """
         tried = set()
-        for _ in range(8):
+        for _ in range(40):
             title = self._pick_top_dataset(tried)
             tried.add(title)
             self.wait_with_timeout(15).until(

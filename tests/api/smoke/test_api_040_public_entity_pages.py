@@ -13,6 +13,8 @@
 # `readonly`: anonymous reads only, and the fields are not new on the backend,
 # so it is safe in the prod gate too.
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 pytestmark = [pytest.mark.api, pytest.mark.smoke, pytest.mark.readonly]
@@ -73,11 +75,15 @@ query UseCasedetails($pk: ID!) {
 @pytest.fixture(scope="module")
 def dataset_id(anon_graphql_client):
     rows = anon_graphql_client.query(
-        "{ datasets(includePublic: true, pagination: {limit: 1}) { id } }"
+        "{ datasets(includePublic: true, pagination: {limit: 25}) { id created } }"
     )["datasets"]
-    if not rows:
-        pytest.skip("no published dataset on this backend")
-    return rows[0]["id"]
+    # Provider tests publish datasets and delete them minutes later; the newest one can
+    # be gone before the page's second query runs. One that has stayed for an hour is not.
+    settled = datetime.now(timezone.utc) - timedelta(hours=1)
+    ds = next((d for d in rows if datetime.fromisoformat(d["created"]) < settled), None)
+    if ds is None:
+        pytest.skip("no dataset that has been published for an hour")
+    return ds["id"]
 
 
 @pytest.fixture(scope="module")
