@@ -1,4 +1,4 @@
-# tests/api/smoke/test_api_072_dashboard_embed_url.py
+# tests/api/smoke/test_api_076_dashboard_embed_url.py
 #
 # DataSpaceBackend#322: usecase dashboard links are now checked on the backend, which
 # also returns an `embedUrl` field (the link to put in the iframe, or null when the
