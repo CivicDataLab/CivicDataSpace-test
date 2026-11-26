@@ -1,7 +1,8 @@
 # tests/api/smoke/test_api_004_rest_activities.py
 #
 # Verify the activity stream endpoints respond correctly.
-# Global activities are public; user activities require authentication.
+# Both activity feeds require authentication: the global feed lists all platform
+# activity, drafts included (DataSpaceBackend#302, decided by the backend team).
 
 import pytest
 
@@ -10,25 +11,21 @@ pytestmark = pytest.mark.readonly
 
 @pytest.mark.api
 @pytest.mark.regression
-@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#302: /api/activities/global/ requires auth (should be public)")
-def test_global_activities_returns_200(anon_api_client):
-    """GET /api/activities/global/ should return 200 without authentication."""
+def test_global_activities_requires_auth(anon_api_client):
+    """GET /api/activities/global/ without a token must return 401 or 403."""
     resp = anon_api_client.get("/api/activities/global/")
-    assert resp.status_code == 200, (
-        f"Global activities failed ({resp.status_code}): {resp.text}"
+    assert resp.status_code in (401, 403), (
+        f"Expected 401/403 for unauthenticated global activities, got {resp.status_code}"
     )
 
 
 @pytest.mark.api
-@pytest.mark.regression
-@pytest.mark.xfail(strict=True, reason="DataSpaceBackend#302: /api/activities/global/ requires auth (should be public)")
-def test_global_activities_response_is_list_or_dict(anon_api_client):
-    """Global activities response should be a JSON list or dict."""
-    resp = anon_api_client.get("/api/activities/global/")
-    assert resp.status_code == 200
-    body = resp.json()
-    assert isinstance(body, (dict, list)), (
-        f"Unexpected response type: {type(body)}"
+@pytest.mark.smoke
+def test_global_activities_returns_200_when_authenticated(api_client):
+    """The refusal above is about the missing token: a signed-in caller reads the feed."""
+    resp = api_client.get("/api/activities/global/")
+    assert resp.status_code == 200, (
+        f"Global activities failed ({resp.status_code}): {resp.text[:200]}"
     )
 
 
