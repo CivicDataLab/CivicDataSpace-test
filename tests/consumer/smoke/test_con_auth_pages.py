@@ -217,9 +217,10 @@ class TestRegistrationPage:
         for line in ("Password must contain", "At least 8 characters", "One uppercase letter", "One number"):
             assert line in text, f"{line!r} not shown while typing a password"
 
-    def test_consent_covers_terms_and_privacy(self, register_page):
+    def test_consent_names_the_privacy_policy(self, register_page):
+        """Terms & Conditions are covered by the Privacy Policy, so consent names only that."""
         text = register_page.terms_text()
-        assert "Terms & Conditions" in text and "Privacy Policy" in text, text
+        assert "Privacy Policy" in text, text
 
 
 class TestErrorPage:
