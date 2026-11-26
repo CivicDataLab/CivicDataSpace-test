@@ -55,6 +55,7 @@ class KeycloakRegisterLocators:
     FIRST_NAME = (By.ID, "firstName")
     LAST_NAME = (By.ID, "lastName")
     PASSWORD = (By.ID, "password")
+    PASSWORD_CONFIRM = (By.ID, "password-confirm")
     SIGN_IN_PROMPT = (By.ID, "kc-registration")
     GOOGLE_BROKER_LINK = (By.CSS_SELECTOR, "a[href*='/broker/google/login']")
     TERMS_ROW = (By.CSS_SELECTOR, ".civic-terms")
