@@ -81,6 +81,22 @@ class KeycloakAdmin:
         users = self.find_users_by_email(email)
         return (users[0].get("attributes") or {}) if users else None
 
+    def user_session_count(self, email):
+        """Active sessions of the user with this email: proof that a sign-in went through."""
+        users = self.find_users_by_email(email)
+        if not users:
+            return 0
+        resp = requests.get(
+            f"{self.base_url}/admin/realms/{self.realm}/users/{users[0]['id']}/sessions",
+            headers=self._headers(),
+            timeout=TIMEOUT,
+        )
+        return len(resp.json()) if resp.status_code == 200 else 0
+
+    def required_actions(self, email):
+        users = self.find_users_by_email(email)
+        return users[0].get("requiredActions", []) if users else None
+
     def create_user(self, email, password, email_verified=True, required_actions=()):
         """Create a signed-in-able user. The caller must delete it (delete_user_by_email)."""
         resp = requests.post(
