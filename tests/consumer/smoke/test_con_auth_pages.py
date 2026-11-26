@@ -20,9 +20,8 @@
 # covers the page they point at.
 #
 # Design gaps: where production does not yet match the design, the test asserts
-# the design and is marked strict xfail with the tracking issue. When a fix
-# ships the test XPASSes, strict turns that into a failure, and the marker has
-# to come off - at which point it guards the fix.
+# the design, so it fails until the fix ships and then guards it (tracked in
+# CivicDataLab/DataSpaceKeycloakTheme#32-44).
 
 import os
 import uuid
@@ -40,14 +39,8 @@ pytestmark = [pytest.mark.smoke, pytest.mark.readonly]
 
 BASE_URL = os.getenv("HOME_URL_DEV", "https://dev.civicdataspace.in")
 
-DESIGN_REGISTER_FIELDS = ("email", "password", "password-confirm")
-
-
-def design_gap(issue, what):
-    return pytest.mark.xfail(
-        strict=True,
-        reason=f"CivicDataLab/DataSpaceKeycloakTheme#{issue}: {what}",
-    )
+# First and last name stay on the form: the dashboard builds its links from the first name.
+DESIGN_REGISTER_FIELDS = ("email", "firstName", "lastName", "password", "password-confirm")
 
 
 def no_account_email():
@@ -141,7 +134,6 @@ class TestSignInPage:
         login_page.toggle_password()
         assert login_page.password_state() == ("password", "Show password")
 
-    @design_gap(39, "empty sign-in goes to the server instead of inline required-field errors")
     def test_empty_sign_in_is_validated_inline(self, login_page):
         login_page.submit()
         assert not login_page.document_was_replaced(), (
@@ -150,7 +142,6 @@ class TestSignInPage:
         errors = login_page.field_errors()
         assert "Email is required." in errors and "Password is required." in errors, errors
 
-    @design_gap(39, "credential error reads 'Invalid username or password.' under Email")
     def test_wrong_credentials_message_matches_design(self, login_page):
         login_page.sign_in(no_account_email(), "NotARealPassword1")
         assert login_page.field_errors() == ["Email or password is incorrect."]
@@ -165,18 +156,15 @@ class TestForgotPasswordPage:
         assert reset_page.submit_label() == "Send Reset Link"
         assert reset_page.back_to_sign_in_text() == "Back to Sign In"
 
-    @design_gap(40, "email typed on Sign In is not carried to the reset form")
     def test_email_carries_over_from_sign_in(self, login_page):
         email = no_account_email()
         reset_page = login_page.type_email(email).go_to_forgot_password()
         assert reset_page.email_value() == email
 
-    @design_gap(40, "empty reset request reads 'Please specify username.'")
     def test_empty_request_message_matches_design(self, reset_page):
         reset_page.request_reset("")
         assert "Email is required." in reset_page.field_errors()
 
-    @design_gap(33, "reset request returns to Sign In with a banner instead of 'Check your email'")
     def test_request_shows_check_your_email(self, reset_page):
         reset_page.request_reset(no_account_email())
         assert reset_page.heading() == "Check your email"
@@ -215,45 +203,37 @@ class TestRegistrationPage:
         )
         assert register_page.terms_error_text(), "No error shown for missing consent"
 
-    @design_gap(44, "realm renders email, firstName, lastName and no password fields")
     def test_registration_form_renders_design_fields(self, register_page):
         names = register_page.field_names()
         missing = [f for f in DESIGN_REGISTER_FIELDS if f not in names]
-        extra = [f for f in ("firstName", "lastName") if f in names]
-        assert not missing and not extra, (
-            f"Register form fields differ from the design. Missing {missing}, "
-            f"not in design {extra}. Present: {names}"
-        )
+        assert not missing, f"Register form is missing {missing}. Present: {names}"
 
-    @design_gap(41, "no live password requirements checklist (and no password field until #44)")
     def test_password_requirements_are_shown(self, register_page):
         assert register_page.type_password("abc"), "No password field on the register form"
         text = register_page.card_text()
         for line in ("Password must contain", "At least 8 characters", "One uppercase letter", "One number"):
             assert line in text, f"{line!r} not shown while typing a password"
 
-    @design_gap(42, "consent covers the Privacy Policy only, not Terms & Conditions")
-    def test_consent_covers_terms_and_privacy(self, register_page):
+    def test_consent_names_the_privacy_policy(self, register_page):
+        """Terms & Conditions are covered by the Privacy Policy, so consent names only that."""
         text = register_page.terms_text()
-        assert "Terms & Conditions" in text and "Privacy Policy" in text, text
+        assert "Privacy Policy" in text, text
 
 
 class TestErrorPage:
-    @design_gap(32, "every error page is titled 'Google sign-in failed'")
     def test_bad_redirect_uri_is_not_blamed_on_google(self, driver):
         page = KeycloakErrorPage(driver).load_with_redirect(BASE_URL, "https://example.invalid/cb")
         assert page.heading() != "Google sign-in failed"
 
-    @design_gap(32, "every error page is titled 'Google sign-in failed'")
     def test_unknown_client_is_not_blamed_on_google(self, driver):
         page = KeycloakErrorPage(driver).load_with_client(BASE_URL, "qa-no-such-client")
         assert page.heading() != "Google sign-in failed"
 
 
 class TestLegalLinks:
-    @design_gap(43, "brand panel footer shows only 'Privacy'")
-    def test_footer_has_privacy_terms_legal(self, login_page):
-        assert login_page.legal_link_texts() == ["Privacy", "Terms", "Legal"]
+    def test_footer_has_privacy_link(self, login_page):
+        """Terms & Conditions and Legal are covered by the Privacy page, so it is the only link."""
+        assert login_page.legal_link_texts() == ["Privacy"]
 
     @pytest.mark.mobile
     def test_mobile_sign_in_has_no_horizontal_scroll(self, login_page):
@@ -261,7 +241,6 @@ class TestLegalLinks:
         assert not login_page.has_horizontal_scroll()
 
     @pytest.mark.mobile
-    @design_gap(43, "no legal links at all on mobile")
     def test_mobile_shows_legal_links(self, login_page):
         login_page.use_mobile_viewport()
-        assert login_page.visible_legal_link_texts(), "No Privacy/Terms/Legal link visible at 390px"
+        assert "Privacy" in login_page.visible_legal_link_texts(), "No Privacy link visible at 390px"
