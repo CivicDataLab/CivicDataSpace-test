@@ -52,3 +52,4 @@ class AiModelsLocators:
     INTENDED_USE_INPUT = (By.XPATH, "//textarea[@name='intendedUse']")
     MODEL_WEBSITE_INPUT = (By.XPATH, "//input[@name='modelWebsite']")
     USAGE_LICENSE_SELECT = (By.XPATH, W.SELECT_BY_LABEL.format(label="Usage License"))
+    MAX_TOKENS_SELECT = (By.XPATH, W.SELECT_BY_LABEL.format(label="Maximum Tokens"))

@@ -210,6 +210,10 @@ class CreateAiModelPage(EditorWizardPage):
     def select_domain(self, text: str):
         return self.select_field_options("Domain", [text], chips=False)
 
+    def get_domain_value(self) -> str:
+        """What the Domain field shows once a value is picked."""
+        return self.find((By.XPATH, W.FIELD_INPUT.format(label="Domain"))).get_attribute("value")
+
     def get_domain_option_values(self) -> list[str]:
         """Options the Domain combobox lists while empty (the #463 regression left it bare)."""
         combo = self.wait.until(EC.element_to_be_clickable((By.XPATH, W.FIELD_INPUT.format(label="Domain"))))

@@ -7,6 +7,8 @@ import subprocess
 # load environment variables from the .env file in the project root
 load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 
+pytest_plugins = ["utils.known_failures"]
+
 from _pytest.runner import runtestprotocol
 from pathlib import Path
 import platform

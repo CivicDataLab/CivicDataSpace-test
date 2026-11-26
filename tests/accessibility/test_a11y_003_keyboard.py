@@ -8,6 +8,7 @@ A11Y Project: keyboard accessibility, visible focus, skip link, logical tab orde
 """
 
 import pytest
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
@@ -233,13 +234,16 @@ def test_focus_order_follows_visual_order(driver, goto, page_id, path):
     signature of a positive tabindex or a mis-ordered DOM.
     """
     goto(path)
-    body = driver.find_element(By.TAG_NAME, "body")
-    body.click()
+    driver.find_element(By.TAG_NAME, "body").click()
 
     positions = []
     for _ in range(25):
-        body.send_keys(Keys.TAB)
+        # ActionChains holds no element reference, so a re-render cannot make it stale.
+        ActionChains(driver).send_keys(Keys.TAB).perform()
         el = driver.execute_script(_ACTIVE_DESCRIPTOR)
+        if el:
+            # rect.y is relative to the viewport; scrolling while tabbing would fake a jump.
+            el["rect"]["y"] += driver.execute_script("return Math.round(window.scrollY)")
         if el and el["rect"]["h"] > 0:
             positions.append(el)
 
