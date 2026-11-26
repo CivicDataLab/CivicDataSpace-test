@@ -233,8 +233,9 @@ class TestErrorPage:
 
 
 class TestLegalLinks:
-    def test_footer_has_privacy_terms_legal(self, login_page):
-        assert login_page.legal_link_texts() == ["Privacy", "Terms", "Legal"]
+    def test_footer_has_privacy_link(self, login_page):
+        """Terms & Conditions and Legal are covered by the Privacy page, so it is the only link."""
+        assert login_page.legal_link_texts() == ["Privacy"]
 
     @pytest.mark.mobile
     def test_mobile_sign_in_has_no_horizontal_scroll(self, login_page):
@@ -244,4 +245,4 @@ class TestLegalLinks:
     @pytest.mark.mobile
     def test_mobile_shows_legal_links(self, login_page):
         login_page.use_mobile_viewport()
-        assert login_page.visible_legal_link_texts(), "No Privacy/Terms/Legal link visible at 390px"
+        assert "Privacy" in login_page.visible_legal_link_texts(), "No Privacy link visible at 390px"
