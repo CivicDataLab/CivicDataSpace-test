@@ -259,3 +259,43 @@ def test_prv_func_202k_timeout_over_600_refused(driver, base_url, test_credentia
     page.press_add_access_method()
     assert page.shows_message("Timeout must be between 1 and 600 seconds"), "A 900 s timeout was not refused"
     assert page.is_access_form_open(), "The access method form closed on a 900 s timeout"
+
+
+@pytest.mark.functional
+@pytest.mark.timeout(420)
+def test_prv_func_202l_domain_shows_its_label_not_the_enum(driver, base_url, test_credentials, delete_draft_after):
+    """DataSpaceFrontend#520: a picked Domain reads 'Agriculture', never the raw 'AGRICULTURE'."""
+    page = new_draft(driver, base_url, test_credentials, delete_draft_after)
+    page.go_to_details()
+    page.select_domain("Agriculture")
+    page.wait_for_autosave()
+    assert page.get_domain_value() == "Agriculture", f"Domain shows {page.get_domain_value()!r} after picking it"
+
+    driver.refresh()
+    page.page_text()
+    assert page.get_domain_value() == "Agriculture", f"Domain shows {page.get_domain_value()!r} after a reload"
+
+    page.open_step("publish")
+    assert "AGRICULTURE" not in page.page_text(), "Review & Publish shows the raw Domain enum"
+
+
+@pytest.mark.functional
+@pytest.mark.timeout(420)
+def test_prv_func_202m_maximum_tokens_is_chosen_saved_and_reviewed(driver, base_url, test_credentials, delete_draft_after):
+    """DataSpace#371 / DataSpaceFrontend#558: Maximum Tokens is a select on Model Information, it persists, and Review shows it."""
+    page = new_draft(driver, base_url, test_credentials, delete_draft_after)
+    page.go_to_details()
+    options = page.get_select_options(L.MAX_TOKENS_SELECT)
+    assert options[:3] == ["1024", "2048", "4096"] and len(options) >= 5, f"Maximum Tokens options look wrong: {options}"
+
+    page.choose_select_option(L.MAX_TOKENS_SELECT, "2048")
+    page.wait_for_autosave()
+    driver.refresh()
+    page.page_text()
+    assert page.find(L.MAX_TOKENS_SELECT).text.strip() == "2048", "Maximum Tokens was not kept after a reload"
+
+    page.open_step("publish")
+    lines = [l.strip() for l in page.page_text().splitlines()]
+    assert "MAXIMUM TOKENS" in lines, "Review & Publish has no Maximum Tokens section"
+    assert "2,048" in lines[lines.index("MAXIMUM TOKENS"):][:4], f"Review does not show the chosen value: {lines[lines.index('MAXIMUM TOKENS'):][:4]}"
+
