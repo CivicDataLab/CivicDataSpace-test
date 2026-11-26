@@ -2,6 +2,7 @@
 import os
 
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
@@ -11,6 +12,7 @@ from locators.consumer.keycloak_auth_locators import (
     KeycloakRegisterLocators,
     KeycloakResetLocators,
     KeycloakShellLocators,
+    KeycloakUpdatePasswordLocators,
 )
 from pages.base_page import BasePage
 
@@ -78,6 +80,39 @@ class _KeycloakPage(BasePage):
             for e in self.driver.find_elements(*KeycloakShellLocators.FIELD_ERROR)
             if _squash(e.text)
         ]
+
+    def field_error(self, field):
+        """The inline error under one field, or "" when it has none."""
+        return self._text((By.ID, f"input-error-{field}"))
+
+    def password_rules(self):
+        """The "Password must contain" checklist as (label, state); state is met, invalid or ""."""
+        rules = []
+        for li in self.driver.find_elements(*KeycloakShellLocators.PASSWORD_RULES):
+            label = _squash(li.text).replace("Not met: ", "").replace("Met: ", "")
+            classes = (li.get_attribute("class") or "").split()
+            state = "met" if "is-met" in classes else "invalid" if "is-invalid" in classes else ""
+            rules.append((label, state))
+        return rules
+
+    def _retype(self, locator, text):
+        el = self._find(locator)
+        el.clear()
+        el.send_keys(text)
+
+    def submit_in_browser(self, submit_locator):
+        """Click submit; True when the theme kept the form in the browser (nothing was posted)."""
+        self.mark_document()
+        self._find(submit_locator).click()
+        self._wait_ready()
+        return not self.document_was_replaced()
+
+    def wait_until_url_contains(self, fragment, timeout=20):
+        try:
+            WebDriverWait(self.driver, timeout).until(lambda d: fragment in d.current_url)
+            return True
+        except TimeoutException:
+            return False
 
     def alert_text(self):
         return self._text(KeycloakShellLocators.ALERT)
@@ -203,6 +238,16 @@ class KeycloakLoginPage(_KeycloakPage):
         self._find(KeycloakLoginLocators.SUBMIT).click()
         self._wait_ready()
         self._await(KeycloakLoginLocators.USERNAME)
+        return self
+
+    def sign_in_as(self, email, password):
+        """Sign in as a real (throwaway) account. Waits for Keycloak to move on from the form."""
+        self.type_email(email)
+        self._find(KeycloakLoginLocators.PASSWORD).send_keys(password)
+        url_before = self.driver.current_url
+        self._find(KeycloakLoginLocators.SUBMIT).click()
+        WebDriverWait(self.driver, 20).until(lambda d: d.current_url != url_before)
+        self._wait_ready()
         return self
 
     def go_to_forgot_password(self):
@@ -390,9 +435,54 @@ class KeycloakRegisterPage(_KeycloakPage):
         el.send_keys(text)
         return True
 
+    def type_register_email(self, text):
+        self._retype(KeycloakRegisterLocators.EMAIL, text)
+        return self
+
+    def retype_password(self, text):
+        self._retype(KeycloakRegisterLocators.PASSWORD, text)
+        return self
+
+    def type_confirm(self, text):
+        self._retype(KeycloakRegisterLocators.PASSWORD_CONFIRM, text)
+        return self
+
+    def submit_stays_in_browser(self):
+        return self.submit_in_browser(KeycloakRegisterLocators.SUBMIT)
+
+    def email_error_sign_in_href(self):
+        el = self._find(KeycloakRegisterLocators.EMAIL_ERROR_SIGN_IN_LINK)
+        return el.get_attribute("href") if el else None
+
     def submit_without_consent(self):
         """Click Create Account with consent unticked; the theme should block it."""
         self.mark_document()
         self._find(KeycloakRegisterLocators.SUBMIT).click()
+        self._wait_ready()
+        return self
+
+
+class KeycloakUpdatePasswordPage(_KeycloakPage):
+    """login-update-password.ftl, shown when an account has the UPDATE_PASSWORD action."""
+
+    def wait_loaded(self):
+        self._await(KeycloakUpdatePasswordLocators.NEW_PASSWORD)
+        return self
+
+    def type_new(self, text):
+        self._retype(KeycloakUpdatePasswordLocators.NEW_PASSWORD, text)
+        return self
+
+    def type_confirm(self, text):
+        self._retype(KeycloakUpdatePasswordLocators.CONFIRM, text)
+        return self
+
+    def submit_stays_in_browser(self):
+        return self.submit_in_browser(KeycloakUpdatePasswordLocators.SUBMIT)
+
+    def submit(self):
+        url_before = self.driver.current_url
+        self._find(KeycloakUpdatePasswordLocators.SUBMIT).click()
+        WebDriverWait(self.driver, 20).until(lambda d: d.current_url != url_before)
         self._wait_ready()
         return self
