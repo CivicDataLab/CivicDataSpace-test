@@ -21,6 +21,8 @@ CALLBACK_PATH = "/api/auth/callback/keycloak"
 
 VERIFY_EMAIL_MARKER = "VERIFY_EMAIL"
 REGISTRATION_PATH = "registrations"
+# Meets the realm policy planned for #41: 8+ characters, an uppercase letter and a digit.
+REGISTER_PASSWORD = "QaAuto-Register-2026"
 
 
 def _kc_settings():
@@ -285,10 +287,15 @@ class KeycloakRegisterPage(_KeycloakPage):
     def privacy_hrefs(self):
         return [e.get_attribute("href") for e in self.driver.find_elements(*KeycloakRegisterLocators.PRIVACY_LINK)]
 
-    def fill(self, email, first_name="QA", last_name="Automation"):
+    def fill(self, email, first_name="QA", last_name="Automation", password=REGISTER_PASSWORD):
         self._find(KeycloakRegisterLocators.EMAIL).send_keys(email)
         self._find(KeycloakRegisterLocators.FIRST_NAME).send_keys(first_name)
         self._find(KeycloakRegisterLocators.LAST_NAME).send_keys(last_name)
+        # The realm decides whether register asks for a password; fill it only when shown.
+        for locator in (KeycloakRegisterLocators.PASSWORD, KeycloakRegisterLocators.PASSWORD_CONFIRM):
+            el = self._find(locator)
+            if el is not None:
+                el.send_keys(password)
         return self
 
     def accept_terms(self):
