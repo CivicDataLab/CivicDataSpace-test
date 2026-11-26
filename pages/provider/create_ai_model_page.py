@@ -170,6 +170,17 @@ class CreateAiModelPage(EditorWizardPage):
         self.wait.until(EC.visibility_of_element_located(L.MODEL_NAME_INPUT))
         return self
 
+    def go_to_publish(self):
+        """Open Review & Publish directly, the same way go_to_details does."""
+        current = self.driver.current_url
+        target = current.replace("/versions", "/publish") if "/versions" in current else current.rsplit("/", 1)[0] + "/publish"
+        self.driver.get(target)
+        return self
+
+    def review_value(self, caption: str) -> str:
+        """The value shown under a Review & Publish caption, e.g. 'MAXIMUM TOKENS'."""
+        return self.find((By.XPATH, L.REVIEW_VALUE.format(caption=caption))).text.strip()
+
     def enter_model_name(self, name: str):
         self.clear_and_type(L.MODEL_NAME_INPUT, name)
         self.wait_for_autosave()
@@ -210,6 +221,13 @@ class CreateAiModelPage(EditorWizardPage):
     def select_domain(self, text: str):
         return self.select_field_options("Domain", [text], chips=False)
 
+    def get_domain_value(self) -> str:
+        """The text shown in the Domain combobox (DataSpaceFrontend#558: this
+        must be the option's label, not its raw value -- e.g. a title-cased
+        label for a lowercase/underscored value).
+        """
+        return self.find((By.XPATH, W.FIELD_INPUT.format(label="Domain"))).get_attribute("value")
+
     def get_domain_option_values(self) -> list[str]:
         """Options the Domain combobox lists while empty (the #463 regression left it bare)."""
         combo = self.wait.until(EC.element_to_be_clickable((By.XPATH, W.FIELD_INPUT.format(label="Domain"))))
@@ -229,6 +247,13 @@ class CreateAiModelPage(EditorWizardPage):
 
     def get_usage_license(self) -> str:
         return self.find(L.USAGE_LICENSE_SELECT).text.strip()
+
+    def select_max_tokens(self, text: str):
+        """DataSpaceFrontend#558: same generic Select as Usage License."""
+        return self.choose_select_option(L.MAX_TOKENS_SELECT, text)
+
+    def get_max_tokens(self) -> str:
+        return self.find(L.MAX_TOKENS_SELECT).text.strip()
 
     def get_intended_use_value(self) -> str:
         return self.find(L.INTENDED_USE_INPUT).get_attribute("value")

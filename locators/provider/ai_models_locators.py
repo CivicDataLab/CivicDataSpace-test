@@ -52,3 +52,10 @@ class AiModelsLocators:
     INTENDED_USE_INPUT = (By.XPATH, "//textarea[@name='intendedUse']")
     MODEL_WEBSITE_INPUT = (By.XPATH, "//input[@name='modelWebsite']")
     USAGE_LICENSE_SELECT = (By.XPATH, W.SELECT_BY_LABEL.format(label="Usage License"))
+    # Maximum Tokens (DataSpaceFrontend#558): same generic Select as Usage License.
+    MAX_TOKENS_SELECT = (By.XPATH, W.SELECT_BY_LABEL.format(label="Maximum Tokens"))
+
+    # Review & Publish: "MODEL WEBSITE"/"USAGE LICENSE"/"MAXIMUM TOKENS" captions
+    # over each value -- same label/value row shape as the events editor's
+    # Review & Publish (events_locators.PREVIEW_VALUE).
+    REVIEW_VALUE = "//main//*[normalize-space(text())='{caption}']/following-sibling::*[1]"
