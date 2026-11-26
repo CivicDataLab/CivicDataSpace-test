@@ -39,7 +39,15 @@ pytestmark = [pytest.mark.smoke, pytest.mark.readonly]
 
 BASE_URL = os.getenv("HOME_URL_DEV", "https://dev.civicdataspace.in")
 
-DESIGN_REGISTER_FIELDS = ("email", "password", "password-confirm")
+# First and last name stay on the form: the dashboard builds its links from the first name.
+DESIGN_REGISTER_FIELDS = ("email", "firstName", "lastName", "password", "password-confirm")
+
+# The theme renders the password fields only when the realm's registration flow asks for a
+# password, so these wait on the realm change, not on the theme. Remove once the realm has it.
+AWAITS_REALM_PASSWORD = pytest.mark.xfail(
+    strict=True,
+    reason="Realm has no password on register or password policy yet (DataSpaceKeycloakTheme#44, #41)",
+)
 
 
 def no_account_email():
@@ -202,15 +210,13 @@ class TestRegistrationPage:
         )
         assert register_page.terms_error_text(), "No error shown for missing consent"
 
+    @AWAITS_REALM_PASSWORD
     def test_registration_form_renders_design_fields(self, register_page):
         names = register_page.field_names()
         missing = [f for f in DESIGN_REGISTER_FIELDS if f not in names]
-        extra = [f for f in ("firstName", "lastName") if f in names]
-        assert not missing and not extra, (
-            f"Register form fields differ from the design. Missing {missing}, "
-            f"not in design {extra}. Present: {names}"
-        )
+        assert not missing, f"Register form is missing {missing}. Present: {names}"
 
+    @AWAITS_REALM_PASSWORD
     def test_password_requirements_are_shown(self, register_page):
         assert register_page.type_password("abc"), "No password field on the register form"
         text = register_page.card_text()
