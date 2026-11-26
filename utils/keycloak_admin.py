@@ -76,6 +76,30 @@ class KeycloakAdmin:
     def user_exists(self, email):
         return len(self.find_users_by_email(email)) > 0
 
+    def user_attributes(self, email):
+        """Custom attributes of the user with this email, or None when there is no such user."""
+        users = self.find_users_by_email(email)
+        return (users[0].get("attributes") or {}) if users else None
+
+    def create_user(self, email, password, email_verified=True, required_actions=()):
+        """Create a signed-in-able user. The caller must delete it (delete_user_by_email)."""
+        resp = requests.post(
+            f"{self.base_url}/admin/realms/{self.realm}/users",
+            headers=self._headers(),
+            json={
+                "username": email,
+                "email": email,
+                "firstName": "QA",
+                "lastName": "Automation",
+                "enabled": True,
+                "emailVerified": email_verified,
+                "requiredActions": list(required_actions),
+                "credentials": [{"type": "password", "value": password, "temporary": False}],
+            },
+            timeout=TIMEOUT,
+        )
+        return resp.status_code == 201
+
     def delete_user_by_email(self, email):
         """Delete every user matching the email. Returns how many were removed.
 
