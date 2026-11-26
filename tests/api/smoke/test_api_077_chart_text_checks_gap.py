@@ -1,4 +1,4 @@
-# tests/api/smoke/test_api_074_chart_text_checks_gap.py
+# tests/api/smoke/test_api_077_chart_text_checks_gap.py
 #
 # DataSpaceBackend#329 (fixes #325): chart and chart-image names/descriptions
 # are refused when blank or too long, with a fixed message, instead of
