@@ -91,10 +91,17 @@ def test_publishing_needs_real_text_not_spaces(owner, drafts, fields, field, mes
 
 
 def test_publishing_needs_a_real_title(owner, drafts):
-    """Hard fail until DataSpaceBackend#324 is fixed: a spaces-only title is published."""
+    """DataSpaceBackend#324: a spaces-only title is stored empty and publishing refuses it.
+
+    createPublication ignores `title` (the draft is named by the backend), so the title
+    has to be set with updatePublication to reach the check.
+    """
     ready = pub.complete_fields(owner)
     ready["license"] = "CC_BY_4_0_ATTRIBUTION"
-    data = drafts(**{**ready, "title": "   "})
+    data = drafts(**ready)
+    assert pub.update(owner, data["id"], title="   ")["success"], "A spaces-only title update was refused"
+    assert _saved(owner, data["id"])["title"] == "", "The spaces-only title was not stored empty"
     pub.add_youtube(owner, data["id"], "https://youtu.be/dQw4w9WgXcQ")
     payload = pub.publish(owner, data["id"])
     assert not payload["success"], "A publication with a spaces-only title was published (DataSpaceBackend#324)"
+    assert "Title is required." in pub.errors_of(payload).get("title", []), payload["errors"]
