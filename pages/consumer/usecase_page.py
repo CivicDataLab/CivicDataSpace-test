@@ -124,6 +124,12 @@ class UseCasePage(BasePage):
             },
         }
 
+    def story_body_html(self, timeout: int = 15) -> str:
+        """Rendered innerHTML of the use case's story body (the `summary` field,
+        passed through RichTextRenderer/sanitizeRichText)."""
+        WebDriverWait(self.driver, timeout).until(EC.presence_of_element_located(UseCaseLocators.STORY_BODY))
+        return self.driver.find_element(*UseCaseLocators.STORY_BODY).get_attribute("innerHTML")
+
     def contents_links(self):
         """[(label, href)] in the story rail's Contents list."""
         return [(a.get_attribute("textContent").strip(), a.get_attribute("href")) for a in self.finds(UseCaseLocators.CONTENTS_LINKS)]

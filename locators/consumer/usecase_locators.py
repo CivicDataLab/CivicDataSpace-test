@@ -47,6 +47,9 @@ class UseCaseLocators:
     COVER_META = (By.XPATH, "//main//a[normalize-space()='Back']/following-sibling::div[1]")
     COVER_PUBLISHER = (By.XPATH, "//main//a[.//span[normalize-space()='Organisation' or normalize-space()='Individual']]")
     CONTENTS_LINKS = (By.XPATH, "//main//nav[@aria-label='Contents']//a")
+    # The story body (DataSpaceFrontend RichTextRenderer renders the use case's
+    # `summary` field here): a div.rich-text-content wrapping div.ql-editor.
+    STORY_BODY = (By.XPATH, "//main//div[contains(concat(' ', normalize-space(@class), ' '), ' rich-text-content ')]//div[contains(concat(' ', normalize-space(@class), ' '), ' ql-editor ')]")
     CONTRIBUTOR_LINKS = (By.XPATH, "//main//section[@aria-label='Contributors']//li//a")
     DATASET_CARD_LINKS = (By.XPATH, "//main//h2[normalize-space()='Datasets behind this story']/following-sibling::ul//li//a")
 
