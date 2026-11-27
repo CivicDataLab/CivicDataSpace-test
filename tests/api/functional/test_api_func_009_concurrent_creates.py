@@ -6,6 +6,10 @@
 #     dataset_slug_0c6f9de7_uniq (dev 2026-10-06: 1 of 6 parallel creates).
 #   DataSpaceBackend#229 (fixed by #276): uploads of the same file name at the
 #     same moment failed on api_resource_slug_ad6fedeb_uniq.
+#   DataSpaceBackend#323: addCollaborative calls in the same second got the
+#     same default title ("New collaborative <date>-<time>") and only the
+#     database-level slug collision was retried with a suffix -- one caught
+#     by validation instead failed the whole create.
 # A barrier releases the requests together so they race on the backend.
 
 import threading
@@ -21,6 +25,8 @@ pytestmark = [pytest.mark.api, pytest.mark.functional]
 PARALLEL = 6
 ADD = "mutation{ addDataset(createInput:{datasetType: DATA}){ success errors { fieldErrors { messages } } data { id } } }"
 DELETE = "mutation($id: UUID!){ deleteDataset(datasetId:$id) }"
+ADD_COLLABORATIVE = "mutation{ addCollaborative { ... on TypeCollaborative { id slug } ... on OperationInfo { messages { message } } } }"
+DELETE_COLLABORATIVE = "mutation($i: String!){ deleteCollaborative(collaborativeId:$i) }"
 
 
 def _together(fn, n=PARALLEL):
@@ -57,3 +63,28 @@ def test_simultaneous_same_name_uploads_all_succeed(graphql_client, created, upl
     bodies = _together(lambda i: upload(created[i], "data.csv", CSV))
     failed = [b.get("errors") for b in bodies if b.get("errors") or not (b.get("data") or {}).get("createFileResources")]
     assert not failed, f"{len(failed)} of {PARALLEL} simultaneous 'data.csv' uploads failed: {failed}"
+
+
+@pytest.fixture
+def created_collaboratives(graphql_client):
+    ids = []
+    yield ids
+    for collaborative_id in ids:
+        gql(graphql_client, DELETE_COLLABORATIVE, {"i": collaborative_id})
+
+
+def test_simultaneous_add_collaborative_calls_all_succeed(graphql_client, created_collaboratives):
+    """DataSpaceBackend#323: with no title given, every addCollaborative call
+    gets the identical default title ("New collaborative <date>-<time>", to
+    the second) and its slug comes from that title. Releasing several calls
+    at the same instant forces the second one's validation to see the first
+    one's slug as already taken before its own save commits -- the case the
+    fix added a retry-with-suffix for. All calls must still succeed, each
+    with a distinct slug.
+    """
+    results = _together(lambda i: graphql_client.query(ADD_COLLABORATIVE)["addCollaborative"])
+    created_collaboratives += [r["id"] for r in results if "id" in r]
+    failed = [r for r in results if "id" not in r]
+    assert not failed, f"{len(failed)} of {PARALLEL} simultaneous addCollaborative calls failed: {failed}"
+    slugs = [r["slug"] for r in results]
+    assert len(set(slugs)) == PARALLEL, f"Expected {PARALLEL} distinct slugs, got {slugs}"
