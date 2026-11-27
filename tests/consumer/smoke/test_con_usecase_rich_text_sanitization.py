@@ -22,6 +22,7 @@ ADD = "mutation{ addUseCase { ... on TypeUseCase { id } ... on OperationInfo { m
 PUBLISH = "mutation($i: String!){ publishUseCase(useCaseId:$i){ ... on TypeUseCase { status } ... on OperationInfo { messages { message } } } }"
 DELETE = "mutation($i: String!){ deleteUseCase(useCaseId:$i) }"
 UPDATE_SUMMARY = "mutation($d: UseCaseInputPartial!){ updateUseCase(data:$d){ id } }"
+STORED_SUMMARY = "query($pk: ID!){ useCase(pk:$pk){ summary } }"
 
 # A mix the rich-text editor can produce (kept by the allow-list in
 # lib/sanitizeRichText.ts) and markup it cannot (must not reach the DOM).
@@ -42,6 +43,10 @@ def sanitized_usecase(graphql_client):
         make_use_case_publishable(graphql_client, uc_id)
         body = gql(graphql_client, UPDATE_SUMMARY, {"d": {"id": uc_id, "summary": SUMMARY_HTML}})
         assert not body.get("errors"), body
+        # The frontend's sanitizer is what's under test, so the backend must still store the markup.
+        stored = gql(graphql_client, STORED_SUMMARY, {"pk": uc_id})["data"]["useCase"]["summary"]
+        if not all(part in stored for part in ("<script", "onerror", "javascript:")):
+            pytest.skip(f"the backend now strips the unsafe markup itself ({stored!r}), so the page can't show the frontend's sanitizer")
         body = gql(graphql_client, PUBLISH, {"i": uc_id})
         assert not body.get("errors") and body["data"]["publishUseCase"].get("status") == "PUBLISHED", body
         yield uc_id
